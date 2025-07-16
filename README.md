@@ -3,6 +3,7 @@
 [![Go Version](https://img.shields.io/badge/go-1.18%2B-blue?logo=go)](https://go.dev/dl/)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/Cod-e-Codes/marchat)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Cod-e-Codes/marchat)](https://goreportcard.com/report/github.com/Cod-e-Codes/marchat)
 
 A modern, retro-inspired terminal chat app for father-son coding sessions. Built with Go, Bubble Tea, and SQLite (pure Go driver, no C compiler required). Fast, hackable, and ready for remote pair programming.
 
