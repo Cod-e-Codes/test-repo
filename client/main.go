@@ -122,6 +122,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.banner = "Error sending message!"
 					return m, nil
 				}
+				m.banner = "" // Clear any previous error
 				m.input.SetValue("")
 				return m, pollMessages(m.cfg.ServerURL)
 			}
@@ -134,6 +135,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case []shared.Message:
 		m.messages = msg
 		m.viewport.SetContent(renderMessages(m.messages, m.styles))
+		m.banner = "" // Clear banner if we successfully received messages
 		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 			return pollMessages(m.cfg.ServerURL)()
 		})
