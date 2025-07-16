@@ -15,6 +15,7 @@ import (
 	"marchat/shared"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -29,44 +30,63 @@ var (
 type model struct {
 	cfg      config.Config
 	input    textinput.Model
+	viewport viewport.Model
 	messages []shared.Message
 	err      error
 	styles   themeStyles
+	banner   string
 }
 
 type themeStyles struct {
-	User lipgloss.Style
-	Time lipgloss.Style
-	Msg  lipgloss.Style
+	User   lipgloss.Style
+	Time   lipgloss.Style
+	Msg    lipgloss.Style
+	Banner lipgloss.Style
 }
 
 func getThemeStyles(theme string) themeStyles {
 	switch theme {
 	case "slack":
 		return themeStyles{
-			User: lipgloss.NewStyle().Foreground(lipgloss.Color("#36C5F0")).Bold(true),
-			Time: lipgloss.NewStyle().Foreground(lipgloss.Color("#999999")),
-			Msg:  lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
+			User:   lipgloss.NewStyle().Foreground(lipgloss.Color("#36C5F0")).Bold(true),
+			Time:   lipgloss.NewStyle().Foreground(lipgloss.Color("#999999")),
+			Msg:    lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
+			Banner: lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
 		}
 	case "discord":
 		return themeStyles{
-			User: lipgloss.NewStyle().Foreground(lipgloss.Color("#7289DA")).Bold(true),
-			Time: lipgloss.NewStyle().Foreground(lipgloss.Color("#99AAB5")),
-			Msg:  lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
+			User:   lipgloss.NewStyle().Foreground(lipgloss.Color("#7289DA")).Bold(true),
+			Time:   lipgloss.NewStyle().Foreground(lipgloss.Color("#99AAB5")),
+			Msg:    lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
+			Banner: lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
 		}
 	case "aim":
 		return themeStyles{
-			User: lipgloss.NewStyle().Foreground(lipgloss.Color("#FFCC00")).Bold(true),
-			Time: lipgloss.NewStyle().Foreground(lipgloss.Color("#00AEEF")),
-			Msg:  lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
+			User:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FFCC00")).Bold(true),
+			Time:   lipgloss.NewStyle().Foreground(lipgloss.Color("#00AEEF")),
+			Msg:    lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
+			Banner: lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
 		}
 	default:
 		return themeStyles{
-			User: lipgloss.NewStyle().Bold(true),
-			Time: lipgloss.NewStyle().Faint(true),
-			Msg:  lipgloss.NewStyle(),
+			User:   lipgloss.NewStyle().Bold(true),
+			Time:   lipgloss.NewStyle().Faint(true),
+			Msg:    lipgloss.NewStyle(),
+			Banner: lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
 		}
 	}
+}
+
+func renderMessages(msgs []shared.Message, styles themeStyles) string {
+	var b strings.Builder
+	for _, msg := range msgs {
+		fmt.Fprintf(&b, "%s %s: %s\n",
+			styles.Time.Render("["+msg.CreatedAt.Format("15:04")+"]"),
+			styles.User.Render(msg.Sender),
+			styles.Msg.Render(renderEmojis(msg.Content)),
+		)
+	}
+	return b.String()
 }
 
 func (m model) Init() tea.Cmd {
@@ -77,13 +97,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c", "esc":
 			return m, tea.Quit
+		case "up", "k":
+			m.viewport.LineUp(1)
+			return m, nil
+		case "down", "j":
+			m.viewport.LineDown(1)
+			return m, nil
 		case "enter":
 			text := m.input.Value()
-			if text != "" {
-				sendMessage(m.cfg.ServerURL, m.cfg.Username, text)
+			if strings.HasPrefix(text, ":theme ") {
+				parts := strings.SplitN(text, " ", 2)
+				if len(parts) == 2 {
+					m.cfg.Theme = parts[1]
+					m.styles = getThemeStyles(m.cfg.Theme)
+					m.banner = "Theme changed to " + m.cfg.Theme
+				}
 				m.input.SetValue("")
+				return m, nil
+			}
+			if text != "" {
+				err := sendMessage(m.cfg.ServerURL, m.cfg.Username, text)
+				if err != nil {
+					m.banner = "Error sending message!"
+				} else {
+					m.input.SetValue("")
+				}
 			}
 			return m, pollMessages(m.cfg.ServerURL)
 		default:
@@ -93,11 +133,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case []shared.Message:
 		m.messages = msg
+		m.viewport.SetContent(renderMessages(m.messages, m.styles))
 		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 			return pollMessages(m.cfg.ServerURL)()
 		})
 	case error:
-		m.err = msg
+		m.banner = msg.Error()
+		return m, nil
+	case tea.WindowSizeMsg:
+		m.viewport.Width = msg.Width
+		m.viewport.Height = msg.Height - 4 // leave room for input + banner
 		return m, nil
 	default:
 		var cmd tea.Cmd
@@ -107,25 +152,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	var b bytes.Buffer
-	for _, msg := range m.messages {
-		b.WriteString(fmt.Sprintf("%s %s: %s\n",
-			m.styles.Time.Render("["+msg.CreatedAt.Format("15:04")+"]"),
-			m.styles.User.Render(msg.Sender),
-			m.styles.Msg.Render(renderEmojis(msg.Content)),
-		))
+	var b strings.Builder
+	if m.banner != "" {
+		b.WriteString(m.styles.Banner.Render(m.banner) + "\n")
 	}
+	b.WriteString(m.viewport.View())
 	b.WriteString("\n> " + m.input.View() + "\n")
-	if m.err != nil {
-		b.WriteString("\n[Error] " + m.err.Error())
-	}
 	return b.String()
 }
 
-func sendMessage(serverURL, sender, content string) {
+func sendMessage(serverURL, sender, content string) error {
 	data := shared.Message{Sender: sender, Content: content}
 	body, _ := json.Marshal(data)
-	http.Post(serverURL+"/send", "application/json", bytes.NewBuffer(body))
+	resp, err := http.Post(serverURL+"/send", "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("server returned %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func pollMessages(serverURL string) tea.Cmd {
@@ -147,7 +194,6 @@ func pollMessages(serverURL string) tea.Cmd {
 }
 
 func renderEmojis(s string) string {
-	// Simple ASCII emoji replacement
 	emojis := map[string]string{
 		":)": "😊",
 		":(": "🙁",
@@ -178,20 +224,23 @@ func main() {
 		return
 	}
 	if cfg.ServerURL == "" {
-		cfg.ServerURL = "http://localhost:8080"
+		cfg.ServerURL = "http://localhost:9090"
 	}
 
 	ti := textinput.New()
 	ti.Placeholder = "Type a message..."
 	ti.Focus()
 
+	vp := viewport.New(80, 20)
+
 	m := model{
-		cfg:    cfg,
-		input:  ti,
-		styles: getThemeStyles(cfg.Theme),
+		cfg:      cfg,
+		input:    ti,
+		viewport: vp,
+		styles:   getThemeStyles(cfg.Theme),
 	}
 
-	p := tea.NewProgram(m)
+	p := tea.NewProgram(m, tea.WithAltScreen())
 	if err := p.Start(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)

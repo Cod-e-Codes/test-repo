@@ -64,9 +64,12 @@ go run client/main.go --config config.json
 
 ## Usage
 - **Send messages**: Type and press Enter
-- **Quit**: Press `q` or `ctrl+c`
+- **Quit**: Press `ctrl+c` or `Esc`
 - **Themes**: `slack`, `discord`, `aim`, or leave blank for default
 - **Emoji**: `:), :(, :D, <3, :P` auto-convert to Unicode
+- **Scroll**: Use Up/Down or j/k to scroll chat
+- **Switch theme**: Type `:theme <name>` and press Enter
+- **Banner**: Status and error messages appear above chat
 
 ---
 
