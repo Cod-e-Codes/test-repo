@@ -120,11 +120,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				err := sendMessage(m.cfg.ServerURL, m.cfg.Username, text)
 				if err != nil {
 					m.banner = "Error sending message!"
-				} else {
-					m.input.SetValue("")
+					return m, nil
 				}
+				m.input.SetValue("")
+				return m, pollMessages(m.cfg.ServerURL)
 			}
-			return m, pollMessages(m.cfg.ServerURL)
+			return m, nil
 		default:
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
