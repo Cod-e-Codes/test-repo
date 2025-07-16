@@ -1,80 +1,100 @@
 # marchat 🧃
 
-> A father-son terminal chat app built with Go, Bubble Tea, and SQLite.
+A modern, retro-inspired terminal chat app for father-son coding sessions. Built with Go, Bubble Tea, and SQLite (pure Go driver, no C compiler required). Fast, hackable, and ready for remote pair programming.
 
-## 🧱 Stack
+---
 
-- Bubble Tea TUI client
-- Go HTTP server
-- SQLite message store
+## Features
 
-## 🚀 Getting Started
+- **Terminal UI**: Beautiful, scrollable chat using [Bubble Tea](https://github.com/charmbracelet/bubbletea)
+- **Go HTTP Server**: Simple, robust, and cross-platform
+- **SQLite (pure Go)**: No C compiler needed (uses `modernc.org/sqlite`)
+- **Usernames & Timestamps**: See who said what, and when
+- **Color Themes**: Slack, Discord, AIM, or classic
+- **Emoji Support**: ASCII emoji auto-conversion
+- **Configurable**: Set username, server URL, and theme via config or flags
+- **Easy Quit**: Press `q` or `ctrl+c` to exit the chat
 
-### Clone the repo
+---
 
-```bash
-git clone <your-repo-url>
+## Quick Start
+
+### 1. Clone the repo
+```sh
+git clone https://github.com/Cod-e-Codes/marchat.git
 cd marchat
 ```
 
-### Set up Go
-
-```bash
-go mod init marchat
-go get github.com/charmbracelet/bubbletea
-go get github.com/charmbracelet/lipgloss
-go get github.com/charmbracelet/bubbles/textinput
-go get github.com/mattn/go-sqlite3
+### 2. Install Go dependencies
+```sh
+go mod tidy
 ```
 
-### Run server
-
-```bash
-go run server/main.go
+### 3. Run the server (port 9090)
+```sh
+go run cmd/server/main.go
 ```
 
-### Create a config file (optional)
-
-Create `config.json` in the root or pass `--config path` to the client:
-
+### 4. (Optional) Create a config file
+Create `config.json` in the project root:
 ```json
 {
   "username": "Cody",
-  "server_url": "http://localhost:8080",
+  "server_url": "http://localhost:9090",
   "theme": "slack"
 }
 ```
 
-### Run client
+### 5. Run the client
+```sh
+# With flags:
+go run client/main.go --username Cody --theme slack --server http://localhost:9090
 
-```bash
-go run client/main.go --username Cody --theme slack
-```
-
-Or use the config file:
-
-```bash
+# Or with config file:
 go run client/main.go --config config.json
 ```
 
-### Themes
-- `slack` (default)
-- `discord`
-- `aim`
+---
 
-### Emoji Support
-- `:), :(, :D, <3, :P` are replaced with Unicode emojis in the chat log.
+## Usage
+- **Send messages**: Type and press Enter
+- **Quit**: Press `q` or `ctrl+c`
+- **Themes**: `slack`, `discord`, `aim`, or leave blank for default
+- **Emoji**: `:), :(, :D, <3, :P` auto-convert to Unicode
 
 ---
 
-## ✅ Next Steps
-
-* [ ] Add persistent config file
-* [ ] Theme colors and avatars
-* [ ] WebSocket mode (optional)
-* [ ] Auto-refresh/polling optimizations
-* [ ] Deploy to AWS EC2 or Fly.io
+## Project Structure
+```
+marchat/
+├── client/           # TUI client (Bubble Tea)
+│   ├── main.go
+│   └── config/config.go
+├── cmd/server/       # Server entrypoint
+│   └── main.go
+├── server/           # Server logic (DB, handlers)
+│   ├── db.go
+│   ├── handlers.go
+│   └── schema.sql
+├── shared/           # Shared types
+│   └── types.go
+├── go.mod
+├── go.sum
+└── README.md
+```
 
 ---
 
-Enjoy chatting! 💬
+## Tech Stack
+- [Go](https://golang.org/) 1.18+
+- [Bubble Tea](https://github.com/charmbracelet/bubbletea) (TUI)
+- [Lipgloss](https://github.com/charmbracelet/lipgloss) (styling)
+- [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (pure Go SQLite)
+
+---
+
+## Next Steps
+- [ ] Persistent config file
+- [ ] Avatars and richer themes
+- [ ] WebSocket support
+- [ ] Deploy to cloud (Fly.io, AWS, etc.)
