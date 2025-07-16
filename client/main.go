@@ -28,14 +28,15 @@ var (
 )
 
 type model struct {
-	cfg          config.Config
-	input        textinput.Model
-	viewport     viewport.Model
-	messages     []shared.Message
-	styles       themeStyles
-	banner       string
-	connected    bool
-	lastMsgCount int // for repeat prevention
+	cfg             config.Config
+	input           textinput.Model
+	viewport        viewport.Model
+	messages        []shared.Message
+	styles          themeStyles
+	banner          string
+	connected       bool
+	lastMsgCount    int       // for repeat prevention
+	lastMessageTime time.Time // for deduplication
 }
 
 type themeStyles struct {
@@ -181,10 +182,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return pollMessages(m.cfg.ServerURL)()
 			})
 		}
-		m.messages = msg
-		m.lastMsgCount = len(msg)
-		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
-		m.viewport.GotoBottom()
+		if len(msg) > 0 && msg[len(msg)-1].CreatedAt.After(m.lastMessageTime) {
+			m.messages = msg
+			m.lastMsgCount = len(msg)
+			m.lastMessageTime = msg[len(msg)-1].CreatedAt
+			m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
+			m.viewport.GotoBottom()
+		}
 		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 			return pollMessages(m.cfg.ServerURL)()
 		})

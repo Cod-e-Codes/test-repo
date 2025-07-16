@@ -30,7 +30,7 @@ func InsertMessage(db *sql.DB, msg shared.Message) {
 }
 
 func GetRecentMessages(db *sql.DB) []shared.Message {
-	rows, err := db.Query(`SELECT sender, content, created_at FROM messages ORDER BY created_at DESC LIMIT 50`)
+	rows, err := db.Query(`SELECT sender, content, created_at FROM messages ORDER BY created_at ASC LIMIT 50`)
 	if err != nil {
 		log.Println("Query error:", err)
 		return nil
@@ -42,7 +42,7 @@ func GetRecentMessages(db *sql.DB) []shared.Message {
 		var msg shared.Message
 		err := rows.Scan(&msg.Sender, &msg.Content, &msg.CreatedAt)
 		if err == nil {
-			messages = append([]shared.Message{msg}, messages...)
+			messages = append(messages, msg) // append, not prepend
 		}
 	}
 	return messages
