@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"marchat/client/config"
 	"marchat/shared"
@@ -87,6 +88,10 @@ func getThemeStyles(theme string) themeStyles {
 }
 
 func renderMessages(msgs []shared.Message, styles themeStyles, username string) string {
+	const max = 100
+	if len(msgs) > max {
+		msgs = msgs[len(msgs)-max:]
+	}
 	var b strings.Builder
 	for _, msg := range msgs {
 		content := renderEmojis(msg.Content)
@@ -144,7 +149,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.banner = "" // Clear any previous error
 				m.input.SetValue("")
-				return m, pollMessages(m.cfg.ServerURL)
+				return m, nil
 			}
 			return m, nil
 		default:
@@ -175,7 +180,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.messages = msg
 		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
-		return m, nil
+		m.viewport.GotoBottom()
+		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
+			return pollMessages(m.cfg.ServerURL)()
+		})
 	case tea.WindowSizeMsg:
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height - 4 // leave room for input + banner
@@ -198,8 +206,7 @@ func (m model) View() string {
 	}
 
 	// Chat Viewport
-	chatBox := m.styles.Box.Copy().Height(m.viewport.Height).Width(m.viewport.Width).Render(m.viewport.View())
-	b.WriteString(chatBox + "\n")
+	b.WriteString(m.viewport.View() + "\n")
 
 	// Input
 	inputBox := m.styles.Box.Copy().Render("> " + m.input.View())
