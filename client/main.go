@@ -38,52 +38,68 @@ type model struct {
 }
 
 type themeStyles struct {
-	User   lipgloss.Style
-	Time   lipgloss.Style
-	Msg    lipgloss.Style
-	Banner lipgloss.Style
+	User    lipgloss.Style
+	Time    lipgloss.Style
+	Msg     lipgloss.Style
+	Banner  lipgloss.Style
+	Box     lipgloss.Style // frame color
+	Mention lipgloss.Style // mention highlighting
 }
 
 func getThemeStyles(theme string) themeStyles {
 	switch theme {
 	case "slack":
 		return themeStyles{
-			User:   lipgloss.NewStyle().Foreground(lipgloss.Color("#36C5F0")).Bold(true),
-			Time:   lipgloss.NewStyle().Foreground(lipgloss.Color("#999999")),
-			Msg:    lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
-			Banner: lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+			User:    lipgloss.NewStyle().Foreground(lipgloss.Color("#36C5F0")).Bold(true),
+			Time:    lipgloss.NewStyle().Foreground(lipgloss.Color("#999999")),
+			Msg:     lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
+			Banner:  lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+			Box:     lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#36C5F0")),
+			Mention: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF00FF")),
 		}
 	case "discord":
 		return themeStyles{
-			User:   lipgloss.NewStyle().Foreground(lipgloss.Color("#7289DA")).Bold(true),
-			Time:   lipgloss.NewStyle().Foreground(lipgloss.Color("#99AAB5")),
-			Msg:    lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
-			Banner: lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+			User:    lipgloss.NewStyle().Foreground(lipgloss.Color("#7289DA")).Bold(true),
+			Time:    lipgloss.NewStyle().Foreground(lipgloss.Color("#99AAB5")),
+			Msg:     lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
+			Banner:  lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+			Box:     lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#7289DA")),
+			Mention: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
 		}
 	case "aim":
 		return themeStyles{
-			User:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FFCC00")).Bold(true),
-			Time:   lipgloss.NewStyle().Foreground(lipgloss.Color("#00AEEF")),
-			Msg:    lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
-			Banner: lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+			User:    lipgloss.NewStyle().Foreground(lipgloss.Color("#FFCC00")).Bold(true),
+			Time:    lipgloss.NewStyle().Foreground(lipgloss.Color("#00AEEF")),
+			Msg:     lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
+			Banner:  lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+			Box:     lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#FFCC00")),
+			Mention: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
 		}
 	default:
 		return themeStyles{
-			User:   lipgloss.NewStyle().Bold(true),
-			Time:   lipgloss.NewStyle().Faint(true),
-			Msg:    lipgloss.NewStyle(),
-			Banner: lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+			User:    lipgloss.NewStyle().Bold(true),
+			Time:    lipgloss.NewStyle().Faint(true),
+			Msg:     lipgloss.NewStyle(),
+			Banner:  lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+			Box:     lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#AAAAAA")),
+			Mention: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
 		}
 	}
 }
 
-func renderMessages(msgs []shared.Message, styles themeStyles) string {
+func renderMessages(msgs []shared.Message, styles themeStyles, username string) string {
 	var b strings.Builder
 	for _, msg := range msgs {
+		content := renderEmojis(msg.Content)
+		if strings.Contains(msg.Content, "@"+username) {
+			content = styles.Mention.Render(content)
+		} else {
+			content = styles.Msg.Render(content)
+		}
 		fmt.Fprintf(&b, "%s %s: %s\n",
 			styles.Time.Render("["+msg.CreatedAt.Format("15:04")+"]"),
 			styles.User.Render(msg.Sender),
-			styles.Msg.Render(renderEmojis(msg.Content)),
+			content,
 		)
 	}
 	return b.String()
@@ -160,7 +176,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.banner = ""
 		}
 		m.messages = msg
-		m.viewport.SetContent(renderMessages(m.messages, m.styles))
+		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
 		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 			return pollMessages(m.cfg.ServerURL)()
 		})
@@ -177,11 +193,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	var b strings.Builder
+
+	// Banner
 	if m.banner != "" {
-		b.WriteString(m.styles.Banner.Render(m.banner) + "\n")
+		bannerBox := m.styles.Box.Copy().Render(m.styles.Banner.Render(m.banner))
+		b.WriteString(bannerBox + "\n")
 	}
-	b.WriteString(m.viewport.View())
-	b.WriteString("\n> " + m.input.View() + "\n")
+
+	// Chat Viewport
+	chatBox := m.styles.Box.Copy().Height(m.viewport.Height).Width(m.viewport.Width).Render(m.viewport.View())
+	b.WriteString(chatBox + "\n")
+
+	// Input
+	inputBox := m.styles.Box.Copy().Render("> " + m.input.View())
+	b.WriteString(inputBox + "\n")
+
 	return b.String()
 }
 
