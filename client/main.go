@@ -42,6 +42,12 @@ type model struct {
 
 	width  int // NEW: track window width
 	height int // NEW: track window height
+
+	userListViewport viewport.Model // NEW: scrollable user list
+
+	twentyFourHour bool // NEW: timestamp format toggle
+
+	sending bool // NEW: sending message feedback
 }
 
 type themeStyles struct {
@@ -110,29 +116,47 @@ func getThemeStyles(theme string) themeStyles {
 	}
 }
 
-func renderMessages(msgs []shared.Message, styles themeStyles, username string, width int) string {
+func renderMessages(msgs []shared.Message, styles themeStyles, username string, width int, twentyFourHour bool) string {
 	const max = 100
 	if len(msgs) > max {
 		msgs = msgs[len(msgs)-max:]
 	}
 	var b strings.Builder
+	var prevDate string
 	for _, msg := range msgs {
 		sender := msg.Sender
 		senderStyle := styles.User
+		align := lipgloss.Left
+		msgBoxStyle := lipgloss.NewStyle().Width(width - 4)
 		if sender == username {
 			senderStyle = styles.Me
+			align = lipgloss.Right
+			msgBoxStyle = msgBoxStyle.Background(lipgloss.Color("#222244")).Foreground(lipgloss.Color("#FFFFFF"))
 		} else {
 			senderStyle = styles.Other
+			msgBoxStyle = msgBoxStyle.Background(lipgloss.Color("#222222")).Foreground(lipgloss.Color("#AAAAAA"))
 		}
-		timestamp := styles.Time.Render(msg.CreatedAt.Format("15:04:05"))
+		// Date header if date changes
+		dateStr := msg.CreatedAt.Format("2006-01-02")
+		if dateStr != prevDate {
+			b.WriteString(styles.Time.Render(dateStr) + "\n")
+			prevDate = dateStr
+		}
+		// Time format
+		timeFmt := "15:04:05"
+		if !twentyFourHour {
+			timeFmt = "03:04:05 PM"
+		}
+		timestamp := styles.Time.Render(msg.CreatedAt.Format(timeFmt))
 		content := renderEmojis(msg.Content)
 		if strings.Contains(msg.Content, "@"+username) {
 			content = styles.Mention.Render(content)
 		} else {
 			content = styles.Msg.Render(content)
 		}
-		wrapped := lipgloss.NewStyle().Width(width - 12).Render(content)
-		b.WriteString(fmt.Sprintf("%s %s\n%s\n\n", senderStyle.Render(sender), timestamp, wrapped))
+		wrapped := msgBoxStyle.Align(align).Render(content)
+		meta := lipgloss.NewStyle().Align(align).Render(senderStyle.Render(sender) + " " + timestamp)
+		b.WriteString(meta + "\n" + wrapped + "\n\n")
 	}
 	return b.String()
 }
@@ -152,10 +176,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "esc":
 			return m, tea.Quit
 		case "up":
-			m.viewport.ScrollUp(1)
+			if m.textarea.Focused() {
+				m.viewport.ScrollUp(1)
+			} else {
+				m.userListViewport.ScrollUp(1)
+			}
 			return m, nil
 		case "down":
-			m.viewport.ScrollDown(1)
+			if m.textarea.Focused() {
+				m.viewport.ScrollDown(1)
+			} else {
+				m.userListViewport.ScrollDown(1)
+			}
 			return m, nil
 		case "enter":
 			text := m.textarea.Value()
@@ -188,8 +220,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.SetValue("")
 				return m, nil
 			}
+			if text == ":time" {
+				m.twentyFourHour = !m.twentyFourHour
+				m.banner = "Timestamp format: " + map[bool]string{true: "24h", false: "12h"}[m.twentyFourHour]
+				return m, nil
+			}
 			if text != "" {
+				m.sending = true
 				err := sendMessage(m.cfg.ServerURL, m.cfg.Username, text)
+				m.sending = false
 				if err != nil {
 					m.banner = "❌ Failed to send (server down?)"
 					return m, nil
@@ -207,7 +246,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		// fmt.Println("Received error:", msg.Error()) // removed debug print
 		m.connected = false
-		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width))
+		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width, m.twentyFourHour))
 		if strings.Contains(msg.Error(), "connectex") || strings.Contains(msg.Error(), "connection refused") {
 			m.banner = "🚫 Server unreachable. Trying to reconnect..."
 		} else {
@@ -229,7 +268,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !m.hasRenderedMessages && len(msg) > 0 {
 				// Force initial render
 				m.messages = msg
-				contentStr := renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width)
+				contentStr := renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width, m.twentyFourHour)
 				wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(contentStr)
 				m.viewport.SetContent(wrappedContent)
 				m.viewport.GotoBottom()
@@ -241,7 +280,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if len(msg) > 0 {
 			m.messages = msg
-			contentStr := renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width)
+			contentStr := renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width, m.twentyFourHour)
 			wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(contentStr)
 			m.viewport.SetContent(wrappedContent)
 			m.viewport.GotoBottom()
@@ -264,8 +303,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Width = chatWidth
 		m.viewport.Height = m.height - m.textarea.Height() - 6
 		m.textarea.SetWidth(chatWidth)
-		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, chatWidth))
+		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, chatWidth, m.twentyFourHour))
 		m.viewport.GotoBottom()
+		m.userListViewport.Height = m.height - m.textarea.Height() - 6
+		m.userListViewport.SetContent(renderUserList(m.users, m.cfg.Username, m.styles, userListWidth))
 		return m, nil
 	default:
 		var cmd tea.Cmd
@@ -291,25 +332,34 @@ func (m model) View() string {
 	footer := footerStyle.Width(totalWidth).Render("[Enter] Send  [PgUp/PgDn] Scroll  [q] Quit")
 
 	// Banner
-	bannerBox := ""
-	if m.banner != "" {
-		bannerBox = lipgloss.NewStyle().
-			Width(m.viewport.Width).
-			PaddingLeft(1).
-			Background(lipgloss.Color("#FF5F5F")).
-			Foreground(lipgloss.Color("#000000")).
-			Bold(true).
-			Render(m.banner)
+	spinner := ""
+	if m.sending {
+		spinner = "⏳ Sending..."
 	}
+	bannerText := m.banner
+	if bannerText == "" && spinner != "" {
+		bannerText = spinner
+	} else if bannerText != "" && spinner != "" {
+		bannerText += " " + spinner
+	}
+	if bannerText == "" {
+		bannerText = " " // always reserve a line
+	}
+	bannerBox := lipgloss.NewStyle().
+		Width(m.viewport.Width).
+		PaddingLeft(1).
+		Background(lipgloss.Color("#FF5F5F")).
+		Foreground(lipgloss.Color("#000000")).
+		Bold(true).
+		Render(bannerText)
 
 	// Chat and user list layout
-	userListWidth := 18
 	chatBoxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("#36C5F0")).
 		Padding(0, 1)
 	chatPanel := chatBoxStyle.Width(m.viewport.Width).Render(m.viewport.View())
-	userPanel := renderUserList(m.users, m.cfg.Username, m.styles, userListWidth)
+	userPanel := m.userListViewport.View()
 	row := lipgloss.JoinHorizontal(lipgloss.Top, userPanel, chatPanel)
 
 	// Input
@@ -448,12 +498,17 @@ func main() {
 
 	vp := viewport.New(80, 20)
 
+	userListVp := viewport.New(18, 10) // height will be set on resize
+	userListVp.SetContent(renderUserList([]string{cfg.Username, "Alice", "Bob", "Eve", "Mallory"}, cfg.Username, getThemeStyles(cfg.Theme), 18))
+
 	m := model{
-		cfg:      cfg,
-		textarea: ta,
-		viewport: vp,
-		styles:   getThemeStyles(cfg.Theme),
-		users:    []string{"You", "Alice", "Bob", "Eve", "Mallory"}, // Example users
+		cfg:              cfg,
+		textarea:         ta,
+		viewport:         vp,
+		styles:           getThemeStyles(cfg.Theme),
+		users:            []string{cfg.Username, "Alice", "Bob", "Eve", "Mallory"},
+		userListViewport: userListVp,
+		twentyFourHour:   true,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
