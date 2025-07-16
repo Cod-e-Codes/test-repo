@@ -154,9 +154,10 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 		} else {
 			content = styles.Msg.Render(content)
 		}
-		wrapped := msgBoxStyle.Align(align).Render(content)
-		meta := lipgloss.NewStyle().Align(align).Render(senderStyle.Render(sender) + " " + timestamp)
-		b.WriteString(meta + "\n" + wrapped + "\n\n")
+		meta := senderStyle.Render(sender) + " " + timestamp
+		wrapped := msgBoxStyle.Render(content)
+		msgBlock := lipgloss.JoinVertical(lipgloss.Left, meta, wrapped)
+		b.WriteString(msgBoxStyle.Align(align).Render(msgBlock) + "\n\n")
 	}
 	return b.String()
 }
@@ -332,26 +333,24 @@ func (m model) View() string {
 	footer := footerStyle.Width(totalWidth).Render("[Enter] Send  [PgUp/PgDn] Scroll  [q] Quit")
 
 	// Banner
-	spinner := ""
-	if m.sending {
-		spinner = "⏳ Sending..."
+	var bannerBox string
+	if m.banner != "" || m.sending {
+		bannerText := m.banner
+		if m.sending {
+			if bannerText != "" {
+				bannerText += " ⏳ Sending..."
+			} else {
+				bannerText = "⏳ Sending..."
+			}
+		}
+		bannerBox = lipgloss.NewStyle().
+			Width(m.viewport.Width).
+			PaddingLeft(1).
+			Background(lipgloss.Color("#FF5F5F")).
+			Foreground(lipgloss.Color("#000000")).
+			Bold(true).
+			Render(bannerText)
 	}
-	bannerText := m.banner
-	if bannerText == "" && spinner != "" {
-		bannerText = spinner
-	} else if bannerText != "" && spinner != "" {
-		bannerText += " " + spinner
-	}
-	if bannerText == "" {
-		bannerText = " " // always reserve a line
-	}
-	bannerBox := lipgloss.NewStyle().
-		Width(m.viewport.Width).
-		PaddingLeft(1).
-		Background(lipgloss.Color("#FF5F5F")).
-		Foreground(lipgloss.Color("#000000")).
-		Bold(true).
-		Render(bannerText)
 
 	// Chat and user list layout
 	chatBoxStyle := lipgloss.NewStyle().
@@ -499,14 +498,14 @@ func main() {
 	vp := viewport.New(80, 20)
 
 	userListVp := viewport.New(18, 10) // height will be set on resize
-	userListVp.SetContent(renderUserList([]string{cfg.Username, "Alice", "Bob", "Eve", "Mallory"}, cfg.Username, getThemeStyles(cfg.Theme), 18))
+	userListVp.SetContent(renderUserList([]string{cfg.Username}, cfg.Username, getThemeStyles(cfg.Theme), 18))
 
 	m := model{
 		cfg:              cfg,
 		textarea:         ta,
 		viewport:         vp,
 		styles:           getThemeStyles(cfg.Theme),
-		users:            []string{cfg.Username, "Alice", "Bob", "Eve", "Mallory"},
+		users:            []string{cfg.Username},
 		userListViewport: userListVp,
 		twentyFourHour:   true,
 	}
