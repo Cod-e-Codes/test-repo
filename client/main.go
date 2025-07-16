@@ -147,6 +147,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.messages = nil
 				m.viewport.SetContent("")
 				m.banner = "Chat cleared."
+				m.lastMsgCount = 0
+				m.lastMessageTime = time.Time{}
 				m.input.SetValue("")
 				return m, nil
 			}
@@ -158,6 +160,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.messages = nil
 					m.viewport.SetContent("")
 					m.banner = "Database cleared."
+					m.lastMsgCount = 0
+					m.lastMessageTime = time.Time{}
 				}
 				m.input.SetValue("")
 				return m, nil
@@ -165,10 +169,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if text != "" {
 				err := sendMessage(m.cfg.ServerURL, m.cfg.Username, text)
 				if err != nil {
-					m.banner = "Error sending message!"
+					m.banner = "❌ Failed to send (server down?)"
 					return m, nil
 				}
-				m.banner = "" // Clear any previous error
+				m.banner = ""
 				m.input.SetValue("")
 				return m, nil
 			}
@@ -179,7 +183,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 	case errMsg:
-		fmt.Println("Received error:", msg.Error()) // debug
+		// fmt.Println("Received error:", msg.Error()) // removed debug print
 		m.connected = false
 		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
 		if strings.Contains(msg.Error(), "connectex") || strings.Contains(msg.Error(), "connection refused") {
@@ -187,7 +191,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.banner = "⚠️ " + msg.Error()
 		}
-		return m, nil
+		// Always keep polling to auto-reconnect
+		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
+			return pollMessages(m.cfg.ServerURL)()
+		})
 	case messagesMsg:
 		was := m.connected
 		m.connected = true
@@ -196,17 +203,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.banner = ""
 		}
-		if len(msg) == m.lastMsgCount {
+		// Always update if messages changed, or if messages are now empty but weren't before
+		if len(msg) == m.lastMsgCount && !(len(msg) == 0 && len(m.messages) != 0) {
 			return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 				return pollMessages(m.cfg.ServerURL)()
 			})
 		}
-		if len(msg) > 0 && msg[len(msg)-1].CreatedAt.After(m.lastMessageTime) {
+		if len(msg) > 0 && (m.lastMsgCount == 0 || msg[len(msg)-1].CreatedAt.After(m.lastMessageTime)) {
 			m.messages = msg
 			m.lastMsgCount = len(msg)
 			m.lastMessageTime = msg[len(msg)-1].CreatedAt
 			m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
 			m.viewport.GotoBottom()
+		} else if len(msg) == 0 {
+			m.messages = nil
+			m.lastMsgCount = 0
+			m.lastMessageTime = time.Time{}
+			m.viewport.SetContent("")
 		}
 		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 			return pollMessages(m.cfg.ServerURL)()
@@ -301,13 +314,17 @@ func renderEmojis(s string) string {
 func sendClearDB(serverURL string) error {
 	req, err := http.NewRequest("POST", serverURL+"/clear", nil)
 	if err != nil {
+		fmt.Println("sendClearDB request error:", err)
 		return err
 	}
+	fmt.Println("sendClearDB: sending POST to", serverURL+"/clear")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		fmt.Println("sendClearDB error:", err)
 		return err
 	}
 	defer resp.Body.Close()
+	fmt.Println("sendClearDB response status:", resp.StatusCode)
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("server returned %d", resp.StatusCode)
 	}
