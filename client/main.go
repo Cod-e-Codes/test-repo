@@ -216,7 +216,7 @@ func pollMessages(serverURL string) tea.Cmd {
 	return func() tea.Msg {
 		resp, err := http.Get(serverURL + "/messages")
 		if err != nil {
-			return tea.Sequence(connectionStatusCmd(false), errCmd(err))
+			return tea.Batch(connectionStatusCmd(false), errCmd(err))
 		}
 		defer resp.Body.Close()
 
@@ -224,9 +224,9 @@ func pollMessages(serverURL string) tea.Cmd {
 		var msgs []shared.Message
 		err = json.Unmarshal(body, &msgs)
 		if err != nil {
-			return tea.Sequence(connectionStatusCmd(false), errCmd(err))
+			return tea.Batch(connectionStatusCmd(false), errCmd(err))
 		}
-		return tea.Sequence(connectionStatusCmd(true), messagesCmd(msgs))
+		return tea.Batch(connectionStatusCmd(true), messagesCmd(msgs))
 	}
 }
 
