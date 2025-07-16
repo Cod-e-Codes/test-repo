@@ -28,12 +28,13 @@ var (
 )
 
 type model struct {
-	cfg      config.Config
-	input    textinput.Model
-	viewport viewport.Model
-	messages []shared.Message
-	styles   themeStyles
-	banner   string
+	cfg       config.Config
+	input     textinput.Model
+	viewport  viewport.Model
+	messages  []shared.Message
+	styles    themeStyles
+	banner    string
+	connected bool // NEW: tracks connection status
 }
 
 type themeStyles struct {
@@ -92,6 +93,12 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(textinput.Blink, pollMessages(m.cfg.ServerURL))
 }
 
+type connectionStatusMsg bool // true = connected, false = disconnected
+
+type errMsg error
+
+type messagesMsg []shared.Message
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -132,7 +139,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.input, cmd = m.input.Update(msg)
 			return m, cmd
 		}
-	case []shared.Message:
+	case connectionStatusMsg:
+		was := m.connected
+		m.connected = bool(msg)
+		if m.connected && !was {
+			m.banner = "✅ Reconnected to server!"
+		} else if !m.connected && was {
+			m.banner = "🚫 Lost connection to server."
+		}
+		return m, nil
+	case errMsg:
+		if strings.Contains(msg.Error(), "connectex") || strings.Contains(msg.Error(), "connection refused") {
+			m.banner = "🚫 Server unreachable. Trying to reconnect..."
+		} else {
+			m.banner = "⚠️ " + msg.Error()
+		}
+		return m, nil
+	case messagesMsg:
 		prevBanner := m.banner
 		m.messages = msg
 		m.viewport.SetContent(renderMessages(m.messages, m.styles))
@@ -144,13 +167,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 			return pollMessages(m.cfg.ServerURL)()
 		})
-	case error:
-		if strings.Contains(msg.Error(), "connectex") || strings.Contains(msg.Error(), "connection refused") {
-			m.banner = "🚫 Server unreachable. Trying to reconnect..."
-		} else {
-			m.banner = "⚠️ " + msg.Error()
-		}
-		return m, nil
 	case tea.WindowSizeMsg:
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height - 4 // leave room for input + banner
@@ -186,21 +202,31 @@ func sendMessage(serverURL, sender, content string) error {
 	return nil
 }
 
+func connectionStatusCmd(connected bool) tea.Cmd {
+	return func() tea.Msg { return connectionStatusMsg(connected) }
+}
+func errCmd(err error) tea.Cmd {
+	return func() tea.Msg { return errMsg(err) }
+}
+func messagesCmd(msgs []shared.Message) tea.Cmd {
+	return func() tea.Msg { return messagesMsg(msgs) }
+}
+
 func pollMessages(serverURL string) tea.Cmd {
 	return func() tea.Msg {
 		resp, err := http.Get(serverURL + "/messages")
 		if err != nil {
-			return err
+			return tea.Sequence(connectionStatusCmd(false), errCmd(err))
 		}
 		defer resp.Body.Close()
-		body, _ := io.ReadAll(resp.Body)
 
+		body, _ := io.ReadAll(resp.Body)
 		var msgs []shared.Message
 		err = json.Unmarshal(body, &msgs)
 		if err != nil {
-			return err
+			return tea.Sequence(connectionStatusCmd(false), errCmd(err))
 		}
-		return msgs
+		return tea.Sequence(connectionStatusCmd(true), messagesCmd(msgs))
 	}
 }
 
