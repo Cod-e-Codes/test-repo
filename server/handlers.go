@@ -47,3 +47,8 @@ func GetRecentMessages(db *sql.DB) []shared.Message {
 	}
 	return messages
 }
+
+func ClearMessages(db *sql.DB) error {
+	_, err := db.Exec(`DELETE FROM messages`)
+	return err
+}

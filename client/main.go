@@ -143,6 +143,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.input.SetValue("")
 				return m, nil
 			}
+			if text == ":clear" {
+				m.messages = nil
+				m.viewport.SetContent("")
+				m.banner = "Chat cleared."
+				m.input.SetValue("")
+				return m, nil
+			}
+			if text == ":cleardb" {
+				err := sendClearDB(m.cfg.ServerURL)
+				if err != nil {
+					m.banner = "Failed to clear DB: " + err.Error()
+				} else {
+					m.messages = nil
+					m.viewport.SetContent("")
+					m.banner = "Database cleared."
+				}
+				m.input.SetValue("")
+				return m, nil
+			}
 			if text != "" {
 				err := sendMessage(m.cfg.ServerURL, m.cfg.Username, text)
 				if err != nil {
@@ -277,6 +296,22 @@ func renderEmojis(s string) string {
 		s = strings.ReplaceAll(s, k, v)
 	}
 	return s
+}
+
+func sendClearDB(serverURL string) error {
+	req, err := http.NewRequest("POST", serverURL+"/clear", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("server returned %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func main() {

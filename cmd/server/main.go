@@ -31,6 +31,21 @@ func main() {
 		json.NewEncoder(w).Encode(messages)
 	})
 
+	http.HandleFunc("/clear", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		err := server.ClearMessages(db)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Failed to clear messages"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Messages cleared"))
+	})
+
 	log.Println("marchat server running on :9090")
 	log.Fatal(http.ListenAndServe(":9090", nil))
 }

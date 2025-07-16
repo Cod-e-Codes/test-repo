@@ -69,6 +69,8 @@ go run client/main.go --config config.json
 - **Emoji**: `:), :(, :D, <3, :P` auto-convert to Unicode
 - **Scroll**: Use Up/Down arrows or your mouse to scroll chat
 - **Switch theme**: Type `:theme <name>` and press Enter
+- **Clear chat (client only)**: Type `:clear` and press Enter
+- **Clear all messages (wipe DB)**: Type `:cleardb` and press Enter (removes all messages for everyone)
 - **Banner**: Status and error messages appear above chat
 
 ---
