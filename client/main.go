@@ -99,10 +99,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "esc":
 			return m, tea.Quit
-		case "up", "k":
+		case "up":
 			m.viewport.LineUp(1)
 			return m, nil
-		case "down", "j":
+		case "down":
 			m.viewport.LineDown(1)
 			return m, nil
 		case "enter":
