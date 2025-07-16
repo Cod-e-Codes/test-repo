@@ -199,14 +199,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.banner = ""
 		}
+		// Always render the first messagesMsg, regardless of equality
+		if !m.hasRenderedMessages && len(msg) > 0 {
+			m.messages = msg
+			m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
+			m.viewport.GotoBottom()
+			m.hasRenderedMessages = true
+			return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
+				return pollMessages(m.cfg.ServerURL)()
+			})
+		}
 		if messagesEqual(msg, m.messages) {
-			if !m.hasRenderedMessages && len(msg) > 0 {
-				// Force initial render
-				m.messages = msg
-				m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
-				m.viewport.GotoBottom()
-				m.hasRenderedMessages = true
-			}
 			return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 				return pollMessages(m.cfg.ServerURL)()
 			})
@@ -335,7 +338,11 @@ func messagesEqual(a, b []shared.Message) bool {
 		return false
 	}
 	for i := range a {
-		if a[i].Sender != b[i].Sender || a[i].Content != b[i].Content || !a[i].CreatedAt.Equal(b[i].CreatedAt) {
+		if a[i].Sender != b[i].Sender || a[i].Content != b[i].Content {
+			return false
+		}
+		// Ignore sub-second differences in CreatedAt
+		if !a[i].CreatedAt.Truncate(time.Second).Equal(b[i].CreatedAt.Truncate(time.Second)) {
 			return false
 		}
 	}
