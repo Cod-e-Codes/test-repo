@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"marchat/client/config"
 	"marchat/shared"
@@ -154,6 +153,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 	case errMsg:
+		fmt.Println("Received error:", msg.Error()) // debug
 		was := m.connected
 		m.connected = false
 		if was {
@@ -164,9 +164,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.banner = "⚠️ " + msg.Error()
 		}
-		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
-			return pollMessages(m.cfg.ServerURL)()
-		})
+		return m, nil
 	case messagesMsg:
 		was := m.connected
 		m.connected = true
@@ -177,9 +175,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.messages = msg
 		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
-		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
-			return pollMessages(m.cfg.ServerURL)()
-		})
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height - 4 // leave room for input + banner
@@ -196,7 +192,8 @@ func (m model) View() string {
 
 	// Banner
 	if m.banner != "" {
-		bannerBox := m.styles.Box.Copy().Render(m.styles.Banner.Render(m.banner))
+		banner := m.styles.Banner.Render(m.banner)
+		bannerBox := m.styles.Box.Copy().MarginBottom(1).Render(banner)
 		b.WriteString(bannerBox + "\n")
 	}
 
