@@ -1,5 +1,9 @@
 # marchat 🧃
 
+[![Go Version](https://img.shields.io/badge/go-1.18%2B-blue?logo=go)](https://golang.org/dl/)
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![GitHub Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/Cod-e-Codes/marchat)
+
 A modern, retro-inspired terminal chat app for father-son coding sessions. Built with Go, Bubble Tea, and SQLite (pure Go driver, no C compiler required). Fast, hackable, and ready for remote pair programming.
 
 ---
@@ -98,3 +102,14 @@ marchat/
 - [ ] Avatars and richer themes
 - [ ] WebSocket support
 - [ ] Deploy to cloud (Fly.io, AWS, etc.)
+
+---
+
+## Contributing
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
