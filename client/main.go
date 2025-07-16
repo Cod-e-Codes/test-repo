@@ -28,15 +28,13 @@ var (
 )
 
 type model struct {
-	cfg             config.Config
-	input           textinput.Model
-	viewport        viewport.Model
-	messages        []shared.Message
-	styles          themeStyles
-	banner          string
-	connected       bool
-	lastMsgCount    int       // for repeat prevention
-	lastMessageTime time.Time // for deduplication
+	cfg       config.Config
+	input     textinput.Model
+	viewport  viewport.Model
+	messages  []shared.Message
+	styles    themeStyles
+	banner    string
+	connected bool
 }
 
 type themeStyles struct {
@@ -147,8 +145,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.messages = nil
 				m.viewport.SetContent("")
 				m.banner = "Chat cleared."
-				m.lastMsgCount = 0
-				m.lastMessageTime = time.Time{}
 				m.input.SetValue("")
 				return m, nil
 			}
@@ -160,8 +156,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.messages = nil
 					m.viewport.SetContent("")
 					m.banner = "Database cleared."
-					m.lastMsgCount = 0
-					m.lastMessageTime = time.Time{}
 				}
 				m.input.SetValue("")
 				return m, nil
@@ -203,22 +197,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.banner = ""
 		}
-		// Always update if messages changed, or if messages are now empty but weren't before
-		if len(msg) == m.lastMsgCount && !(len(msg) == 0 && len(m.messages) != 0) {
+		// Only skip update if messages are exactly the same
+		if messagesEqual(msg, m.messages) {
 			return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 				return pollMessages(m.cfg.ServerURL)()
 			})
 		}
-		if len(msg) > 0 && (m.lastMsgCount == 0 || msg[len(msg)-1].CreatedAt.After(m.lastMessageTime)) {
+		if len(msg) > 0 {
 			m.messages = msg
-			m.lastMsgCount = len(msg)
-			m.lastMessageTime = msg[len(msg)-1].CreatedAt
 			m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
 			m.viewport.GotoBottom()
-		} else if len(msg) == 0 {
+		} else {
 			m.messages = nil
-			m.lastMsgCount = 0
-			m.lastMessageTime = time.Time{}
 			m.viewport.SetContent("")
 		}
 		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
@@ -329,6 +319,18 @@ func sendClearDB(serverURL string) error {
 		return fmt.Errorf("server returned %d", resp.StatusCode)
 	}
 	return nil
+}
+
+func messagesEqual(a, b []shared.Message) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Sender != b[i].Sender || a[i].Content != b[i].Content || !a[i].CreatedAt.Equal(b[i].CreatedAt) {
+			return false
+		}
+	}
+	return true
 }
 
 func main() {
