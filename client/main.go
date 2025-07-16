@@ -35,6 +35,8 @@ type model struct {
 	styles    themeStyles
 	banner    string
 	connected bool
+
+	hasRenderedMessages bool // NEW
 }
 
 type themeStyles struct {
@@ -197,8 +199,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.banner = ""
 		}
-		// Only skip update if messages are exactly the same
 		if messagesEqual(msg, m.messages) {
+			if !m.hasRenderedMessages && len(msg) > 0 {
+				// Force initial render
+				m.messages = msg
+				m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
+				m.viewport.GotoBottom()
+				m.hasRenderedMessages = true
+			}
 			return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 				return pollMessages(m.cfg.ServerURL)()
 			})
@@ -207,6 +215,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.messages = msg
 			m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
 			m.viewport.GotoBottom()
+			m.hasRenderedMessages = true
 		} else {
 			m.messages = nil
 			m.viewport.SetContent("")
