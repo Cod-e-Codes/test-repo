@@ -133,14 +133,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 	case []shared.Message:
+		prevBanner := m.banner
 		m.messages = msg
 		m.viewport.SetContent(renderMessages(m.messages, m.styles))
-		m.banner = "" // Clear banner if we successfully received messages
+		if strings.Contains(prevBanner, "Server unreachable") {
+			m.banner = "✅ Reconnected to server!"
+		} else {
+			m.banner = ""
+		}
 		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 			return pollMessages(m.cfg.ServerURL)()
 		})
 	case error:
-		m.banner = msg.Error()
+		if strings.Contains(msg.Error(), "connectex") || strings.Contains(msg.Error(), "connection refused") {
+			m.banner = "🚫 Server unreachable. Trying to reconnect..."
+		} else {
+			m.banner = "⚠️ " + msg.Error()
+		}
 		return m, nil
 	case tea.WindowSizeMsg:
 		m.viewport.Width = msg.Width
