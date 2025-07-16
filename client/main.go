@@ -93,8 +93,6 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(textinput.Blink, pollMessages(m.cfg.ServerURL))
 }
 
-type connectionStatusMsg bool // true = connected, false = disconnected
-
 type errMsg error
 
 type messagesMsg []shared.Message
@@ -139,31 +137,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.input, cmd = m.input.Update(msg)
 			return m, cmd
 		}
-	case connectionStatusMsg:
+	case errMsg:
 		was := m.connected
-		m.connected = bool(msg)
-		if m.connected && !was {
-			m.banner = "✅ Reconnected to server!"
-		} else if !m.connected && was {
+		m.connected = false
+		if was {
 			m.banner = "🚫 Lost connection to server."
 		}
-		return m, nil
-	case errMsg:
 		if strings.Contains(msg.Error(), "connectex") || strings.Contains(msg.Error(), "connection refused") {
 			m.banner = "🚫 Server unreachable. Trying to reconnect..."
 		} else {
 			m.banner = "⚠️ " + msg.Error()
 		}
-		return m, nil
+		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
+			return pollMessages(m.cfg.ServerURL)()
+		})
 	case messagesMsg:
-		prevBanner := m.banner
-		m.messages = msg
-		m.viewport.SetContent(renderMessages(m.messages, m.styles))
-		if strings.Contains(prevBanner, "Server unreachable") {
+		was := m.connected
+		m.connected = true
+		if !was {
 			m.banner = "✅ Reconnected to server!"
 		} else {
 			m.banner = ""
 		}
+		m.messages = msg
+		m.viewport.SetContent(renderMessages(m.messages, m.styles))
 		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 			return pollMessages(m.cfg.ServerURL)()
 		})
@@ -202,21 +199,11 @@ func sendMessage(serverURL, sender, content string) error {
 	return nil
 }
 
-func connectionStatusCmd(connected bool) tea.Cmd {
-	return func() tea.Msg { return connectionStatusMsg(connected) }
-}
-func errCmd(err error) tea.Cmd {
-	return func() tea.Msg { return errMsg(err) }
-}
-func messagesCmd(msgs []shared.Message) tea.Cmd {
-	return func() tea.Msg { return messagesMsg(msgs) }
-}
-
 func pollMessages(serverURL string) tea.Cmd {
 	return func() tea.Msg {
 		resp, err := http.Get(serverURL + "/messages")
 		if err != nil {
-			return tea.Batch(connectionStatusCmd(false), errCmd(err))
+			return errMsg(err)
 		}
 		defer resp.Body.Close()
 
@@ -224,9 +211,9 @@ func pollMessages(serverURL string) tea.Cmd {
 		var msgs []shared.Message
 		err = json.Unmarshal(body, &msgs)
 		if err != nil {
-			return tea.Batch(connectionStatusCmd(false), errCmd(err))
+			return errMsg(err)
 		}
-		return tea.Batch(connectionStatusCmd(true), messagesCmd(msgs))
+		return messagesMsg(msgs)
 	}
 }
 
