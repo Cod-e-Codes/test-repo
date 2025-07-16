@@ -28,13 +28,14 @@ var (
 )
 
 type model struct {
-	cfg       config.Config
-	input     textinput.Model
-	viewport  viewport.Model
-	messages  []shared.Message
-	styles    themeStyles
-	banner    string
-	connected bool // NEW: tracks connection status
+	cfg          config.Config
+	input        textinput.Model
+	viewport     viewport.Model
+	messages     []shared.Message
+	styles       themeStyles
+	banner       string
+	connected    bool
+	lastMsgCount int // for repeat prevention
 }
 
 type themeStyles struct {
@@ -159,11 +160,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case errMsg:
 		fmt.Println("Received error:", msg.Error()) // debug
-		was := m.connected
 		m.connected = false
-		if was {
-			m.banner = "🚫 Lost connection to server."
-		}
+		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
 		if strings.Contains(msg.Error(), "connectex") || strings.Contains(msg.Error(), "connection refused") {
 			m.banner = "🚫 Server unreachable. Trying to reconnect..."
 		} else {
@@ -178,15 +176,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.banner = ""
 		}
+		if len(msg) == m.lastMsgCount {
+			return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
+				return pollMessages(m.cfg.ServerURL)()
+			})
+		}
 		m.messages = msg
+		m.lastMsgCount = len(msg)
 		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
 		m.viewport.GotoBottom()
 		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
 			return pollMessages(m.cfg.ServerURL)()
 		})
 	case tea.WindowSizeMsg:
+		availableHeight := msg.Height - 3
+		if availableHeight < 3 {
+			availableHeight = 3
+		}
 		m.viewport.Width = msg.Width
-		m.viewport.Height = msg.Height - 4 // leave room for input + banner
+		m.viewport.Height = availableHeight
+		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
 		return m, nil
 	default:
 		var cmd tea.Cmd
@@ -200,16 +209,21 @@ func (m model) View() string {
 
 	// Banner
 	if m.banner != "" {
-		banner := m.styles.Banner.Render(m.banner)
-		bannerBox := m.styles.Box.Copy().MarginBottom(1).Render(banner)
+		bannerBox := lipgloss.NewStyle().
+			Width(m.viewport.Width).
+			PaddingLeft(1).
+			Background(lipgloss.Color("#FF5F5F")).
+			Foreground(lipgloss.Color("#000000")).
+			Bold(true).
+			Render(m.banner)
 		b.WriteString(bannerBox + "\n")
 	}
 
-	// Chat Viewport
+	// Chat Viewport (no box)
 	b.WriteString(m.viewport.View() + "\n")
 
 	// Input
-	inputBox := m.styles.Box.Copy().Render("> " + m.input.View())
+	inputBox := m.styles.Box.Render("> " + m.input.View())
 	b.WriteString(inputBox + "\n")
 
 	return b.String()
