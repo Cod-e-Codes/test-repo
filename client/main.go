@@ -14,7 +14,7 @@ import (
 	"marchat/client/config"
 	"marchat/shared"
 
-	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -29,7 +29,7 @@ var (
 
 type model struct {
 	cfg       config.Config
-	input     textinput.Model
+	textarea  textarea.Model
 	viewport  viewport.Model
 	messages  []shared.Message
 	styles    themeStyles
@@ -37,6 +37,11 @@ type model struct {
 	connected bool
 
 	hasRenderedMessages bool // NEW
+
+	users []string // NEW: user list
+
+	width  int // NEW: track window width
+	height int // NEW: track window height
 }
 
 type themeStyles struct {
@@ -46,73 +51,94 @@ type themeStyles struct {
 	Banner  lipgloss.Style
 	Box     lipgloss.Style // frame color
 	Mention lipgloss.Style // mention highlighting
+
+	UserList lipgloss.Style // NEW: user list panel
+	Me       lipgloss.Style // NEW: current user style
+	Other    lipgloss.Style // NEW: other user style
 }
 
 func getThemeStyles(theme string) themeStyles {
 	switch theme {
 	case "slack":
 		return themeStyles{
-			User:    lipgloss.NewStyle().Foreground(lipgloss.Color("#36C5F0")).Bold(true),
-			Time:    lipgloss.NewStyle().Foreground(lipgloss.Color("#999999")),
-			Msg:     lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
-			Banner:  lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
-			Box:     lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#36C5F0")),
-			Mention: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF00FF")),
+			User:     lipgloss.NewStyle().Foreground(lipgloss.Color("#36C5F0")).Bold(true),
+			Time:     lipgloss.NewStyle().Foreground(lipgloss.Color("#999999")),
+			Msg:      lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
+			Banner:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+			Box:      lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#36C5F0")),
+			Mention:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF00FF")),
+			UserList: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#36C5F0")).Padding(0, 1),
+			Me:       lipgloss.NewStyle().Foreground(lipgloss.Color("#36C5F0")).Bold(true),
+			Other:    lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")),
 		}
 	case "discord":
 		return themeStyles{
-			User:    lipgloss.NewStyle().Foreground(lipgloss.Color("#7289DA")).Bold(true),
-			Time:    lipgloss.NewStyle().Foreground(lipgloss.Color("#99AAB5")),
-			Msg:     lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
-			Banner:  lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
-			Box:     lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#7289DA")),
-			Mention: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
+			User:     lipgloss.NewStyle().Foreground(lipgloss.Color("#7289DA")).Bold(true),
+			Time:     lipgloss.NewStyle().Foreground(lipgloss.Color("#99AAB5")),
+			Msg:      lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
+			Banner:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+			Box:      lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#7289DA")),
+			Mention:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
+			UserList: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#7289DA")).Padding(0, 1),
+			Me:       lipgloss.NewStyle().Foreground(lipgloss.Color("#7289DA")).Bold(true),
+			Other:    lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")),
 		}
 	case "aim":
 		return themeStyles{
-			User:    lipgloss.NewStyle().Foreground(lipgloss.Color("#FFCC00")).Bold(true),
-			Time:    lipgloss.NewStyle().Foreground(lipgloss.Color("#00AEEF")),
-			Msg:     lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
-			Banner:  lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
-			Box:     lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#FFCC00")),
-			Mention: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
+			User:     lipgloss.NewStyle().Foreground(lipgloss.Color("#FFCC00")).Bold(true),
+			Time:     lipgloss.NewStyle().Foreground(lipgloss.Color("#00AEEF")),
+			Msg:      lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
+			Banner:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+			Box:      lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#FFCC00")),
+			Mention:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
+			UserList: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#FFCC00")).Padding(0, 1),
+			Me:       lipgloss.NewStyle().Foreground(lipgloss.Color("#FFCC00")).Bold(true),
+			Other:    lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")),
 		}
 	default:
 		return themeStyles{
-			User:    lipgloss.NewStyle().Bold(true),
-			Time:    lipgloss.NewStyle().Faint(true),
-			Msg:     lipgloss.NewStyle(),
-			Banner:  lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
-			Box:     lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#AAAAAA")),
-			Mention: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
+			User:     lipgloss.NewStyle().Bold(true),
+			Time:     lipgloss.NewStyle().Faint(true),
+			Msg:      lipgloss.NewStyle(),
+			Banner:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+			Box:      lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#AAAAAA")),
+			Mention:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
+			UserList: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#AAAAAA")).Padding(0, 1),
+			Me:       lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true),
+			Other:    lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")),
 		}
 	}
 }
 
-func renderMessages(msgs []shared.Message, styles themeStyles, username string) string {
+func renderMessages(msgs []shared.Message, styles themeStyles, username string, width int) string {
 	const max = 100
 	if len(msgs) > max {
 		msgs = msgs[len(msgs)-max:]
 	}
 	var b strings.Builder
 	for _, msg := range msgs {
+		sender := msg.Sender
+		senderStyle := styles.User
+		if sender == username {
+			senderStyle = styles.Me
+		} else {
+			senderStyle = styles.Other
+		}
+		timestamp := styles.Time.Render(msg.CreatedAt.Format("15:04:05"))
 		content := renderEmojis(msg.Content)
 		if strings.Contains(msg.Content, "@"+username) {
 			content = styles.Mention.Render(content)
 		} else {
 			content = styles.Msg.Render(content)
 		}
-		fmt.Fprintf(&b, "%s %s: %s\n",
-			styles.Time.Render("["+msg.CreatedAt.Format("15:04")+"]"),
-			styles.User.Render(msg.Sender),
-			content,
-		)
+		wrapped := lipgloss.NewStyle().Width(width - 12).Render(content)
+		b.WriteString(fmt.Sprintf("%s %s\n%s\n\n", senderStyle.Render(sender), timestamp, wrapped))
 	}
 	return b.String()
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(textinput.Blink, pollMessages(m.cfg.ServerURL))
+	return tea.Batch(textarea.Blink, pollMessages(m.cfg.ServerURL))
 }
 
 type errMsg error
@@ -132,7 +158,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.ScrollDown(1)
 			return m, nil
 		case "enter":
-			text := m.input.Value()
+			text := m.textarea.Value()
 			if strings.HasPrefix(text, ":theme ") {
 				parts := strings.SplitN(text, " ", 2)
 				if len(parts) == 2 {
@@ -140,14 +166,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.styles = getThemeStyles(m.cfg.Theme)
 					m.banner = "Theme changed to " + m.cfg.Theme
 				}
-				m.input.SetValue("")
+				m.textarea.SetValue("")
 				return m, nil
 			}
 			if text == ":clear" {
 				m.messages = nil
 				m.viewport.SetContent("")
 				m.banner = "Chat cleared."
-				m.input.SetValue("")
+				m.textarea.SetValue("")
 				return m, nil
 			}
 			if text == ":cleardb" {
@@ -159,7 +185,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.viewport.SetContent("")
 					m.banner = "Database cleared."
 				}
-				m.input.SetValue("")
+				m.textarea.SetValue("")
 				return m, nil
 			}
 			if text != "" {
@@ -169,19 +195,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				m.banner = ""
-				m.input.SetValue("")
+				m.textarea.SetValue("")
 				return m, nil
 			}
 			return m, nil
 		default:
 			var cmd tea.Cmd
-			m.input, cmd = m.input.Update(msg)
+			m.textarea, cmd = m.textarea.Update(msg)
 			return m, cmd
 		}
 	case errMsg:
 		// fmt.Println("Received error:", msg.Error()) // removed debug print
 		m.connected = false
-		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username))
+		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width))
 		if strings.Contains(msg.Error(), "connectex") || strings.Contains(msg.Error(), "connection refused") {
 			m.banner = "🚫 Server unreachable. Trying to reconnect..."
 		} else {
@@ -203,7 +229,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !m.hasRenderedMessages && len(msg) > 0 {
 				// Force initial render
 				m.messages = msg
-				contentStr := renderMessages(m.messages, m.styles, m.cfg.Username)
+				contentStr := renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width)
 				wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(contentStr)
 				m.viewport.SetContent(wrappedContent)
 				m.viewport.GotoBottom()
@@ -215,7 +241,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if len(msg) > 0 {
 			m.messages = msg
-			contentStr := renderMessages(m.messages, m.styles, m.cfg.Username)
+			contentStr := renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width)
 			wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(contentStr)
 			m.viewport.SetContent(wrappedContent)
 			m.viewport.GotoBottom()
@@ -228,50 +254,76 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return pollMessages(m.cfg.ServerURL)()
 		})
 	case tea.WindowSizeMsg:
-		availableHeight := msg.Height - 3
-		if availableHeight < 3 {
-			availableHeight = 3
+		m.width = msg.Width
+		m.height = msg.Height
+		userListWidth := 18
+		chatWidth := m.width - userListWidth - 4
+		if chatWidth < 20 {
+			chatWidth = 20
 		}
-		m.viewport.Width = msg.Width
-		m.viewport.Height = availableHeight
-
-		fmt.Printf("Viewport resized: width=%d height=%d\n", m.viewport.Width, m.viewport.Height)
-
-		contentStr := renderMessages(m.messages, m.styles, m.cfg.Username)
-		wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(contentStr)
-		m.viewport.SetContent(wrappedContent)
+		m.viewport.Width = chatWidth
+		m.viewport.Height = m.height - m.textarea.Height() - 6
+		m.textarea.SetWidth(chatWidth)
+		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, chatWidth))
 		m.viewport.GotoBottom()
 		return m, nil
 	default:
 		var cmd tea.Cmd
-		m.input, cmd = m.input.Update(msg)
+		m.textarea, cmd = m.textarea.Update(msg)
 		return m, cmd
 	}
 }
 
 func (m model) View() string {
-	var b strings.Builder
+	// Header
+	headerStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color("#36C5F0")).
+		Foreground(lipgloss.Color("230")).
+		Bold(true).
+		Padding(0, 1)
+	footerStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color("#222222")).
+		Foreground(lipgloss.Color("#36C5F0")).
+		Padding(0, 1)
+
+	totalWidth := m.viewport.Width + 18 + 4 // chat + userlist + borders
+	header := headerStyle.Width(totalWidth).Render(" marchat ")
+	footer := footerStyle.Width(totalWidth).Render("[Enter] Send  [PgUp/PgDn] Scroll  [q] Quit")
 
 	// Banner
+	bannerBox := ""
 	if m.banner != "" {
-		bannerBox := lipgloss.NewStyle().
+		bannerBox = lipgloss.NewStyle().
 			Width(m.viewport.Width).
 			PaddingLeft(1).
 			Background(lipgloss.Color("#FF5F5F")).
 			Foreground(lipgloss.Color("#000000")).
 			Bold(true).
 			Render(m.banner)
-		b.WriteString(bannerBox + "\n")
 	}
 
-	// Chat Viewport (no box)
-	b.WriteString(m.viewport.View() + "\n")
+	// Chat and user list layout
+	userListWidth := 18
+	chatBoxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#36C5F0")).
+		Padding(0, 1)
+	chatPanel := chatBoxStyle.Width(m.viewport.Width).Render(m.viewport.View())
+	userPanel := renderUserList(m.users, m.cfg.Username, m.styles, userListWidth)
+	row := lipgloss.JoinHorizontal(lipgloss.Top, userPanel, chatPanel)
 
 	// Input
-	inputBox := m.styles.Box.Render("> " + m.input.View())
-	b.WriteString(inputBox + "\n")
+	inputPanel := chatBoxStyle.Width(m.viewport.Width).Render(m.textarea.View())
 
-	return b.String()
+	// Compose layout
+	ui := lipgloss.JoinVertical(lipgloss.Left,
+		header,
+		bannerBox,
+		row,
+		inputPanel,
+		footer,
+	)
+	return ui
 }
 
 func sendMessage(serverURL, sender, content string) error {
@@ -352,6 +404,19 @@ func messagesEqual(a, b []shared.Message) bool {
 	return true
 }
 
+func renderUserList(users []string, me string, styles themeStyles, width int) string {
+	var b strings.Builder
+	b.WriteString(styles.UserList.Width(width).Render(" Users ") + "\n")
+	for _, u := range users {
+		if u == me {
+			b.WriteString(styles.Me.Render("• "+u) + "\n")
+		} else {
+			b.WriteString(styles.Other.Render("• "+u) + "\n")
+		}
+	}
+	return styles.UserList.Width(width).Render(b.String())
+}
+
 func main() {
 	flag.Parse()
 	cfg, _ := config.LoadConfig(*configPath)
@@ -372,17 +437,23 @@ func main() {
 		cfg.ServerURL = "http://localhost:9090"
 	}
 
-	ti := textinput.New()
-	ti.Placeholder = "Type a message..."
-	ti.Focus()
+	ta := textarea.New()
+	ta.Placeholder = "Type your message..."
+	ta.Focus()
+	ta.Prompt = "┃ "
+	ta.CharLimit = 280
+	ta.SetHeight(3)
+	ta.ShowLineNumbers = false
+	ta.KeyMap.InsertNewline.SetEnabled(false)
 
 	vp := viewport.New(80, 20)
 
 	m := model{
 		cfg:      cfg,
-		input:    ti,
+		textarea: ta,
 		viewport: vp,
 		styles:   getThemeStyles(cfg.Theme),
+		users:    []string{"You", "Alice", "Bob", "Eve", "Mallory"}, // Example users
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
