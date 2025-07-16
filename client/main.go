@@ -330,7 +330,9 @@ func (m model) View() string {
 
 	totalWidth := m.viewport.Width + 18 + 4 // chat + userlist + borders
 	header := headerStyle.Width(totalWidth).Render(" marchat ")
-	footer := footerStyle.Width(totalWidth).Render("[Enter] Send  [PgUp/PgDn] Scroll  [q] Quit")
+	footer := footerStyle.Width(totalWidth).Render(
+		"[Enter] Send  [Mouse Scroll] Scroll  [Esc/Ctrl+C] Quit  Commands: :clear :cleardb :theme NAME :time",
+	)
 
 	// Banner
 	var bannerBox string
