@@ -209,7 +209,11 @@ type UserList struct {
 
 func (m *model) connectWebSocket(serverURL string) error {
 	escapedUsername := url.QueryEscape(m.cfg.Username)
-	conn, _, err := websocket.DefaultDialer.Dial(serverURL+"?username="+escapedUsername, nil)
+	fullURL := serverURL + "?username=" + escapedUsername
+	if m.cfg.Username == "admin" {
+		fullURL += "&real_user=" + escapedUsername
+	}
+	conn, _, err := websocket.DefaultDialer.Dial(fullURL, nil)
 	if err != nil {
 		return err
 	}
