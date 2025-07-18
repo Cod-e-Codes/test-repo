@@ -17,12 +17,13 @@ A modern, retro-inspired terminal chat app for father-son coding sessions. Built
 - **Color Themes**: Slack, Discord, AIM, or classic
 - **Emoji Support**: ASCII emoji auto-conversion
 - **Configurable**: Set username, server URL, and theme via config or flags
-- **User List**: Live-updating user list panel with up to 20 users shown
+- **User List**: Live-updating user list panel with a fixed width (constant) and up to 20 users shown
 - **Message Cap**: Only the last 100 messages are kept in memory for performance
-- **Mention Highlighting**: Regex-based mention detection for `@username`
+- **Mention Highlighting**: Regex-based mention detection for `@username` (full-message highlight)
 - **Ping/Pong Heartbeat**: Robust WebSocket connection health
 - **Easy Quit**: Press `q` or `ctrl+c` to exit the chat
 - **Graceful Shutdown**: Clean exit and no panics on repeated quit
+- **Polished UI**: User list width is consistent, and the '+N more' line is styled (italic/dimmed) for clarity
 
 ---
 
@@ -77,8 +78,8 @@ go run client/main.go --config config.json
 - **Clear chat (client only)**: Type `:clear` and press Enter
 - **Clear all messages (wipe DB)**: Type `:cleardb` and press Enter (removes all messages for everyone)
 - **Banner**: Status and error messages appear above chat
-- **Mentions**: Use `@username` to highlight a user (regex-based, word boundary)
-- **User List**: Up to 20 users shown, with a `+N more` indicator if more are online
+- **Mentions**: Use `@username` to highlight a user (full-message highlight, not partial)
+- **User List**: Up to 20 users shown in a fixed-width panel, with a styled `+N more` indicator if more are online
 
 ---
 
@@ -128,18 +129,18 @@ marchat/
   - Check your WebSocket connection and server logs for errors.
 - **Too many users in user list**
   - Only the first 20 are shown, with a `+N more` indicator if more are online.
+- **User list panel**: Width is fixed (constant in code), and the '+N more' line is styled for clarity
+- **Mentions**: Full-message highlight if your username is mentioned anywhere in the message
+- **Scroll**: Only Up/Down keys scroll, mouse wheel is ignored
 
 ---
 
 ## Next Steps
-- [ ] Persistent config file improvements
-- [ ] Avatars and richer themes
-- [x] WebSocket support
-- [x] User list with live updates
+- [x] User list with live updates and fixed width
 - [x] Message cap and efficient memory use
-- [x] Regex-based mention highlighting
+- [x] Regex-based mention highlighting (full-message)
 - [x] Graceful shutdown and panic prevention
-- [ ] Deploy to cloud (Fly.io, AWS, etc.)
+- [x] UI polish: userListWidth constant, styled '+N more' line
 
 ---
 
