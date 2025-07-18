@@ -46,6 +46,7 @@ var (
 )
 
 var adminKey = flag.String("admin-key", "", "Admin key for privileged commands like :cleardb")
+var adminURL = flag.String("admin-url", "", "Base HTTP(S) URL for admin commands (e.g. https://yourserver)")
 
 type model struct {
 	cfg       config.Config
@@ -370,7 +371,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if text == ":cleardb" {
-				err := sendClearDB(m.cfg.ServerURL, *adminKey)
+				err := sendClearDB(m.cfg.AdminURL, *adminKey)
 				if err != nil {
 					m.banner = "Failed to clear DB: " + err.Error()
 				} else {
@@ -526,14 +527,17 @@ func renderEmojis(s string) string {
 	return s
 }
 
-func sendClearDB(serverURL, adminKey string) error {
-	req, err := http.NewRequest("POST", serverURL+"/clear", nil)
+func sendClearDB(adminBaseURL, adminKey string) error {
+	if adminBaseURL == "" {
+		return fmt.Errorf("admin URL is required for :cleardb")
+	}
+	req, err := http.NewRequest("POST", adminBaseURL+"/clear", nil)
 	if err != nil {
 		fmt.Println("sendClearDB request error:", err)
 		return err
 	}
 	req.Header.Set("X-Admin-Key", adminKey)
-	fmt.Println("sendClearDB: sending POST to", serverURL+"/clear")
+	fmt.Println("sendClearDB: sending POST to", adminBaseURL+"/clear")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println("sendClearDB error:", err)
@@ -574,6 +578,9 @@ func main() {
 	if *serverURL != "" {
 		cfg.ServerURL = *serverURL
 	}
+	if *adminURL != "" {
+		cfg.AdminURL = *adminURL
+	}
 	if *username != "" {
 		cfg.Username = *username
 	}
@@ -589,6 +596,9 @@ func main() {
 	}
 	if !strings.HasPrefix(cfg.ServerURL, "ws://") && !strings.HasPrefix(cfg.ServerURL, "wss://") {
 		fmt.Println("Warning: --server should be a WebSocket URL (ws:// or wss://), not http://")
+	}
+	if cfg.AdminURL == "" {
+		cfg.AdminURL = "http://localhost:9090"
 	}
 
 	ta := textarea.New()

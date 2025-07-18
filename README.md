@@ -25,20 +25,22 @@ A modern, retro-inspired terminal chat app for father-son coding sessions. Built
 - **Graceful Shutdown**: Clean exit and no panics on repeated quit
 - **Polished UI**: User list width is consistent, and the '+N more' line is styled (italic/dimmed) for clarity
 - **Admin Security**: Only the configured admin user can connect as `admin` (see below)
+- **Separate Admin HTTP URL**: For admin commands like `:cleardb`, you must provide the HTTP(S) base URL via `--admin-url` (see below)
 
 ---
 
-## Admin Security: Restricting the `admin` Username
+## Admin Security: Restricting the `admin` Username & Admin HTTP URL
 
 - Only the user specified by the server's `--admin-username` flag (default: `Cody`) can connect as `username=admin`.
 - To connect as admin, use:
 
   ```sh
-  go run client/main.go --username admin --server wss://your-url/ws?real_user=Cody
+  go run client/main.go --username admin --server wss://your-url/ws?real_user=Cody --admin-url https://your-url
   ```
-  (Replace `Cody` with your configured admin username.)
-- All privileged commands (like `:cleardb`) are only available to the admin user.
+  (Replace `Cody` and the URLs with your actual admin username and deployment.)
+- All privileged commands (like `:cleardb`) are only available to the admin user, and require the HTTP(S) base URL for admin commands (not the WebSocket URL).
 - Any other user attempting to connect as `admin` will be rejected by the server.
+- **Note:** The `:cleardb` command will POST to `https://your-url/clear` (not the WebSocket URL).
 
 ---
 
@@ -157,6 +159,7 @@ marchat/
 - [x] Regex-based mention highlighting (full-message)
 - [x] Graceful shutdown and panic prevention
 - [x] UI polish: userListWidth constant, styled '+N more' line
+- [x] Separate admin HTTP URL for privileged commands
 
 ---
 
