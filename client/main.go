@@ -67,6 +67,7 @@ type model struct {
 	conn     *websocket.Conn // persistent WebSocket connection
 	msgChan  chan tea.Msg    // channel for incoming messages from WS goroutine
 	quitChan chan struct{}   // signal for shutdown
+	quitOnce sync.Once
 	ctx      context.Context
 	cancel   context.CancelFunc
 	wg       sync.WaitGroup
@@ -261,7 +262,9 @@ func (m *model) closeWebSocket() {
 		m.conn.Close()
 	}
 	if m.quitChan != nil {
-		close(m.quitChan)
+		m.quitOnce.Do(func() {
+			close(m.quitChan)
+		})
 	}
 	m.wg.Wait()
 }
@@ -558,6 +561,9 @@ func main() {
 	}
 	if cfg.ServerURL == "" {
 		cfg.ServerURL = "ws://localhost:9090/ws"
+	}
+	if !strings.HasPrefix(cfg.ServerURL, "ws://") && !strings.HasPrefix(cfg.ServerURL, "wss://") {
+		fmt.Println("Warning: --server should be a WebSocket URL (ws:// or wss://), not http://")
 	}
 
 	ta := textarea.New()
