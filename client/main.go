@@ -4,7 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -25,6 +27,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gorilla/websocket"
 )
+
+const maxMessages = 100
+const maxUsersDisplay = 20
+
+var mentionRegex *regexp.Regexp
+
+func init() {
+	mentionRegex = regexp.MustCompile(`\B@([a-zA-Z0-9_]+)\b`)
+}
 
 var (
 	configPath = flag.String("config", "config.json", "Path to config file")
@@ -128,7 +139,7 @@ func getThemeStyles(theme string) themeStyles {
 }
 
 func renderMessages(msgs []shared.Message, styles themeStyles, username string, width int, twentyFourHour bool) string {
-	const max = 100
+	const max = maxMessages
 	if len(msgs) > max {
 		msgs = msgs[len(msgs)-max:]
 	}
@@ -157,7 +168,8 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 		}
 		timestamp := styles.Time.Render(msg.CreatedAt.Format(timeFmt))
 		content := renderEmojis(msg.Content)
-		if strings.Contains(msg.Content, "@"+username) {
+		// Use regex for mention detection
+		if mentionRegex.MatchString(msg.Content) && mentionRegex.ReplaceAllString(msg.Content, "$1") == username {
 			content = styles.Mention.Render(content)
 		} else {
 			content = styles.Msg.Render(content)
@@ -184,7 +196,8 @@ type UserList struct {
 }
 
 func (m *model) connectWebSocket(serverURL string) error {
-	conn, _, err := websocket.DefaultDialer.Dial(serverURL+"?username="+m.cfg.Username, nil)
+	escapedUsername := url.QueryEscape(m.cfg.Username)
+	conn, _, err := websocket.DefaultDialer.Dial(serverURL+"?username="+escapedUsername, nil)
 	if err != nil {
 		return err
 	}
@@ -193,6 +206,23 @@ func (m *model) connectWebSocket(serverURL string) error {
 	m.banner = "✅ Connected to server!"
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 	m.wg.Add(1)
+	// Set pong handler
+	m.conn.SetPongHandler(func(appData string) error {
+		return nil
+	})
+	// Start ping goroutine
+	go func() {
+		ticker := time.NewTicker(50 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-m.ctx.Done():
+				return
+			case <-ticker.C:
+				_ = m.conn.WriteMessage(websocket.PingMessage, nil)
+			}
+		}
+	}()
 	go func() {
 		defer m.wg.Done()
 		for {
@@ -266,6 +296,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.listenWebSocket()
 	case shared.Message:
+		// Cap messages to maxMessages
+		if len(m.messages) >= maxMessages {
+			m.messages = m.messages[len(m.messages)-maxMessages+1:]
+		}
 		m.messages = append(m.messages, v)
 		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width, m.twentyFourHour))
 		m.viewport.GotoBottom()
@@ -304,6 +338,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(parts) == 2 {
 					m.cfg.Theme = parts[1]
 					m.styles = getThemeStyles(m.cfg.Theme)
+					_ = config.SaveConfig(*configPath, m.cfg)
 					m.banner = "Theme changed to " + m.cfg.Theme
 				}
 				m.textarea.SetValue("")
@@ -487,7 +522,12 @@ func sendClearDB(serverURL string) error {
 func renderUserList(users []string, me string, styles themeStyles, width int) string {
 	var b strings.Builder
 	b.WriteString(styles.UserList.Width(width).Render(" Users ") + "\n")
-	for _, u := range users {
+	max := maxUsersDisplay
+	for i, u := range users {
+		if i >= max {
+			b.WriteString(styles.Other.Render(fmt.Sprintf("+%d more", len(users)-max)) + "\n")
+			break
+		}
 		if u == me {
 			b.WriteString(styles.Me.Render("• "+u) + "\n")
 		} else {
