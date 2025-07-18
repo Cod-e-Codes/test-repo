@@ -24,6 +24,21 @@ A modern, retro-inspired terminal chat app for father-son coding sessions. Built
 - **Easy Quit**: Press `q` or `ctrl+c` to exit the chat
 - **Graceful Shutdown**: Clean exit and no panics on repeated quit
 - **Polished UI**: User list width is consistent, and the '+N more' line is styled (italic/dimmed) for clarity
+- **Admin Security**: Only the configured admin user can connect as `admin` (see below)
+
+---
+
+## Admin Security: Restricting the `admin` Username
+
+- Only the user specified by the server's `--admin-username` flag (default: `Cody`) can connect as `username=admin`.
+- To connect as admin, use:
+
+  ```sh
+  go run client/main.go --username admin --server wss://your-url/ws?real_user=Cody
+  ```
+  (Replace `Cody` with your configured admin username.)
+- All privileged commands (like `:cleardb`) are only available to the admin user.
+- Any other user attempting to connect as `admin` will be rejected by the server.
 
 ---
 
@@ -136,6 +151,7 @@ marchat/
 ---
 
 ## Next Steps
+- [x] Admin username restriction for privileged commands
 - [x] User list with live updates and fixed width
 - [x] Message cap and efficient memory use
 - [x] Regex-based mention highlighting (full-message)
