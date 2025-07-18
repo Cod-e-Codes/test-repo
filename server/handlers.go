@@ -6,6 +6,7 @@ import (
 	"log"
 	"marchat/shared"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -79,6 +80,7 @@ func (h *Hub) broadcastUserList() {
 			usernames = append(usernames, client.username)
 		}
 	}
+	sort.Strings(usernames) // Sort alphabetically
 	userList := UserList{Users: usernames}
 	payload, _ := json.Marshal(userList)
 	msg := WSMessage{Type: "userlist", Data: payload}

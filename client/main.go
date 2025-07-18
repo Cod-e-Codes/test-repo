@@ -16,6 +16,9 @@ import (
 
 	"encoding/json"
 
+	"context"
+	"sync"
+
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -53,6 +56,9 @@ type model struct {
 	conn     *websocket.Conn // persistent WebSocket connection
 	msgChan  chan tea.Msg    // channel for incoming messages from WS goroutine
 	quitChan chan struct{}   // signal for shutdown
+	ctx      context.Context
+	cancel   context.CancelFunc
+	wg       sync.WaitGroup
 }
 
 type themeStyles struct {
@@ -185,25 +191,32 @@ func (m *model) connectWebSocket(serverURL string) error {
 	m.conn = conn
 	m.connected = true
 	m.banner = "✅ Connected to server!"
-	// Start goroutine to read messages
+	m.ctx, m.cancel = context.WithCancel(context.Background())
+	m.wg.Add(1)
 	go func() {
+		defer m.wg.Done()
 		for {
-			_, raw, err := conn.ReadMessage()
-			if err != nil {
-				m.msgChan <- wsErr(err)
+			select {
+			case <-m.ctx.Done():
 				return
-			}
-			// Try to unmarshal as wsMsg
-			var ws wsMsg
-			if err := json.Unmarshal(raw, &ws); err == nil && ws.Type != "" {
-				m.msgChan <- ws
-				continue
-			}
-			// Otherwise, try as shared.Message
-			var msg shared.Message
-			if err := json.Unmarshal(raw, &msg); err == nil && msg.Sender != "" {
-				m.msgChan <- msg
-				continue
+			default:
+				_, raw, err := conn.ReadMessage()
+				if err != nil {
+					m.msgChan <- wsErr(err)
+					return
+				}
+				// Try to unmarshal as wsMsg
+				var ws wsMsg
+				if err := json.Unmarshal(raw, &ws); err == nil && ws.Type != "" {
+					m.msgChan <- ws
+					continue
+				}
+				// Otherwise, try as shared.Message
+				var msg shared.Message
+				if err := json.Unmarshal(raw, &msg); err == nil && msg.Sender != "" {
+					m.msgChan <- msg
+					continue
+				}
 			}
 		}
 	}()
@@ -211,12 +224,16 @@ func (m *model) connectWebSocket(serverURL string) error {
 }
 
 func (m *model) closeWebSocket() {
+	if m.cancel != nil {
+		m.cancel()
+	}
 	if m.conn != nil {
 		m.conn.Close()
 	}
 	if m.quitChan != nil {
 		close(m.quitChan)
 	}
+	m.wg.Wait()
 }
 
 func (m *model) Init() tea.Cmd {
@@ -313,6 +330,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if text == ":time" {
 				m.twentyFourHour = !m.twentyFourHour
+				m.cfg.TwentyFourHour = m.twentyFourHour
+				_ = config.SaveConfig(*configPath, m.cfg) // ignore error for now
 				m.banner = "Timestamp format: " + map[bool]string{true: "24h", false: "12h"}[m.twentyFourHour]
 				return m, nil
 			}
@@ -522,7 +541,7 @@ func main() {
 		styles:           getThemeStyles(cfg.Theme),
 		users:            []string{cfg.Username},
 		userListViewport: userListVp,
-		twentyFourHour:   true,
+		twentyFourHour:   cfg.TwentyFourHour,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -539,4 +558,5 @@ func main() {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
+	m.wg.Wait() // Wait for all goroutines to finish
 }

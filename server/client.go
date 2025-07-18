@@ -9,6 +9,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	pongWait   = 60 * time.Second
+	pingPeriod = (pongWait * 9) / 10 // send pings at 90% of pongWait
+)
+
 type Client struct {
 	hub      *Hub
 	conn     *websocket.Conn
@@ -22,6 +27,12 @@ func (c *Client) readPump() {
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
+	c.conn.SetReadLimit(512)
+	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetPongHandler(func(string) error {
+		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
 	for {
 		var msg shared.Message
 		err := c.conn.ReadJSON(&msg)
@@ -36,23 +47,40 @@ func (c *Client) readPump() {
 }
 
 func (c *Client) writePump() {
-	defer c.conn.Close()
-	for msg := range c.send {
-		switch v := msg.(type) {
-		case shared.Message:
-			err := c.conn.WriteJSON(v)
-			if err != nil {
-				log.Println("writePump error:", err)
-				return // Stop goroutine on error
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		c.conn.Close()
+	}()
+	for {
+		select {
+		case msg, ok := <-c.send:
+			if !ok {
+				// Channel closed, send close message
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
 			}
-		case WSMessage:
-			err := c.conn.WriteJSON(v)
-			if err != nil {
-				log.Println("writePump error:", err)
-				return // Stop goroutine on error
+			switch v := msg.(type) {
+			case shared.Message:
+				err := c.conn.WriteJSON(v)
+				if err != nil {
+					log.Println("writePump error:", err)
+					return
+				}
+			case WSMessage:
+				err := c.conn.WriteJSON(v)
+				if err != nil {
+					log.Println("writePump error:", err)
+					return
+				}
+			default:
+				log.Println("writePump: unknown message type")
 			}
-		default:
-			log.Println("writePump: unknown message type")
+		case <-ticker.C:
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Println("writePump ping error:", err)
+				return
+			}
 		}
 	}
 }

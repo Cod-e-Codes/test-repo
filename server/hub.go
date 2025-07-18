@@ -39,6 +39,7 @@ func (h *Hub) Run() {
 				select {
 				case client.send <- message:
 				default:
+					log.Printf("Dropping client %s due to full send channel\n", client.username)
 					close(client.send)
 					delete(h.clients, client)
 				}

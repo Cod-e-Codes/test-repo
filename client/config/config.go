@@ -6,9 +6,10 @@ import (
 )
 
 type Config struct {
-	Username  string `json:"username"`
-	ServerURL string `json:"server_url"`
-	Theme     string `json:"theme"`
+	Username       string `json:"username"`
+	ServerURL      string `json:"server_url"`
+	Theme          string `json:"theme"`
+	TwentyFourHour bool   `json:"twenty_four_hour"`
 }
 
 func LoadConfig(path string) (Config, error) {
@@ -20,4 +21,13 @@ func LoadConfig(path string) (Config, error) {
 	defer f.Close()
 	json.NewDecoder(f).Decode(&cfg)
 	return cfg, nil
+}
+
+func SaveConfig(path string, cfg Config) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return json.NewEncoder(f).Encode(cfg)
 }
