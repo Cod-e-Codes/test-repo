@@ -3,9 +3,17 @@ package server
 import (
 	"database/sql"
 	"log"
-
 	"marchat/shared"
+	"net/http"
+
+	"github.com/gorilla/websocket"
 )
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin:     func(r *http.Request) bool { return true },
+}
 
 func CreateSchema(db *sql.DB) {
 	schema := `
@@ -42,7 +50,7 @@ func GetRecentMessages(db *sql.DB) []shared.Message {
 		var msg shared.Message
 		err := rows.Scan(&msg.Sender, &msg.Content, &msg.CreatedAt)
 		if err == nil {
-			messages = append(messages, msg) // append, not prepend
+			messages = append(messages, msg)
 		}
 	}
 	return messages
@@ -51,4 +59,26 @@ func GetRecentMessages(db *sql.DB) []shared.Message {
 func ClearMessages(db *sql.DB) error {
 	_, err := db.Exec(`DELETE FROM messages`)
 	return err
+}
+
+func ServeWs(hub *Hub, db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Println("WebSocket upgrade error:", err)
+			return
+		}
+		client := &Client{hub: hub, conn: conn, send: make(chan shared.Message, 256), db: db}
+		hub.register <- client
+
+		// Send recent messages to new client
+		msgs := GetRecentMessages(db)
+		for _, msg := range msgs {
+			client.send <- msg
+		}
+
+		// Start read/write pumps
+		go client.writePump()
+		go client.readPump()
+	}
 }

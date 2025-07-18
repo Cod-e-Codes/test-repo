@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -18,6 +17,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/gorilla/websocket"
 )
 
 var (
@@ -162,16 +162,55 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 	return b.String()
 }
 
-func (m model) Init() tea.Cmd {
-	return tea.Batch(textarea.Blink, pollMessages(m.cfg.ServerURL))
+type wsMsg shared.Message
+type wsErr error
+type wsConnected bool
+
+type wsClient struct {
+	conn *websocket.Conn
 }
 
-type errMsg error
+func connectWebSocket(serverURL string, messagesChan chan tea.Msg) {
+	conn, _, err := websocket.DefaultDialer.Dial(serverURL, nil)
+	if err != nil {
+		messagesChan <- wsErr(err)
+		return
+	}
+	defer conn.Close()
+	messagesChan <- wsConnected(true)
+	for {
+		var msg shared.Message
+		if err := conn.ReadJSON(&msg); err != nil {
+			messagesChan <- wsErr(err)
+			return
+		}
+		messagesChan <- wsMsg(msg)
+	}
+}
 
-type messagesMsg []shared.Message
+func (m model) Init() tea.Cmd {
+	messagesChan := make(chan tea.Msg)
+	go connectWebSocket(m.cfg.ServerURL, messagesChan)
+	return func() tea.Msg {
+		return <-messagesChan
+	}
+}
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case wsConnected:
+		m.connected = bool(msg)
+		m.banner = "✅ Connected to server!"
+		return m, waitForWS(m.cfg.ServerURL)
+	case wsMsg:
+		m.messages = append(m.messages, shared.Message(msg))
+		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width, m.twentyFourHour))
+		m.viewport.GotoBottom()
+		return m, waitForWS(m.cfg.ServerURL)
+	case wsErr:
+		m.connected = false
+		m.banner = "🚫 Connection lost. Reconnecting..."
+		return m, reconnectWS(m.cfg.ServerURL)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc":
@@ -228,15 +267,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if text != "" {
 				m.sending = true
-				err := sendMessage(m.cfg.ServerURL, m.cfg.Username, text)
+				sendMessageWS(m.cfg.ServerURL, m.cfg.Username, text)
 				m.sending = false
-				if err != nil {
-					m.banner = "❌ Failed to send (server down?)"
-					return m, nil
-				}
-				m.banner = ""
 				m.textarea.SetValue("")
-				return m, nil
+				return m, waitForWS(m.cfg.ServerURL)
 			}
 			return m, nil
 		default:
@@ -244,55 +278,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.textarea, cmd = m.textarea.Update(msg)
 			return m, cmd
 		}
-	case errMsg:
-		// fmt.Println("Received error:", msg.Error()) // removed debug print
-		m.connected = false
-		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width, m.twentyFourHour))
-		if strings.Contains(msg.Error(), "connectex") || strings.Contains(msg.Error(), "connection refused") {
-			m.banner = "🚫 Server unreachable. Trying to reconnect..."
-		} else {
-			m.banner = "⚠️ " + msg.Error()
-		}
-		// Always keep polling to auto-reconnect
-		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
-			return pollMessages(m.cfg.ServerURL)()
-		})
-	case messagesMsg:
-		was := m.connected
-		m.connected = true
-		if !was {
-			m.banner = "✅ Reconnected to server!"
-		} else {
-			m.banner = ""
-		}
-		if messagesEqual(msg, m.messages) {
-			if !m.hasRenderedMessages && len(msg) > 0 {
-				// Force initial render
-				m.messages = msg
-				contentStr := renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width, m.twentyFourHour)
-				wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(contentStr)
-				m.viewport.SetContent(wrappedContent)
-				m.viewport.GotoBottom()
-				m.hasRenderedMessages = true
-			}
-			return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
-				return pollMessages(m.cfg.ServerURL)()
-			})
-		}
-		if len(msg) > 0 {
-			m.messages = msg
-			contentStr := renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width, m.twentyFourHour)
-			wrappedContent := lipgloss.NewStyle().Width(m.viewport.Width).Render(contentStr)
-			m.viewport.SetContent(wrappedContent)
-			m.viewport.GotoBottom()
-			m.hasRenderedMessages = true
-		} else {
-			m.messages = nil
-			m.viewport.SetContent("")
-		}
-		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
-			return pollMessages(m.cfg.ServerURL)()
-		})
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -391,24 +376,6 @@ func sendMessage(serverURL, sender, content string) error {
 	return nil
 }
 
-func pollMessages(serverURL string) tea.Cmd {
-	return func() tea.Msg {
-		resp, err := http.Get(serverURL + "/messages")
-		if err != nil {
-			return errMsg(err)
-		}
-		defer resp.Body.Close()
-
-		body, _ := io.ReadAll(resp.Body)
-		var msgs []shared.Message
-		err = json.Unmarshal(body, &msgs)
-		if err != nil {
-			return errMsg(err)
-		}
-		return messagesMsg(msgs)
-	}
-}
-
 func renderEmojis(s string) string {
 	emojis := map[string]string{
 		":)": "😊",
@@ -466,6 +433,28 @@ func renderUserList(users []string, me string, styles themeStyles, width int) st
 		}
 	}
 	return styles.UserList.Width(width).Render(b.String())
+}
+
+func waitForWS(serverURL string) tea.Cmd {
+	messagesChan := make(chan tea.Msg)
+	go connectWebSocket(serverURL, messagesChan)
+	return func() tea.Msg { return <-messagesChan }
+}
+
+func reconnectWS(serverURL string) tea.Cmd {
+	return tea.Tick(time.Second*2, func(time.Time) tea.Msg {
+		return waitForWS(serverURL)()
+	})
+}
+
+func sendMessageWS(serverURL, sender, content string) {
+	conn, _, err := websocket.DefaultDialer.Dial(serverURL, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+	msg := shared.Message{Sender: sender, Content: content}
+	conn.WriteJSON(msg)
 }
 
 func main() {
