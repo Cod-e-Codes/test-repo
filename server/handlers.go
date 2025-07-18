@@ -89,8 +89,13 @@ func (h *Hub) broadcastUserList() {
 	}
 }
 
-func ClearHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
+func ClearHandler(db *sql.DB, hub *Hub, adminKey string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Admin-Key") != adminKey {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Forbidden: invalid admin key"))
+			return
+		}
 		err := ClearMessages(db)
 		if err != nil {
 			http.Error(w, "Failed to clear messages", http.StatusInternalServerError)

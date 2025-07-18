@@ -44,6 +44,8 @@ var (
 	theme      = flag.String("theme", "", "Theme (overrides config)")
 )
 
+var adminKey = flag.String("admin-key", "", "Admin key for privileged commands like :cleardb")
+
 type model struct {
 	cfg       config.Config
 	textarea  textarea.Model
@@ -355,7 +357,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if text == ":cleardb" {
-				err := sendClearDB(m.cfg.ServerURL)
+				err := sendClearDB(m.cfg.ServerURL, *adminKey)
 				if err != nil {
 					m.banner = "Failed to clear DB: " + err.Error()
 				} else {
@@ -502,12 +504,13 @@ func renderEmojis(s string) string {
 	return s
 }
 
-func sendClearDB(serverURL string) error {
+func sendClearDB(serverURL, adminKey string) error {
 	req, err := http.NewRequest("POST", serverURL+"/clear", nil)
 	if err != nil {
 		fmt.Println("sendClearDB request error:", err)
 		return err
 	}
+	req.Header.Set("X-Admin-Key", adminKey)
 	fmt.Println("sendClearDB: sending POST to", serverURL+"/clear")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
