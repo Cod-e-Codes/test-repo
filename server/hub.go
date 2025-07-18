@@ -26,6 +26,7 @@ func (h *Hub) Run() {
 		case client := <-h.register:
 			h.clients[client] = true
 			log.Println("Client registered")
+			h.broadcastUserList() // Broadcast after register
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)

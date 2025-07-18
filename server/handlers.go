@@ -6,6 +6,7 @@ import (
 	"log"
 	"marchat/shared"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -86,9 +87,40 @@ func (h *Hub) broadcastUserList() {
 	}
 }
 
+func ClearHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := ClearMessages(db)
+		if err != nil {
+			http.Error(w, "Failed to clear messages", http.StatusInternalServerError)
+			return
+		}
+		// Broadcast a system message about clearing chat
+		systemMsg := shared.Message{
+			Sender:    "System",
+			Content:   "Chat history cleared by admin.",
+			CreatedAt: time.Now(),
+		}
+		hub.broadcast <- systemMsg
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 func ServeWs(hub *Hub, db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username := r.URL.Query().Get("username")
+		if username == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Username required"))
+			return
+		}
+		// Check for duplicate username
+		for client := range hub.clients {
+			if client.username == username {
+				w.WriteHeader(http.StatusConflict)
+				w.Write([]byte("Username already taken"))
+				return
+			}
+		}
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Println("WebSocket upgrade error:", err)

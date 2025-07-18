@@ -14,6 +14,7 @@ func main() {
 	go hub.Run()
 
 	http.HandleFunc("/ws", server.ServeWs(hub, db))
+	http.HandleFunc("/clear", server.ClearHandler(db, hub))
 
 	log.Println("marchat WebSocket server running on :9090")
 	log.Fatal(http.ListenAndServe(":9090", nil))

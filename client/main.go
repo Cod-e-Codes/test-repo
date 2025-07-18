@@ -188,16 +188,15 @@ func (m *model) connectWebSocket(serverURL string) error {
 	// Start goroutine to read messages
 	go func() {
 		for {
-			var raw json.RawMessage
-			err := conn.ReadJSON(&raw)
+			_, raw, err := conn.ReadMessage()
 			if err != nil {
 				m.msgChan <- wsErr(err)
 				return
 			}
-			// Try to unmarshal as WSMessage
+			// Try to unmarshal as wsMsg
 			var ws wsMsg
 			if err := json.Unmarshal(raw, &ws); err == nil && ws.Type != "" {
-				m.msgChan <- wsMsg{Type: ws.Type, Data: ws.Data}
+				m.msgChan <- ws
 				continue
 			}
 			// Otherwise, try as shared.Message
@@ -253,6 +252,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.messages = append(m.messages, v)
 		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width, m.twentyFourHour))
 		m.viewport.GotoBottom()
+		m.sending = false // Only set sending=false after receiving echo
 		return m, m.listenWebSocket()
 	case wsErr:
 		m.connected = false
@@ -328,7 +328,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					m.banner = ""
 				}
-				m.sending = false
+				// m.sending = false // Now set in shared.Message handler
 				m.textarea.SetValue("")
 				return m, m.listenWebSocket()
 			}
@@ -341,7 +341,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = v.Width
 		m.height = v.Height
-		userListWidth := 18
+		userListWidth := 18 // could be a const or config
 		chatWidth := m.width - userListWidth - 4
 		if chatWidth < 20 {
 			chatWidth = 20
@@ -349,9 +349,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Width = chatWidth
 		m.viewport.Height = m.height - m.textarea.Height() - 6
 		m.textarea.SetWidth(chatWidth)
+		m.userListViewport.Width = userListWidth
+		m.userListViewport.Height = m.height - m.textarea.Height() - 6
 		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, chatWidth, m.twentyFourHour))
 		m.viewport.GotoBottom()
-		m.userListViewport.Height = m.height - m.textarea.Height() - 6
 		m.userListViewport.SetContent(renderUserList(m.users, m.cfg.Username, m.styles, userListWidth))
 		return m, nil
 	case quitMsg:

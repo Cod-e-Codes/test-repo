@@ -43,13 +43,13 @@ func (c *Client) writePump() {
 			err := c.conn.WriteJSON(v)
 			if err != nil {
 				log.Println("writePump error:", err)
-				break
+				return // Stop goroutine on error
 			}
 		case WSMessage:
 			err := c.conn.WriteJSON(v)
 			if err != nil {
 				log.Println("writePump error:", err)
-				break
+				return // Stop goroutine on error
 			}
 		default:
 			log.Println("writePump: unknown message type")
