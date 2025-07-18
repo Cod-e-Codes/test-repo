@@ -30,6 +30,7 @@ import (
 
 const maxMessages = 100
 const maxUsersDisplay = 20
+const userListWidth = 18
 
 var mentionRegex *regexp.Regexp
 
@@ -408,7 +409,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = v.Width
 		m.height = v.Height
-		userListWidth := 18 // could be a const or config
 		chatWidth := m.width - userListWidth - 4
 		if chatWidth < 20 {
 			chatWidth = 20
@@ -454,7 +454,7 @@ func (m *model) View() string {
 		Foreground(lipgloss.Color("#36C5F0")).
 		Padding(0, 1)
 
-	totalWidth := m.viewport.Width + 18 + 4 // chat + userlist + borders
+	totalWidth := m.viewport.Width + userListWidth + 4 // chat + userlist + borders
 	header := headerStyle.Width(totalWidth).Render(" marchat ")
 
 	cmds := ":clear :theme NAME :time"
@@ -549,7 +549,7 @@ func renderUserList(users []string, me string, styles themeStyles, width int) st
 	max := maxUsersDisplay
 	for i, u := range users {
 		if i >= max {
-			b.WriteString(styles.Other.Render(fmt.Sprintf("+%d more", len(users)-max)) + "\n")
+			b.WriteString(lipgloss.NewStyle().Italic(true).Faint(true).Width(width).Render(fmt.Sprintf("+%d more", len(users)-max)) + "\n")
 			break
 		}
 		if u == me {
