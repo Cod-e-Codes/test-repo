@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"log"
 	"marchat/shared"
-	"os"
 	"strings"
 	"time"
 
@@ -49,7 +48,7 @@ func (c *Client) readPump() {
 			parts := strings.Fields(msg.Content)
 			if msg.Sender == "admin" && (len(parts) == 1 || (len(parts) == 2 && parts[1] == adminSecret)) {
 				log.Println("[ADMIN] Clearing message database via WebSocket...")
-				err := os.Remove("chat.db")
+				err := ClearMessages(c.db)
 				if err != nil {
 					log.Println("Failed to clear DB:", err)
 				} else {
