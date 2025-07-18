@@ -17,7 +17,12 @@ A modern, retro-inspired terminal chat app for father-son coding sessions. Built
 - **Color Themes**: Slack, Discord, AIM, or classic
 - **Emoji Support**: ASCII emoji auto-conversion
 - **Configurable**: Set username, server URL, and theme via config or flags
+- **User List**: Live-updating user list panel with up to 20 users shown
+- **Message Cap**: Only the last 100 messages are kept in memory for performance
+- **Mention Highlighting**: Regex-based mention detection for `@username`
+- **Ping/Pong Heartbeat**: Robust WebSocket connection health
 - **Easy Quit**: Press `q` or `ctrl+c` to exit the chat
+- **Graceful Shutdown**: Clean exit and no panics on repeated quit
 
 ---
 
@@ -45,7 +50,8 @@ Create `config.json` in the project root:
 {
   "username": "Cody",
   "server_url": "ws://localhost:9090/ws",
-  "theme": "slack"
+  "theme": "slack",
+  "twenty_four_hour": true
 }
 ```
 
@@ -60,36 +66,19 @@ go run client/main.go --config config.json
 
 ---
 
-## Remote Usage
-
-To connect from another machine (e.g. over the internet):
-1. **Open port 9090** on your firewall/router and forward it to your server's local IP.
-2. **Get your public IP** (e.g. from https://whatismyip.com or `curl ifconfig.me`).
-3. **Run the server** on your host machine.
-4. **Connect the client** using:
-   ```sh
-   go run client/main.go --username Dad --server ws://YOUR_PUBLIC_IP:9090/ws
-   ```
-   Or set `"server_url": "ws://YOUR_PUBLIC_IP:9090/ws"` in your config file.
-
-If you can't port forward, use [ngrok](https://ngrok.com/):
-```sh
-ngrok http 9090
-# Use the wss://.../ws URL provided by ngrok
-```
-
----
-
 ## Usage
 - **Send messages**: Type and press Enter
 - **Quit**: Press `ctrl+c` or `Esc`
 - **Themes**: `slack`, `discord`, `aim`, or leave blank for default
 - **Emoji**: `:), :(, :D, <3, :P` auto-convert to Unicode
 - **Scroll**: Use Up/Down arrows or your mouse to scroll chat
-- **Switch theme**: Type `:theme <name>` and press Enter
+- **Switch theme**: Type `:theme <name>` and press Enter (persists in config)
+- **Toggle timestamp format**: Type `:time` and press Enter (persists in config)
 - **Clear chat (client only)**: Type `:clear` and press Enter
 - **Clear all messages (wipe DB)**: Type `:cleardb` and press Enter (removes all messages for everyone)
 - **Banner**: Status and error messages appear above chat
+- **Mentions**: Use `@username` to highlight a user (regex-based, word boundary)
+- **User List**: Up to 20 users shown, with a `+N more` indicator if more are online
 
 ---
 
@@ -125,10 +114,31 @@ marchat/
 
 ---
 
+## Troubleshooting
+
+- **Panic: `close of closed channel`**
+  - Fixed: The client now guards against double-close of internal channels.
+- **Client fails to connect with `http://` URL**
+  - Use a WebSocket URL: `ws://localhost:9090/ws` or `wss://...` for remote.
+- **Mentions not highlighted**
+  - Use `@username` exactly (word boundary, not substring).
+- **User list not updating**
+  - Ensure both server and client are up to date and using the same protocol.
+- **Messages not showing or chat not updating**
+  - Check your WebSocket connection and server logs for errors.
+- **Too many users in user list**
+  - Only the first 20 are shown, with a `+N more` indicator if more are online.
+
+---
+
 ## Next Steps
-- [ ] Persistent config file
+- [ ] Persistent config file improvements
 - [ ] Avatars and richer themes
 - [x] WebSocket support
+- [x] User list with live updates
+- [x] Message cap and efficient memory use
+- [x] Regex-based mention highlighting
+- [x] Graceful shutdown and panic prevention
 - [ ] Deploy to cloud (Fly.io, AWS, etc.)
 
 ---
