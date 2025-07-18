@@ -2,6 +2,7 @@ package server
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
 	"marchat/shared"
 	"net/http"
@@ -13,6 +14,15 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin:     func(r *http.Request) bool { return true },
+}
+
+type WSMessage struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
+type UserList struct {
+	Users []string `json:"users"`
 }
 
 func CreateSchema(db *sql.DB) {
@@ -61,14 +71,30 @@ func ClearMessages(db *sql.DB) error {
 	return err
 }
 
+func (h *Hub) broadcastUserList() {
+	usernames := []string{}
+	for client := range h.clients {
+		if client.username != "" {
+			usernames = append(usernames, client.username)
+		}
+	}
+	userList := UserList{Users: usernames}
+	payload, _ := json.Marshal(userList)
+	msg := WSMessage{Type: "userlist", Data: payload}
+	for client := range h.clients {
+		client.send <- msg
+	}
+}
+
 func ServeWs(hub *Hub, db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		username := r.URL.Query().Get("username")
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Println("WebSocket upgrade error:", err)
 			return
 		}
-		client := &Client{hub: hub, conn: conn, send: make(chan shared.Message, 256), db: db}
+		client := &Client{hub: hub, conn: conn, send: make(chan interface{}, 256), db: db, username: username}
 		hub.register <- client
 
 		// Send recent messages to new client
@@ -76,6 +102,7 @@ func ServeWs(hub *Hub, db *sql.DB) http.HandlerFunc {
 		for _, msg := range msgs {
 			client.send <- msg
 		}
+		hub.broadcastUserList()
 
 		// Start read/write pumps
 		go client.writePump()

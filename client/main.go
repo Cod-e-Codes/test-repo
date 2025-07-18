@@ -14,6 +14,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"encoding/json"
+
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -162,14 +164,21 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 	return b.String()
 }
 
-type wsMsg shared.Message
+type wsMsg struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
 
 type wsErr error
 
 type wsConnected bool
 
+type UserList struct {
+	Users []string `json:"users"`
+}
+
 func (m *model) connectWebSocket(serverURL string) error {
-	conn, _, err := websocket.DefaultDialer.Dial(serverURL, nil)
+	conn, _, err := websocket.DefaultDialer.Dial(serverURL+"?username="+m.cfg.Username, nil)
 	if err != nil {
 		return err
 	}
@@ -179,13 +188,24 @@ func (m *model) connectWebSocket(serverURL string) error {
 	// Start goroutine to read messages
 	go func() {
 		for {
-			var msg shared.Message
-			err := conn.ReadJSON(&msg)
+			var raw json.RawMessage
+			err := conn.ReadJSON(&raw)
 			if err != nil {
 				m.msgChan <- wsErr(err)
 				return
 			}
-			m.msgChan <- wsMsg(msg)
+			// Try to unmarshal as WSMessage
+			var ws wsMsg
+			if err := json.Unmarshal(raw, &ws); err == nil && ws.Type != "" {
+				m.msgChan <- wsMsg{Type: ws.Type, Data: ws.Data}
+				continue
+			}
+			// Otherwise, try as shared.Message
+			var msg shared.Message
+			if err := json.Unmarshal(raw, &msg); err == nil && msg.Sender != "" {
+				m.msgChan <- msg
+				continue
+			}
 		}
 	}()
 	return nil
@@ -213,13 +233,24 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
+	switch v := msg.(type) {
 	case wsConnected:
 		m.connected = true
 		m.banner = "✅ Connected to server!"
 		return m, m.listenWebSocket()
 	case wsMsg:
-		m.messages = append(m.messages, shared.Message(msg))
+		if v.Type == "userlist" {
+			var ul UserList
+			if err := json.Unmarshal(v.Data, &ul); err == nil {
+				m.users = ul.Users
+				userListWidth := 18
+				m.userListViewport.SetContent(renderUserList(m.users, m.cfg.Username, m.styles, userListWidth))
+			}
+			return m, m.listenWebSocket()
+		}
+		return m, m.listenWebSocket()
+	case shared.Message:
+		m.messages = append(m.messages, v)
 		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width, m.twentyFourHour))
 		m.viewport.GotoBottom()
 		return m, m.listenWebSocket()
@@ -231,7 +262,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.Init()()
 		})
 	case tea.KeyMsg:
-		switch msg.String() {
+		switch v.String() {
 		case "ctrl+c", "esc":
 			m.closeWebSocket()
 			return m, tea.Quit
@@ -304,12 +335,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		default:
 			var cmd tea.Cmd
-			m.textarea, cmd = m.textarea.Update(msg)
+			m.textarea, cmd = m.textarea.Update(v)
 			return m, cmd
 		}
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.width = v.Width
+		m.height = v.Height
 		userListWidth := 18
 		chatWidth := m.width - userListWidth - 4
 		if chatWidth < 20 {
@@ -323,9 +354,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.userListViewport.Height = m.height - m.textarea.Height() - 6
 		m.userListViewport.SetContent(renderUserList(m.users, m.cfg.Username, m.styles, userListWidth))
 		return m, nil
+	case quitMsg:
+		return m, tea.Quit
 	default:
 		var cmd tea.Cmd
-		m.textarea, cmd = m.textarea.Update(msg)
+		m.textarea, cmd = m.textarea.Update(v)
 		return m, cmd
 	}
 }
@@ -441,8 +474,11 @@ func renderUserList(users []string, me string, styles themeStyles, width int) st
 			b.WriteString(styles.Other.Render("• "+u) + "\n")
 		}
 	}
-	return styles.UserList.Width(width).Render(b.String())
+	return b.String()
 }
+
+// Add a custom quitMsg type
+type quitMsg struct{}
 
 func main() {
 	flag.Parse()
@@ -495,7 +531,7 @@ func main() {
 	go func() {
 		<-c
 		m.closeWebSocket()
-		os.Exit(0)
+		p.Send(quitMsg{})
 	}()
 
 	if _, err := p.Run(); err != nil {

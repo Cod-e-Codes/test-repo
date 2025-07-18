@@ -2,12 +2,11 @@ package server
 
 import (
 	"log"
-	"marchat/shared"
 )
 
 type Hub struct {
 	clients    map[*Client]bool
-	broadcast  chan shared.Message
+	broadcast  chan interface{}
 	register   chan *Client
 	unregister chan *Client
 }
@@ -15,7 +14,7 @@ type Hub struct {
 func NewHub() *Hub {
 	return &Hub{
 		clients:    make(map[*Client]bool),
-		broadcast:  make(chan shared.Message),
+		broadcast:  make(chan interface{}),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 	}
@@ -33,6 +32,7 @@ func (h *Hub) Run() {
 				close(client.send)
 				log.Println("Client unregistered")
 			}
+			h.broadcastUserList()
 		case message := <-h.broadcast:
 			for client := range h.clients {
 				select {
