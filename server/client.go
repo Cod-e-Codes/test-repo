@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"log"
 	"marchat/shared"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -13,6 +15,8 @@ const (
 	pongWait   = 60 * time.Second
 	pingPeriod = (pongWait * 9) / 10 // send pings at 90% of pongWait
 )
+
+const adminSecret = "changeme" // Set this securely in production
 
 type Client struct {
 	hub      *Hub
@@ -39,6 +43,27 @@ func (c *Client) readPump() {
 		if err != nil {
 			log.Println("readPump error:", err)
 			break
+		}
+		// Handle :cleardb command
+		if msg.Content == ":cleardb" || strings.HasPrefix(msg.Content, ":cleardb ") {
+			parts := strings.Fields(msg.Content)
+			if msg.Sender == "admin" && (len(parts) == 1 || (len(parts) == 2 && parts[1] == adminSecret)) {
+				log.Println("[ADMIN] Clearing message database via WebSocket...")
+				err := os.Remove("chat.db")
+				if err != nil {
+					log.Println("Failed to clear DB:", err)
+				} else {
+					log.Println("Message DB cleared.")
+					c.hub.broadcast <- shared.Message{
+						Sender:    "System",
+						Content:   "Chat history cleared by admin.",
+						CreatedAt: time.Now(),
+					}
+				}
+			} else {
+				log.Printf("Unauthorized cleardb attempt by %s\n", msg.Sender)
+			}
+			continue // Don't insert this as a normal message
 		}
 		msg.CreatedAt = time.Now()
 		InsertMessage(c.db, msg)
