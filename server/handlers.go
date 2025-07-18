@@ -112,12 +112,19 @@ func ClearHandler(db *sql.DB, hub *Hub, adminKey string) http.HandlerFunc {
 	}
 }
 
-func ServeWs(hub *Hub, db *sql.DB) http.HandlerFunc {
+func ServeWs(hub *Hub, db *sql.DB, adminUsername string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username := r.URL.Query().Get("username")
+		realUser := r.URL.Query().Get("real_user")
 		if username == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Username required"))
+			return
+		}
+		// Only allow adminUsername to connect as 'admin'
+		if username == "admin" && realUser != adminUsername {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Unauthorized admin username"))
 			return
 		}
 		// Check for duplicate username
