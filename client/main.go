@@ -176,8 +176,6 @@ func (m *model) connectWebSocket(serverURL string) error {
 	m.conn = conn
 	m.connected = true
 	m.banner = "✅ Connected to server!"
-	m.msgChan = make(chan tea.Msg)
-	m.quitChan = make(chan struct{})
 	// Start goroutine to read messages
 	go func() {
 		for {
@@ -202,25 +200,19 @@ func (m *model) closeWebSocket() {
 	}
 }
 
-func (m model) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
+	m.msgChan = make(chan tea.Msg, 10) // buffered to avoid blocking
+	m.quitChan = make(chan struct{})
 	return func() tea.Msg {
 		err := m.connectWebSocket(m.cfg.ServerURL)
 		if err != nil {
 			return wsErr(err)
 		}
-		// Handle Ctrl+C/interrupt for clean shutdown
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-		go func() {
-			<-c
-			m.closeWebSocket()
-			os.Exit(0)
-		}()
 		return wsConnected(true)
 	}
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case wsConnected:
 		m.connected = true
@@ -338,13 +330,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m model) listenWebSocket() tea.Cmd {
+func (m *model) listenWebSocket() tea.Cmd {
 	return func() tea.Msg {
 		return <-m.msgChan
 	}
 }
 
-func (m model) View() string {
+func (m *model) View() string {
 	// Header
 	headerStyle := lipgloss.NewStyle().
 		Background(lipgloss.Color("#36C5F0")).
@@ -469,7 +461,7 @@ func main() {
 		return
 	}
 	if cfg.ServerURL == "" {
-		cfg.ServerURL = "http://localhost:9090"
+		cfg.ServerURL = "ws://localhost:9090/ws"
 	}
 
 	ta := textarea.New()
@@ -486,7 +478,7 @@ func main() {
 	userListVp := viewport.New(18, 10) // height will be set on resize
 	userListVp.SetContent(renderUserList([]string{cfg.Username}, cfg.Username, getThemeStyles(cfg.Theme), 18))
 
-	m := model{
+	m := &model{
 		cfg:              cfg,
 		textarea:         ta,
 		viewport:         vp,
@@ -497,6 +489,15 @@ func main() {
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		m.closeWebSocket()
+		os.Exit(0)
+	}()
+
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
