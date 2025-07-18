@@ -416,6 +416,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case quitMsg:
 		return m, tea.Quit
+	case tea.MouseMsg:
+		if v.Type == tea.MouseWheelUp || v.Type == tea.MouseWheelDown {
+			return m, nil // Ignore mouse scroll
+		}
+		return m, nil // Return for other mouse events
 	default:
 		var cmd tea.Cmd
 		m.textarea, cmd = m.textarea.Update(v)
@@ -443,8 +448,13 @@ func (m *model) View() string {
 
 	totalWidth := m.viewport.Width + 18 + 4 // chat + userlist + borders
 	header := headerStyle.Width(totalWidth).Render(" marchat ")
+
+	cmds := ":clear :theme NAME :time"
+	if m.cfg.Username == "admin" {
+		cmds += " :cleardb"
+	}
 	footer := footerStyle.Width(totalWidth).Render(
-		"[Enter] Send  [Mouse Scroll] Scroll  [Esc/Ctrl+C] Quit  Commands: :clear :cleardb :theme NAME :time",
+		"[Enter] Send  [Up/Down] Scroll  [Esc/Ctrl+C] Quit  Commands: " + cmds,
 	)
 
 	// Banner
