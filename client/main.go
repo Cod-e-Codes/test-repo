@@ -171,8 +171,16 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 		}
 		timestamp := styles.Time.Render(msg.CreatedAt.Format(timeFmt))
 		content := renderEmojis(msg.Content)
-		// Use regex for mention detection
-		if mentionRegex.MatchString(msg.Content) && mentionRegex.ReplaceAllString(msg.Content, "$1") == username {
+		// Improved mention highlighting
+		matches := mentionRegex.FindAllStringSubmatch(msg.Content, -1)
+		highlight := false
+		for _, m := range matches {
+			if len(m) > 1 && m[1] == username {
+				highlight = true
+				break
+			}
+		}
+		if highlight {
 			content = styles.Mention.Render(content)
 		} else {
 			content = styles.Msg.Render(content)
