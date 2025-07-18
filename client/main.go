@@ -11,6 +11,9 @@ import (
 	"marchat/client/config"
 	"marchat/shared"
 
+	"os/signal"
+	"syscall"
+
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -44,6 +47,10 @@ type model struct {
 	twentyFourHour bool // NEW: timestamp format toggle
 
 	sending bool // NEW: sending message feedback
+
+	conn     *websocket.Conn // persistent WebSocket connection
+	msgChan  chan tea.Msg    // channel for incoming messages from WS goroutine
+	quitChan chan struct{}   // signal for shutdown
 }
 
 type themeStyles struct {
@@ -156,53 +163,85 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 }
 
 type wsMsg shared.Message
+
 type wsErr error
+
 type wsConnected bool
 
-func connectWebSocket(serverURL string, messagesChan chan tea.Msg) {
+func (m *model) connectWebSocket(serverURL string) error {
 	conn, _, err := websocket.DefaultDialer.Dial(serverURL, nil)
 	if err != nil {
-		messagesChan <- wsErr(err)
-		return
+		return err
 	}
-	defer conn.Close()
-	messagesChan <- wsConnected(true)
-	for {
-		var msg shared.Message
-		if err := conn.ReadJSON(&msg); err != nil {
-			messagesChan <- wsErr(err)
-			return
+	m.conn = conn
+	m.connected = true
+	m.banner = "✅ Connected to server!"
+	m.msgChan = make(chan tea.Msg)
+	m.quitChan = make(chan struct{})
+	// Start goroutine to read messages
+	go func() {
+		for {
+			var msg shared.Message
+			err := conn.ReadJSON(&msg)
+			if err != nil {
+				m.msgChan <- wsErr(err)
+				return
+			}
+			m.msgChan <- wsMsg(msg)
 		}
-		messagesChan <- wsMsg(msg)
+	}()
+	return nil
+}
+
+func (m *model) closeWebSocket() {
+	if m.conn != nil {
+		m.conn.Close()
+	}
+	if m.quitChan != nil {
+		close(m.quitChan)
 	}
 }
 
 func (m model) Init() tea.Cmd {
-	messagesChan := make(chan tea.Msg)
-	go connectWebSocket(m.cfg.ServerURL, messagesChan)
 	return func() tea.Msg {
-		return <-messagesChan
+		err := m.connectWebSocket(m.cfg.ServerURL)
+		if err != nil {
+			return wsErr(err)
+		}
+		// Handle Ctrl+C/interrupt for clean shutdown
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		go func() {
+			<-c
+			m.closeWebSocket()
+			os.Exit(0)
+		}()
+		return wsConnected(true)
 	}
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case wsConnected:
-		m.connected = bool(msg)
+		m.connected = true
 		m.banner = "✅ Connected to server!"
-		return m, waitForWS(m.cfg.ServerURL)
+		return m, m.listenWebSocket()
 	case wsMsg:
 		m.messages = append(m.messages, shared.Message(msg))
 		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width, m.twentyFourHour))
 		m.viewport.GotoBottom()
-		return m, waitForWS(m.cfg.ServerURL)
+		return m, m.listenWebSocket()
 	case wsErr:
 		m.connected = false
 		m.banner = "🚫 Connection lost. Reconnecting..."
-		return m, reconnectWS(m.cfg.ServerURL)
+		m.closeWebSocket()
+		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
+			return m.Init()()
+		})
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc":
+			m.closeWebSocket()
 			return m, tea.Quit
 		case "up":
 			if m.textarea.Focused() {
@@ -256,10 +295,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if text != "" {
 				m.sending = true
-				sendMessageWS(m.cfg.ServerURL, m.cfg.Username, text)
+				if m.conn != nil {
+					msg := shared.Message{Sender: m.cfg.Username, Content: text}
+					err := m.conn.WriteJSON(msg)
+					if err != nil {
+						m.banner = "❌ Failed to send (connection lost)"
+						m.sending = false
+						return m, m.listenWebSocket()
+					}
+					m.banner = ""
+				}
 				m.sending = false
 				m.textarea.SetValue("")
-				return m, waitForWS(m.cfg.ServerURL)
+				return m, m.listenWebSocket()
 			}
 			return m, nil
 		default:
@@ -287,6 +335,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.textarea, cmd = m.textarea.Update(msg)
 		return m, cmd
+	}
+}
+
+func (m model) listenWebSocket() tea.Cmd {
+	return func() tea.Msg {
+		return <-m.msgChan
 	}
 }
 
@@ -396,28 +450,6 @@ func renderUserList(users []string, me string, styles themeStyles, width int) st
 		}
 	}
 	return styles.UserList.Width(width).Render(b.String())
-}
-
-func waitForWS(serverURL string) tea.Cmd {
-	messagesChan := make(chan tea.Msg)
-	go connectWebSocket(serverURL, messagesChan)
-	return func() tea.Msg { return <-messagesChan }
-}
-
-func reconnectWS(serverURL string) tea.Cmd {
-	return tea.Tick(time.Second*2, func(time.Time) tea.Msg {
-		return waitForWS(serverURL)()
-	})
-}
-
-func sendMessageWS(serverURL, sender, content string) {
-	conn, _, err := websocket.DefaultDialer.Dial(serverURL, nil)
-	if err != nil {
-		return
-	}
-	defer conn.Close()
-	msg := shared.Message{Sender: sender, Content: content}
-	conn.WriteJSON(msg)
 }
 
 func main() {
