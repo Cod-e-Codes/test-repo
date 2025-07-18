@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -35,8 +33,6 @@ type model struct {
 	styles    themeStyles
 	banner    string
 	connected bool
-
-	hasRenderedMessages bool // NEW
 
 	users []string // NEW: user list
 
@@ -125,15 +121,12 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 	var prevDate string
 	for _, msg := range msgs {
 		sender := msg.Sender
-		senderStyle := styles.User
 		align := lipgloss.Left
 		msgBoxStyle := lipgloss.NewStyle().Width(width - 4)
 		if sender == username {
-			senderStyle = styles.Me
 			align = lipgloss.Right
 			msgBoxStyle = msgBoxStyle.Background(lipgloss.Color("#222244")).Foreground(lipgloss.Color("#FFFFFF"))
 		} else {
-			senderStyle = styles.Other
 			msgBoxStyle = msgBoxStyle.Background(lipgloss.Color("#222222")).Foreground(lipgloss.Color("#AAAAAA"))
 		}
 		// Date header if date changes
@@ -154,7 +147,7 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 		} else {
 			content = styles.Msg.Render(content)
 		}
-		meta := senderStyle.Render(sender) + " " + timestamp
+		meta := styles.User.Render(sender) + " " + timestamp
 		wrapped := msgBoxStyle.Render(content)
 		msgBlock := lipgloss.JoinVertical(lipgloss.Left, meta, wrapped)
 		b.WriteString(msgBoxStyle.Align(align).Render(msgBlock) + "\n\n")
@@ -165,10 +158,6 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 type wsMsg shared.Message
 type wsErr error
 type wsConnected bool
-
-type wsClient struct {
-	conn *websocket.Conn
-}
 
 func connectWebSocket(serverURL string, messagesChan chan tea.Msg) {
 	conn, _, err := websocket.DefaultDialer.Dial(serverURL, nil)
@@ -362,20 +351,6 @@ func (m model) View() string {
 	return ui
 }
 
-func sendMessage(serverURL, sender, content string) error {
-	data := shared.Message{Sender: sender, Content: content}
-	body, _ := json.Marshal(data)
-	resp, err := http.Post(serverURL+"/send", "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("server returned %d", resp.StatusCode)
-	}
-	return nil
-}
-
 func renderEmojis(s string) string {
 	emojis := map[string]string{
 		":)": "😊",
@@ -408,18 +383,6 @@ func sendClearDB(serverURL string) error {
 		return fmt.Errorf("server returned %d", resp.StatusCode)
 	}
 	return nil
-}
-
-func messagesEqual(a, b []shared.Message) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i].Sender != b[i].Sender || a[i].Content != b[i].Content || !a[i].CreatedAt.Equal(b[i].CreatedAt) {
-			return false
-		}
-	}
-	return true
 }
 
 func renderUserList(users []string, me string, styles themeStyles, width int) string {

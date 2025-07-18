@@ -11,7 +11,7 @@ A modern, retro-inspired terminal chat app for father-son coding sessions. Built
 ## Features
 
 - **Terminal UI**: Beautiful, scrollable chat using [Bubble Tea](https://github.com/charmbracelet/bubbletea)
-- **Go HTTP Server**: Simple, robust, and cross-platform
+- **Go WebSocket Server**: Real-time, robust, and cross-platform
 - **SQLite (pure Go)**: No C compiler needed (uses `modernc.org/sqlite`)
 - **Usernames & Timestamps**: See who said what, and when
 - **Color Themes**: Slack, Discord, AIM, or classic
@@ -34,7 +34,7 @@ cd marchat
 go mod tidy
 ```
 
-### 3. Run the server (port 9090)
+### 3. Run the server (port 9090, WebSocket)
 ```sh
 go run cmd/server/main.go
 ```
@@ -44,7 +44,7 @@ Create `config.json` in the project root:
 ```json
 {
   "username": "Cody",
-  "server_url": "http://localhost:9090",
+  "server_url": "ws://localhost:9090/ws",
   "theme": "slack"
 }
 ```
@@ -52,10 +52,30 @@ Create `config.json` in the project root:
 ### 5. Run the client
 ```sh
 # With flags:
-go run client/main.go --username Cody --theme slack --server http://localhost:9090
+go run client/main.go --username Cody --theme slack --server ws://localhost:9090/ws
 
 # Or with config file:
 go run client/main.go --config config.json
+```
+
+---
+
+## Remote Usage
+
+To connect from another machine (e.g. over the internet):
+1. **Open port 9090** on your firewall/router and forward it to your server's local IP.
+2. **Get your public IP** (e.g. from https://whatismyip.com or `curl ifconfig.me`).
+3. **Run the server** on your host machine.
+4. **Connect the client** using:
+   ```sh
+   go run client/main.go --username Dad --server ws://YOUR_PUBLIC_IP:9090/ws
+   ```
+   Or set `"server_url": "ws://YOUR_PUBLIC_IP:9090/ws"` in your config file.
+
+If you can't port forward, use [ngrok](https://ngrok.com/):
+```sh
+ngrok http 9090
+# Use the wss://.../ws URL provided by ngrok
 ```
 
 ---
@@ -81,9 +101,11 @@ marchat/
 │   └── config/config.go
 ├── cmd/server/       # Server entrypoint
 │   └── main.go
-├── server/           # Server logic (DB, handlers)
+├── server/           # Server logic (DB, handlers, WebSocket)
 │   ├── db.go
 │   ├── handlers.go
+│   ├── client.go
+│   ├── hub.go
 │   └── schema.sql
 ├── shared/           # Shared types
 │   └── types.go
@@ -99,13 +121,14 @@ marchat/
 - [Bubble Tea](https://github.com/charmbracelet/bubbletea) (TUI)
 - [Lipgloss](https://github.com/charmbracelet/lipgloss) (styling)
 - [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (pure Go SQLite)
+- [Gorilla WebSocket](https://github.com/gorilla/websocket) (real-time messaging)
 
 ---
 
 ## Next Steps
 - [ ] Persistent config file
 - [ ] Avatars and richer themes
-- [ ] WebSocket support
+- [x] WebSocket support
 - [ ] Deploy to cloud (Fly.io, AWS, etc.)
 
 ---
