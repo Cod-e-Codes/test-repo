@@ -38,6 +38,24 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/Cod-e-Codes/marchat)
 
+## Table of Contents
+
+- [What is this?](#what-is-this)
+- [Why Marchat?](#why-marchat)
+- [Features At a Glance](#-features-at-a-glance)
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Usage](#usage)
+- [Project Structure](#project-structure)
+- [Admin Mode](#admin-mode-privileged-commands--security)
+- [Security](#security)
+- [Known Issues](#known-issues)
+- [Tech Stack](#tech-stack)
+- [Troubleshooting](#troubleshooting)
+- [Next Steps](#next-steps)
+- [Contributing](#contributing)
+- [License](#license)
+
 A modern, retro-inspired terminal chat app for father-son coding sessions. Built with Go, Bubble Tea, and SQLite (pure Go driver, no C compiler required). Fast, hackable, and ready for remote pair programming.
 
 > ⚠️ **Admin features are still under construction.**  
@@ -53,7 +71,7 @@ A modern, retro-inspired terminal chat app for father-son coding sessions. Built
 
 Built for father-son coding sessions, marchat is about sharing the joy of hacking, learning, and chatting in a terminal. It's a fun, retro-inspired project for anyone who loves the command line, real-time collaboration, or just wants a simple, self-hosted chat.
 
-📽️ [Watch the demo video](#) — coming soon!
+
 
 ---
 
@@ -76,7 +94,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 - **Emoji Support**: Auto-converts ASCII emoji like `:)` to Unicode equivalents.
 - **Configurable**: Set username, server URL, and theme via config or flags
 - **User List**: Live-updating user list panel with a fixed width (constant), and up to 20 users are shown
-- **Message Cap**: Only the last 100 messages are kept in memory for performance
+- **Message Cap**: Only the last 100 messages are kept in memory for performance (implemented)
 - **Mention Highlighting**: Regex-based mention detection for `@username` (full-message highlight)
 - **Ping/Pong Heartbeat**: Robust WebSocket connection with ping/pong heartbeat
 - **Easy Quit**: Press `ctrl+c` or `Esc` to exit the chat
@@ -123,6 +141,8 @@ Create `config.json` in the project root:
 }
 ```
 
+*If you don't have a config file, simply create a new `config.json` in your project root using the example above. The client will look for this file by default. You can also specify a different path with the `--config` flag.*
+
 ### 5. Run the client
 ```sh
 # With flags:
@@ -140,13 +160,14 @@ go run client/main.go --config config.json
 - **Send messages**: Type and press Enter
 - **Quit**: Press `ctrl+c` or `Esc` to exit the chat
 - **Themes**: `slack`, `discord`, `aim` (case-insensitive), or leave blank for default
-- **Emoji**: Common ASCII emoji like `:)`, `:(`, `:D`, `<3`, and `:P` are automatically converted to their Unicode equivalents.
+- **Emoji support**: Common ASCII emoticons (e.g. `:)`, `:(`, `:D`, `<3`, `:P`) automatically convert to Unicode emoji.
+  - Supported: `:)`, `:(`, `:D`, `<3`, `:P`
 - **Scroll**: Use Up/Down arrows or your mouse to scroll chat
 - **Switch theme**: Type `:theme <name>` and press Enter (persists in config)
 - **Toggle timestamp format**: Type `:time` and press Enter (persists in config)
 - **ASCII art banner**: Displays connection info on server startup; can be disabled via config or flag
 - **Clear chat (client only)**: Type `:clear` and press Enter (clears your local buffer only — does not affect others)
-- **Clear all messages (wipe DB)**: Type `:cleardb` and press Enter (admin only, currently non-functional)
+- **Clear all messages (wipe DB)**: Type `:cleardb` and press Enter (admin only, currently non-functional — wipes entire database)
 - **Banner**: Status and error messages appear above chat
 - **Mentions**: Use `@username` to highlight a user (full-message highlight, not partial)
 - **User List**: Up to 20 users are shown in a fixed-width panel, with a styled `+N more` indicator if more are online
@@ -186,6 +207,8 @@ Modular architecture: client, server logic, and shared types are separated for c
 > - A valid `--admin-key` and `--admin-url`
 > 
 > ⚠️ Admin features are under construction — some commands are non-functional, and connecting as `admin` is currently disabled.
+> 
+> ⚠️ **Important:** Do not use the default admin key (`changeme`) in production. Change it immediately to avoid security risks.
 
 - **To connect as admin (WebSocket):**
   ```sh
@@ -195,12 +218,28 @@ Modular architecture: client, server logic, and shared types are separated for c
   ```sh
   --admin-url https://your-url
   ```
-- The admin key is hardcoded as `changeme` in the server (change this for production).
-- **Security note**: Always change the default admin key in production deployments.
 - All privileged commands (like `:cleardb`) are only available to the admin user, and require the HTTP(S) base URL for admin commands (not the WebSocket URL).
 - Any other user attempting to connect as `admin` will be rejected by the server.
 - **Note:** The `:cleardb` command will POST to `https://your-url/clear` (not the WebSocket URL).
 - Planned improvements: make admin commands fully functional and secure; finalize and document admin HTTP URL behavior.
+
+---
+
+## Security
+
+> **Production deployment checklist:**
+> - Change the default admin key (`changeme`) to a secure value
+> - Use `wss://` (secure WebSocket) URLs in production, not `ws://`
+> - Ensure firewall rules allow your chosen port (default: 9090)
+> - Consider using a reverse proxy (nginx, etc.) for additional security
+
+---
+
+## Known Issues
+
+- **Admin username blocked**: Using `admin` is currently **disallowed**; login attempts are rejected, even with a valid admin key. This is a temporary limitation and will be addressed in a future release. [See tracking issue](https://github.com/Cod-e-Codes/marchat/issues/1)
+- **Admin commands non-functional**: Commands like `:cleardb` are under development and not yet working
+- **Default admin key**: The server uses `changeme` as the default admin key — **change this in production!**
 
 ---
 
@@ -211,6 +250,8 @@ Modular architecture: client, server logic, and shared types are separated for c
 - [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (pure Go SQLite, no C compiler required)
 - [Gorilla WebSocket](https://github.com/gorilla/websocket) (real-time messaging)
 
+**Platform Support**: Runs on Linux, macOS, and Windows terminals supporting ANSI escape sequences.
+
 ---
 
 ## Troubleshooting
@@ -219,6 +260,7 @@ Modular architecture: client, server logic, and shared types are separated for c
   - Fixed: The client now guards against double-close of internal channels.
 - **Client fails to connect with `http://` URL**
   - Use a WebSocket URL: `ws://localhost:9090/ws` or `wss://...` for remote.
+  - **URL schemes**: Use `ws://` for local development, `wss://` for production (secure WebSocket)
 - **Mentions not highlighted**
   - Use `@username` exactly (word boundary, not substring).
 - **User list not updating**
