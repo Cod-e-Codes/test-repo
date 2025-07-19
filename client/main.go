@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"regexp"
@@ -388,16 +387,19 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.textarea.SetValue("")
 					return m, nil
 				}
-				err := sendClearDB(m.cfg.AdminURL, *adminKey)
-				if err != nil {
-					m.banner = "Failed to clear DB: " + err.Error()
-				} else {
-					m.messages = nil
-					m.viewport.SetContent("")
-					m.banner = "Database cleared."
+				m.sending = true
+				if m.conn != nil {
+					msg := shared.Message{Sender: m.cfg.Username, Content: text}
+					err := m.conn.WriteJSON(msg)
+					if err != nil {
+						m.banner = "❌ Failed to send (connection lost)"
+						m.sending = false
+						return m, m.listenWebSocket()
+					}
+					m.banner = ""
 				}
 				m.textarea.SetValue("")
-				return m, nil
+				return m, m.listenWebSocket()
 			}
 			if text == ":time" {
 				m.twentyFourHour = !m.twentyFourHour
@@ -542,30 +544,6 @@ func renderEmojis(s string) string {
 		s = strings.ReplaceAll(s, k, v)
 	}
 	return s
-}
-
-func sendClearDB(adminBaseURL, adminKey string) error {
-	if adminBaseURL == "" {
-		return fmt.Errorf("admin URL is required for :cleardb")
-	}
-	req, err := http.NewRequest("POST", adminBaseURL+"/clear", nil)
-	if err != nil {
-		log.Printf("sendClearDB request error: %v", err)
-		return err
-	}
-	req.Header.Set("X-Admin-Key", adminKey)
-	log.Printf("sendClearDB: sending POST to %s/clear", adminBaseURL)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Printf("sendClearDB error: %v", err)
-		return err
-	}
-	defer resp.Body.Close()
-	log.Printf("sendClearDB response status: %d", resp.StatusCode)
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("server returned %d", resp.StatusCode)
-	}
-	return nil
 }
 
 func renderUserList(users []string, me string, styles themeStyles, width int) string {
