@@ -275,11 +275,10 @@ Modular architecture: client, server logic, and shared types are separated for c
 - [x] **Regex-based mention highlighting (full-message)** *(Implemented — highlights entire message if `@username` found)*
 - [x] **Graceful shutdown and panic prevention** *(Implemented — server handles disconnects and client exits cleanly)*
 - [x] **ASCII art banner on server startup with connection info** *(Implemented)*
+- [x] **Message cap and efficient memory use** (Implemented)
+  The server enforces a 1000-message cap (deletes oldest), and the client keeps the last 100 messages in memory.
 
 ### 🛠️ Still To Do
-
-- [ ] **Message cap and efficient memory use**
-  Prevent unbounded message growth by capping stored messages or using ring buffers.
 
 - [ ] **UI polish: styled '+N more' line, userListWidth constant**
   Visual improvements to make layout and overflow cleaner.
