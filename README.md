@@ -53,8 +53,8 @@
 - [Contributing](#contributing)
 - [License](#license)
 
-> ⚠️ **Admin features require authentication.**  
-> Admin commands (like `:cleardb`) are now fully functional for authenticated admins. The admin system is stable but under active testing—please report any issues you find.
+> ⚡ **Admin features require authentication.**  
+> Admin commands (like `:cleardb`) are fully functional for authenticated admins. The admin system is stable and production-ready.
 
 ---
 
@@ -95,7 +95,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 - **Easy Quit**: Press `ctrl+c` or `Esc` to exit the chat
 - **Graceful Shutdown**: Clean exit with panic prevention
 - **Polished UI**: User list width is consistent, and the '+N more' line is styled (italic/dimmed) for clarity
-- **Admin Security**: Only the configured admin user can connect as `admin` (currently non-functional; see below)
+- **Admin Security**: Only the configured admin user can connect as `admin` (fully functional)
 - **ASCII Art Banner**: Server displays a beautiful banner on startup with connection URLs and admin info
 
 ---
@@ -131,7 +131,7 @@ Create `config.json` in the project root:
 {
   "username": "Cody",
   "server_url": "ws://localhost:9090/ws",
-  "theme": "slack",
+  "theme": "patriot",
   "twenty_four_hour": true
 }
 ```
@@ -141,7 +141,7 @@ Create `config.json` in the project root:
 ### 5. Run the client
 ```sh
 # With flags:
-go run client/main.go --username Cody --theme slack --server ws://localhost:9090/ws
+go run client/main.go --username Cody --theme patriot --server ws://localhost:9090/ws
 
 # Or with config file (loaded from current working directory):
 go run client/main.go --config config.json
@@ -154,7 +154,7 @@ go run client/main.go --config config.json
 ## Usage
 - **Send messages**: Type and press Enter
 - **Quit**: Press `ctrl+c` or `Esc` to exit the chat
-- **Themes**: `slack`, `discord`, `aim` (case-insensitive), or leave blank for default
+- **Themes**: `patriot`, `retro`, `modern` (case-insensitive), or leave blank for default
 - **Emoji support**: Common ASCII emoticons (e.g. `:)`, `:(`, `:D`, `<3`, `:P`) automatically convert to Unicode emoji.
   - Supported: `:)`, `:(`, `:D`, `<3`, `:P`
 - **Scroll**: Use Up/Down arrows or your mouse to scroll chat
@@ -202,7 +202,7 @@ Modular architecture: client, server logic, and shared types are separated for c
 > - Only users listed as admins on the server (via repeated --admin flags) can authenticate as admin
 > - All admin actions are performed over WebSocket (no HTTP endpoints)
 > 
-> ⚠️ **Important:** Do not use the default admin key (`changeme`) in production. Change it immediately to avoid security risks.
+> ⚡ **Important:** Do not use the default admin key (`changeme`) in production. Change it immediately to avoid security risks.
 
 - **To launch the server with multiple admins:**
   ```sh
@@ -231,7 +231,7 @@ Modular architecture: client, server logic, and shared types are separated for c
 
 ## Known Issues
 
-- Admin functionality is stable and fully functional for authenticated admins, but is under active testing. If you encounter any issues or unexpected behavior, please open an issue on GitHub.
+- Admin functionality is stable and fully functional for authenticated admins. If you encounter any issues or unexpected behavior, please open an issue on GitHub.
 
 ---
 
@@ -263,8 +263,8 @@ Modular architecture: client, server logic, and shared types are separated for c
   - Only up to 20 users are shown, with a styled `+N more` indicator if more are online.
 - **Cross-platform**: Runs on Linux, macOS, and Windows terminals
 - **Firewall/Port**: Ensure port 9090 is open for remote connections
-- **Admin commands non-functional**
-  - `:cleardb` and admin URL features are under development.
+- **Admin commands**
+  - All admin commands (like `:cleardb`) are now fully functional for authenticated admins.
 
 *If reporting a bug, please include your version or commit hash.*
 
@@ -274,7 +274,7 @@ Modular architecture: client, server logic, and shared types are separated for c
 
 ### ✅ Completed or In Progress
 
-- [x] **Admin username restriction for privileged commands** *(Partially implemented — logic in place, but admin commands are currently non-functional)*
+- [x] **Admin username restriction for privileged commands** *(Fully implemented — admin commands are now functional and secure)*
 - [x] **User list with live updates** *(Fully implemented; fixed-width styling pending optional)*
 - [x] **Regex-based mention highlighting (full-message)** *(Implemented — highlights entire message if `@username` found)*
 - [x] **Graceful shutdown and panic prevention** *(Implemented — server handles disconnects and client exits cleanly)*

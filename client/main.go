@@ -110,36 +110,36 @@ func baseThemeStyles() themeStyles {
 
 func getThemeStyles(theme string) themeStyles {
 	s := baseThemeStyles()
-	switch theme {
-	case "slack":
-		s.User = s.User.Foreground(lipgloss.Color("#36C5F0"))
-		s.Time = s.Time.Foreground(lipgloss.Color("#999999")).Faint(false)
+	switch strings.ToLower(theme) {
+	case "patriot":
+		s.User = s.User.Foreground(lipgloss.Color("#002868"))              // Navy blue
+		s.Time = s.Time.Foreground(lipgloss.Color("#BF0A30")).Faint(false) // Red
 		s.Msg = s.Msg.Foreground(lipgloss.Color("#FFFFFF"))
-		s.Box = s.Box.BorderForeground(lipgloss.Color("#36C5F0"))
-		s.Mention = s.Mention.Foreground(lipgloss.Color("#FF00FF"))
-		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#36C5F0"))
-		s.Me = s.Me.Foreground(lipgloss.Color("#36C5F0"))
-	case "discord":
-		s.User = s.User.Foreground(lipgloss.Color("#7289DA"))
-		s.Time = s.Time.Foreground(lipgloss.Color("#99AAB5")).Faint(false)
-		s.Msg = s.Msg.Foreground(lipgloss.Color("#FFFFFF"))
-		s.Box = s.Box.BorderForeground(lipgloss.Color("#7289DA"))
-		s.Mention = s.Mention.Foreground(lipgloss.Color("#FFD700"))
-		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#7289DA"))
-		s.Me = s.Me.Foreground(lipgloss.Color("#7289DA"))
-	case "aim":
-		s.User = s.User.Foreground(lipgloss.Color("#FFCC00"))
-		s.Time = s.Time.Foreground(lipgloss.Color("#00AEEF")).Faint(false)
-		s.Msg = s.Msg.Foreground(lipgloss.Color("#FFFFFF"))
-		s.Box = s.Box.BorderForeground(lipgloss.Color("#FFCC00"))
-		s.Mention = s.Mention.Foreground(lipgloss.Color("#FFD700"))
-		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#FFCC00"))
-		s.Me = s.Me.Foreground(lipgloss.Color("#FFCC00"))
+		s.Box = s.Box.BorderForeground(lipgloss.Color("#BF0A30"))
+		s.Mention = s.Mention.Foreground(lipgloss.Color("#FFD700")) // Gold
+		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#002868"))
+		s.Me = s.Me.Foreground(lipgloss.Color("#BF0A30"))
+	case "retro":
+		s.User = s.User.Foreground(lipgloss.Color("#FF8800"))              // Orange
+		s.Time = s.Time.Foreground(lipgloss.Color("#00FF00")).Faint(false) // Green
+		s.Msg = s.Msg.Foreground(lipgloss.Color("#FFFFAA"))
+		s.Box = s.Box.BorderForeground(lipgloss.Color("#FF8800"))
+		s.Mention = s.Mention.Foreground(lipgloss.Color("#00FFFF")) // Cyan
+		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#FF8800"))
+		s.Me = s.Me.Foreground(lipgloss.Color("#FF8800"))
+	case "modern":
+		s.User = s.User.Foreground(lipgloss.Color("#4F8EF7"))              // Blue
+		s.Time = s.Time.Foreground(lipgloss.Color("#A0A0A0")).Faint(false) // Gray
+		s.Msg = s.Msg.Foreground(lipgloss.Color("#E0E0E0"))
+		s.Box = s.Box.BorderForeground(lipgloss.Color("#4F8EF7"))
+		s.Mention = s.Mention.Foreground(lipgloss.Color("#FF5F5F")) // Red
+		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#4F8EF7"))
+		s.Me = s.Me.Foreground(lipgloss.Color("#4F8EF7"))
 	}
 	return s
 }
 
-func renderMessages(msgs []shared.Message, styles themeStyles, username string, width int, twentyFourHour bool) string {
+func renderMessages(msgs []shared.Message, styles themeStyles, username string, users []string, width int, twentyFourHour bool) string {
 	const max = maxMessages
 	if len(msgs) > max {
 		msgs = msgs[len(msgs)-max:]
@@ -169,13 +169,20 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 		}
 		timestamp := styles.Time.Render(msg.CreatedAt.Format(timeFmt))
 		content := renderEmojis(msg.Content)
-		// Improved mention highlighting
+		// Improved mention highlighting: highlight if any @username in user list (case-insensitive)
 		matches := mentionRegex.FindAllStringSubmatch(msg.Content, -1)
 		highlight := false
 		for _, m := range matches {
-			if len(m) > 1 && m[1] == username {
-				highlight = true
-				break
+			if len(m) > 1 {
+				for _, u := range users {
+					if strings.EqualFold(m[1], u) {
+						highlight = true
+						break
+					}
+				}
+				if highlight {
+					break
+				}
 			}
 		}
 		if highlight {
@@ -321,7 +328,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.messages = m.messages[len(m.messages)-maxMessages+1:]
 		}
 		m.messages = append(m.messages, v)
-		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.viewport.Width, m.twentyFourHour))
+		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.users, m.viewport.Width, m.twentyFourHour))
 		m.viewport.GotoBottom()
 		m.sending = false // Only set sending=false after receiving echo
 		return m, m.listenWebSocket()
@@ -441,7 +448,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.SetWidth(chatWidth)
 		m.userListViewport.Width = userListWidth
 		m.userListViewport.Height = m.height - m.textarea.Height() - 6
-		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, chatWidth, m.twentyFourHour))
+		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.users, chatWidth, m.twentyFourHour))
 		m.viewport.GotoBottom()
 		m.userListViewport.SetContent(renderUserList(m.users, m.cfg.Username, m.styles, userListWidth))
 		return m, nil
@@ -587,6 +594,9 @@ func main() {
 	}
 	if !strings.HasPrefix(cfg.ServerURL, "ws://") && !strings.HasPrefix(cfg.ServerURL, "wss://") {
 		log.Printf("Warning: --server should be a WebSocket URL (ws:// or wss://), not http://")
+	}
+	if cfg.Theme == "" {
+		cfg.Theme = "modern"
 	}
 
 	ta := textarea.New()
