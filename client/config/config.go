@@ -10,7 +10,6 @@ type Config struct {
 	ServerURL      string `json:"server_url"`
 	Theme          string `json:"theme"`
 	TwentyFourHour bool   `json:"twenty_four_hour"`
-	AdminURL       string `json:"admin_url"`
 }
 
 func LoadConfig(path string) (Config, error) {
