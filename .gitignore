@@ -25,3 +25,4 @@ Thumbs.db
 
 # Dependency directories (vendor/ is used in older Go projects)
 vendor/ 
+config.json 
