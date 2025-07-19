@@ -50,7 +50,6 @@ var (
 
 var isAdmin = flag.Bool("admin", false, "Connect as admin (requires --admin-key)")
 var adminKey = flag.String("admin-key", "", "Admin key for privileged commands like :cleardb")
-var adminURL = flag.String("admin-url", "", "Base HTTP(S) URL for admin commands (e.g. https://yourserver)")
 
 type model struct {
 	cfg       config.Config
@@ -573,9 +572,6 @@ func main() {
 	if *serverURL != "" {
 		cfg.ServerURL = *serverURL
 	}
-	if *adminURL != "" {
-		cfg.AdminURL = *adminURL
-	}
 	if *username != "" {
 		cfg.Username = *username
 	}
@@ -591,9 +587,6 @@ func main() {
 	}
 	if !strings.HasPrefix(cfg.ServerURL, "ws://") && !strings.HasPrefix(cfg.ServerURL, "wss://") {
 		log.Printf("Warning: --server should be a WebSocket URL (ws:// or wss://), not http://")
-	}
-	if cfg.AdminURL == "" {
-		cfg.AdminURL = "http://localhost:9090"
 	}
 
 	ta := textarea.New()
