@@ -67,33 +67,19 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 ---
 
-## Features At a Glance
-- Terminal UI (TUI) with Bubble Tea
-- WebSocket-based real-time chat
-- Configurable themes and auto-converted emoji
-- Live user list with mention highlights
-- Admin mode (restricted access)
-
----
-
 ## Features
 
-- **Terminal UI (TUI)**: Beautiful, scrollable chat using [Bubble Tea](https://github.com/charmbracelet/bubbletea)
-- **Go WebSocket Server**: Real-time, robust, and cross-platform
-- **SQLite (pure Go)**: No C compiler needed (uses `modernc.org/sqlite`)
-- **Usernames & Timestamps**: See who said what, and when
-- **Color Themes**: Slack, Discord, AIM, or classic
-- **Emoji Support**: Auto-converts ASCII emoji like `:)` to Unicode equivalents.
-- **Configurable**: Set username, server URL, and theme via config or flags
-- **User List**: Live-updating user list panel with a fixed width (constant), and up to 20 users are shown
-- **Message Cap**: Only the last 100 messages are kept in memory for performance (implemented)
-- **Mention Highlighting**: Regex-based mention detection for `@username` (full-message highlight)
-- **Ping/Pong Heartbeat**: Robust WebSocket connection with ping/pong heartbeat
-- **Easy Quit**: Press `ctrl+c` or `Esc` to exit the chat
-- **Graceful Shutdown**: Clean exit with panic prevention
-- **Polished UI**: User list width is consistent, and the '+N more' line is styled (italic/dimmed) for clarity
-- **Admin Security**: Only the configured admin user can connect as `admin` (fully functional)
-- **ASCII Art Banner**: Server displays a beautiful banner on startup with connection URLs and admin info
+- **Terminal UI (TUI):** Beautiful, scrollable chat using [Bubble Tea](https://github.com/charmbracelet/bubbletea)
+- **Real-time WebSocket Chat:** Fast, robust, and cross-platform server/client
+- **Themes:** Choose from `patriot`, `retro`, or `modern` for a unique look
+- **Emoji Support:** Auto-converts common ASCII emoji (e.g. `:)`, `:(`, `:D`, `<3`, `:P`) to Unicode
+- **Live User List:** See who’s online in a fixed-width, styled panel (up to 20 users shown)
+- **@Mention Highlighting:** Messages with `@username` highlight for all users in the chat
+- **Admin Mode:** Privileged commands (like `:cleardb`) for authenticated admins only
+- **Message Cap:** Only the last 100 messages are kept in memory for performance
+- **Configurable:** Set username, server URL, and theme via config file or flags
+- **Graceful Shutdown:** Clean exit and robust connection handling (ping/pong heartbeat)
+- **ASCII Art Banner:** Server displays a beautiful banner with connection info on startup
 
 ---
 
