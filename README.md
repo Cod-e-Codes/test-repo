@@ -36,6 +36,7 @@
 [![Go CI](https://github.com/Cod-e-Codes/marchat/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/Cod-e-Codes/marchat/actions/workflows/go.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/Cod-e-Codes/marchat)
+[![cloudflared](https://img.shields.io/badge/cloudflared-download-ff6f00?logo=cloudflare)](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/)
 
 ## Table of Contents
 
@@ -86,6 +87,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 - Install [Go 1.24+](https://go.dev/dl/) if you haven’t already
   - *(Check with `go version` in your terminal)*
+- (Optional, for remote access) Download [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/) (`cloudflared.exe` on Windows)
 
 ## Quick Start
 
@@ -140,6 +142,41 @@ go run client/main.go --config config.json
 ```
 
 *If no flags or config are provided, the client uses default values.*
+
+---
+
+## Remote Access (Optional)
+
+If you want to make your marchat server accessible from outside your local network (for example, to chat with friends remotely), you can use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/) with `cloudflared`.
+
+### 1. Download cloudflared
+- [Get cloudflared for your OS](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/)
+
+### 2. Start a tunnel to your local server
+```sh
+cloudflared tunnel --url http://localhost:9090
+```
+This will give you a public `https://` URL you can use for your client/server.
+
+### 3. Update your client config
+- Use the public `wss://.../ws` URL as your server address.
+
+**Example:**
+
+**Server:**
+```sh
+go run cmd/server/main.go --admin Cody --admin Crystal --admin-key your-admin-key
+cloudflared tunnel --url http://localhost:9090
+```
+
+**Client:**
+```sh
+go run client/main.go --username Cody --admin --admin-key your-admin-key --server wss://your-tunnel-url.trycloudflare.com/ws
+```
+
+**Note:**
+- You do not need to sign up for a Cloudflare account for temporary tunnels.
+- For persistent tunnels or custom domains, see the [Cloudflare Tunnel docs](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/).
 
 ---
 
