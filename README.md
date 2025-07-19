@@ -76,7 +76,9 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 - **Live User List:** See who’s online in a fixed-width, styled panel (up to 20 users shown)
 - **@Mention Highlighting:** Messages with `@username` highlight for all users in the chat
 - **Admin Mode:** Privileged commands (like `:cleardb`) for authenticated admins only
-- **Message Cap:** Only the last 100 messages are kept in memory for performance
+- **Message Cap:**
+  - Only the last 100 messages are kept in memory for client performance
+  - The server database automatically caps messages at 1000; oldest messages are deleted to make room for new ones
 - **Configurable:** Set username, server URL, and theme via config file or flags
 - **Graceful Shutdown:** Clean exit and robust connection handling (ping/pong heartbeat)
 - **ASCII Art Banner:** Server displays a beautiful banner with connection info on startup
@@ -242,6 +244,8 @@ Modular architecture: client, server logic, and shared types are separated for c
   - Ensure server and client are both up to date and using compatible protocols.
 - **Messages not showing or chat not updating**
   - Check your WebSocket connection and server logs for errors.
+- **Old messages missing from chat history**
+  - The server database only keeps the most recent 1000 messages. Older messages are automatically deleted.
 - **Too many users in user list**
   - Only up to 20 users are shown, with a styled `+N more` indicator if more are online.
 - **Cross-platform**: Runs on Linux, macOS, and Windows terminals
