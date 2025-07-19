@@ -1,5 +1,5 @@
 <details>
-<summary><strong># marchat 🧃</strong></summary>
+<summary><strong>marchat 🧃</strong></summary>
 
 ```
 ⢀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣶⣶⣶⣶⣶⣶⣶⣶⣶⣦⡀⠀⠀⠀⠀⠀⠀⣀⣀⣀⣀⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀  
