@@ -38,7 +38,6 @@
 
 ## Table of Contents
 
-- [Introduction](#introduction)
 - [Features](#features)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
