@@ -199,7 +199,7 @@ Modular architecture: client, server logic, and shared types are separated for c
 
 - **To launch the server with multiple admins:**
   ```sh
-  go run cmd/server/main.go --admin Cody --admin Alice --admin-key your-admin-key
+  go run cmd/server/main.go --admin Cody --admin Crystal --admin-key your-admin-key
   ```
 - **To connect as admin (WebSocket):**
   ```sh
