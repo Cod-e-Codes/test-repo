@@ -21,6 +21,8 @@ import (
 	"context"
 	"sync"
 
+	"log"
+
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -31,6 +33,8 @@ import (
 const maxMessages = 100
 const maxUsersDisplay = 20
 const userListWidth = 18
+const pingPeriod = 50 * time.Second        // moved from magic number
+const reconnectMaxDelay = 30 * time.Second // for exponential backoff
 
 var mentionRegex *regexp.Regexp
 
@@ -69,13 +73,13 @@ type model struct {
 
 	sending bool // NEW: sending message feedback
 
-	conn     *websocket.Conn // persistent WebSocket connection
-	msgChan  chan tea.Msg    // channel for incoming messages from WS goroutine
-	quitChan chan struct{}   // signal for shutdown
-	quitOnce sync.Once
-	ctx      context.Context
-	cancel   context.CancelFunc
-	wg       sync.WaitGroup
+	conn    *websocket.Conn // persistent WebSocket connection
+	msgChan chan tea.Msg    // channel for incoming messages from WS goroutine
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
+
+	reconnectDelay time.Duration // for exponential backoff
 }
 
 type themeStyles struct {
@@ -91,57 +95,50 @@ type themeStyles struct {
 	Other    lipgloss.Style // NEW: other user style
 }
 
+// Base theme style helper
+func baseThemeStyles() themeStyles {
+	return themeStyles{
+		User:     lipgloss.NewStyle().Bold(true),
+		Time:     lipgloss.NewStyle().Faint(true),
+		Msg:      lipgloss.NewStyle(),
+		Banner:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+		Box:      lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#AAAAAA")),
+		Mention:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
+		UserList: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#AAAAAA")).Padding(0, 1),
+		Me:       lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true),
+		Other:    lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")),
+	}
+}
+
 func getThemeStyles(theme string) themeStyles {
+	s := baseThemeStyles()
 	switch theme {
 	case "slack":
-		return themeStyles{
-			User:     lipgloss.NewStyle().Foreground(lipgloss.Color("#36C5F0")).Bold(true),
-			Time:     lipgloss.NewStyle().Foreground(lipgloss.Color("#999999")),
-			Msg:      lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
-			Banner:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
-			Box:      lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#36C5F0")),
-			Mention:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FF00FF")),
-			UserList: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#36C5F0")).Padding(0, 1),
-			Me:       lipgloss.NewStyle().Foreground(lipgloss.Color("#36C5F0")).Bold(true),
-			Other:    lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")),
-		}
+		s.User = s.User.Foreground(lipgloss.Color("#36C5F0"))
+		s.Time = s.Time.Foreground(lipgloss.Color("#999999")).Faint(false)
+		s.Msg = s.Msg.Foreground(lipgloss.Color("#FFFFFF"))
+		s.Box = s.Box.BorderForeground(lipgloss.Color("#36C5F0"))
+		s.Mention = s.Mention.Foreground(lipgloss.Color("#FF00FF"))
+		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#36C5F0"))
+		s.Me = s.Me.Foreground(lipgloss.Color("#36C5F0"))
 	case "discord":
-		return themeStyles{
-			User:     lipgloss.NewStyle().Foreground(lipgloss.Color("#7289DA")).Bold(true),
-			Time:     lipgloss.NewStyle().Foreground(lipgloss.Color("#99AAB5")),
-			Msg:      lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
-			Banner:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
-			Box:      lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#7289DA")),
-			Mention:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
-			UserList: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#7289DA")).Padding(0, 1),
-			Me:       lipgloss.NewStyle().Foreground(lipgloss.Color("#7289DA")).Bold(true),
-			Other:    lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")),
-		}
+		s.User = s.User.Foreground(lipgloss.Color("#7289DA"))
+		s.Time = s.Time.Foreground(lipgloss.Color("#99AAB5")).Faint(false)
+		s.Msg = s.Msg.Foreground(lipgloss.Color("#FFFFFF"))
+		s.Box = s.Box.BorderForeground(lipgloss.Color("#7289DA"))
+		s.Mention = s.Mention.Foreground(lipgloss.Color("#FFD700"))
+		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#7289DA"))
+		s.Me = s.Me.Foreground(lipgloss.Color("#7289DA"))
 	case "aim":
-		return themeStyles{
-			User:     lipgloss.NewStyle().Foreground(lipgloss.Color("#FFCC00")).Bold(true),
-			Time:     lipgloss.NewStyle().Foreground(lipgloss.Color("#00AEEF")),
-			Msg:      lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")),
-			Banner:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
-			Box:      lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#FFCC00")),
-			Mention:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
-			UserList: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#FFCC00")).Padding(0, 1),
-			Me:       lipgloss.NewStyle().Foreground(lipgloss.Color("#FFCC00")).Bold(true),
-			Other:    lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")),
-		}
-	default:
-		return themeStyles{
-			User:     lipgloss.NewStyle().Bold(true),
-			Time:     lipgloss.NewStyle().Faint(true),
-			Msg:      lipgloss.NewStyle(),
-			Banner:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
-			Box:      lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#AAAAAA")),
-			Mention:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
-			UserList: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#AAAAAA")).Padding(0, 1),
-			Me:       lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true),
-			Other:    lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")),
-		}
+		s.User = s.User.Foreground(lipgloss.Color("#FFCC00"))
+		s.Time = s.Time.Foreground(lipgloss.Color("#00AEEF")).Faint(false)
+		s.Msg = s.Msg.Foreground(lipgloss.Color("#FFFFFF"))
+		s.Box = s.Box.BorderForeground(lipgloss.Color("#FFCC00"))
+		s.Mention = s.Mention.Foreground(lipgloss.Color("#FFD700"))
+		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#FFCC00"))
+		s.Me = s.Me.Foreground(lipgloss.Color("#FFCC00"))
 	}
+	return s
 }
 
 func renderMessages(msgs []shared.Message, styles themeStyles, username string, width int, twentyFourHour bool) string {
@@ -239,7 +236,7 @@ func (m *model) connectWebSocket(serverURL string) error {
 	})
 	// Start ping goroutine
 	go func() {
-		ticker := time.NewTicker(50 * time.Second)
+		ticker := time.NewTicker(pingPeriod)
 		defer ticker.Stop()
 		for {
 			select {
@@ -287,17 +284,12 @@ func (m *model) closeWebSocket() {
 	if m.conn != nil {
 		m.conn.Close()
 	}
-	if m.quitChan != nil {
-		m.quitOnce.Do(func() {
-			close(m.quitChan)
-		})
-	}
 	m.wg.Wait()
 }
 
 func (m *model) Init() tea.Cmd {
 	m.msgChan = make(chan tea.Msg, 10) // buffered to avoid blocking
-	m.quitChan = make(chan struct{})
+	m.reconnectDelay = time.Second     // reset on each Init
 	return func() tea.Msg {
 		err := m.connectWebSocket(m.cfg.ServerURL)
 		if err != nil {
@@ -312,6 +304,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case wsConnected:
 		m.connected = true
 		m.banner = "✅ Connected to server!"
+		m.reconnectDelay = time.Second // reset on success
 		return m, m.listenWebSocket()
 	case wsMsg:
 		if v.Type == "userlist" {
@@ -338,7 +331,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.connected = false
 		m.banner = "🚫 Connection lost. Reconnecting..."
 		m.closeWebSocket()
-		return m, tea.Tick(time.Second*2, func(time.Time) tea.Msg {
+		// Exponential backoff for reconnect
+		delay := m.reconnectDelay
+		if delay < reconnectMaxDelay {
+			m.reconnectDelay *= 2
+			if m.reconnectDelay > reconnectMaxDelay {
+				m.reconnectDelay = reconnectMaxDelay
+			}
+		}
+		log.Printf("Reconnect in %v", delay)
+		return m, tea.Tick(delay, func(time.Time) tea.Msg {
 			return m.Init()()
 		})
 	case tea.KeyMsg:
@@ -548,18 +550,18 @@ func sendClearDB(adminBaseURL, adminKey string) error {
 	}
 	req, err := http.NewRequest("POST", adminBaseURL+"/clear", nil)
 	if err != nil {
-		fmt.Println("sendClearDB request error:", err)
+		log.Printf("sendClearDB request error: %v", err)
 		return err
 	}
 	req.Header.Set("X-Admin-Key", adminKey)
-	fmt.Println("sendClearDB: sending POST to", adminBaseURL+"/clear")
+	log.Printf("sendClearDB: sending POST to %s/clear", adminBaseURL)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println("sendClearDB error:", err)
+		log.Printf("sendClearDB error: %v", err)
 		return err
 	}
 	defer resp.Body.Close()
-	fmt.Println("sendClearDB response status:", resp.StatusCode)
+	log.Printf("sendClearDB response status: %d", resp.StatusCode)
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("server returned %d", resp.StatusCode)
 	}
@@ -603,14 +605,14 @@ func main() {
 		cfg.Theme = *theme
 	}
 	if cfg.Username == "" {
-		fmt.Println("Username required. Use --username or set in config file.")
+		log.Printf("Username required. Use --username or set in config file.")
 		return
 	}
 	if cfg.ServerURL == "" {
 		cfg.ServerURL = "ws://localhost:9090/ws"
 	}
 	if !strings.HasPrefix(cfg.ServerURL, "ws://") && !strings.HasPrefix(cfg.ServerURL, "wss://") {
-		fmt.Println("Warning: --server should be a WebSocket URL (ws:// or wss://), not http://")
+		log.Printf("Warning: --server should be a WebSocket URL (ws:// or wss://), not http://")
 	}
 	if cfg.AdminURL == "" {
 		cfg.AdminURL = "http://localhost:9090"
@@ -651,7 +653,7 @@ func main() {
 	}()
 
 	if _, err := p.Run(); err != nil {
-		fmt.Println("Error running program:", err)
+		log.Printf("Error running program: %v", err)
 		os.Exit(1)
 	}
 	m.wg.Wait() // Wait for all goroutines to finish
