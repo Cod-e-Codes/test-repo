@@ -47,7 +47,6 @@
 - [Security](#security)
 - [Tech Stack](#tech-stack)
 - [Troubleshooting](#troubleshooting)
-- [Next Steps](#next-steps)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -256,25 +255,6 @@ Modular architecture: client, server logic, and shared types are separated for c
   - All admin commands (like `:cleardb`) are now fully functional for authenticated admins.
 
 *If reporting a bug, please include your version or commit hash.*
-
----
-
-## Next Steps
-
-### ✅ Completed or In Progress
-
-- [x] **Admin username restriction for privileged commands** *(Fully implemented — admin commands are now functional and secure)*
-- [x] **User list with live updates** *(Fully implemented; fixed-width styling pending optional)*
-- [x] **Regex-based mention highlighting (full-message)** *(Implemented — highlights entire message if `@username` found)*
-- [x] **Graceful shutdown and panic prevention** *(Implemented — server handles disconnects and client exits cleanly)*
-- [x] **ASCII art banner on server startup with connection info** *(Implemented)*
-- [x] **Message cap and efficient memory use** (Implemented)
-  The server enforces a 1000-message cap (deletes oldest), and the client keeps the last 100 messages in memory.
-
-### 🛠️ Still To Do
-
-- [ ] **UI polish: styled '+N more' line, userListWidth constant**
-  Visual improvements to make layout and overflow cleaner.
 
 ---
 
