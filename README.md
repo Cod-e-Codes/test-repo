@@ -53,9 +53,6 @@
 - [Contributing](#contributing)
 - [License](#license)
 
-> ⚡ **Admin features require authentication.**  
-> Admin commands (like `:cleardb`) are fully functional for authenticated admins. The admin system is stable and production-ready.
-
 ---
 
 ## What is this?
