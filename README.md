@@ -1,5 +1,5 @@
 <details>
-<summary>✨ marchat startup banner</summary>
+<summary># marchat 🧃</summary>
 
 ```
 ⢀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣶⣶⣶⣶⣶⣶⣶⣶⣶⣦⡀⠀⠀⠀⠀⠀⠀⣀⣀⣀⣀⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀  
@@ -31,8 +31,6 @@
 ```
 
 </details>
-
-# marchat 🧃
 
 [![Go Version](https://img.shields.io/badge/go-1.24%2B-blue?logo=go)](https://go.dev/dl/)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
