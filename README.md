@@ -54,7 +54,7 @@
 - [License](#license)
 
 > ⚠️ **Admin features require authentication.**  
-> Only users listed as admins (via `--admin` flags, case-insensitive) and providing the correct key can use admin commands. All admin actions are performed over WebSocket.
+> Admin commands (like `:cleardb`) are now fully functional for authenticated admins. The admin system is stable but under active testing—please report any issues you find.
 
 ---
 
@@ -231,7 +231,7 @@ Modular architecture: client, server logic, and shared types are separated for c
 
 ## Known Issues
 
-- Admin functionality is under active testing; if you encounter any issues or unexpected behavior, please open an issue on GitHub.
+- Admin functionality is stable and fully functional for authenticated admins, but is under active testing. If you encounter any issues or unexpected behavior, please open an issue on GitHub.
 
 ---
 
