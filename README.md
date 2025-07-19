@@ -26,6 +26,7 @@ A modern, retro-inspired terminal chat app for father-son coding sessions. Built
 - **Polished UI**: User list width is consistent, and the '+N more' line is styled (italic/dimmed) for clarity
 - **Admin Security**: Only the configured admin user can connect as `admin` (see below)
 - **Separate Admin HTTP URL**: For admin commands like `:cleardb`, you must provide the HTTP(S) base URL via `--admin-url` (see below)
+- **ASCII Art Banner**: Server displays a beautiful banner on startup with connection URLs and admin info
 
 ---
 
@@ -160,6 +161,7 @@ marchat/
 - [x] Graceful shutdown and panic prevention
 - [x] UI polish: userListWidth constant, styled '+N more' line
 - [x] Separate admin HTTP URL for privileged commands
+- [x] ASCII art banner on server startup with connection info
 
 ---
 
