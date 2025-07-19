@@ -100,7 +100,12 @@ cd marchat
 go mod tidy
 ```
 
-### 3. Run the server (port 9090, WebSocket)
+### 3. Build the project
+```sh
+go build ./...
+```
+
+### 4. Run the server (port 9090, WebSocket)
 ```sh
 go run cmd/server/main.go
 ```
@@ -110,7 +115,7 @@ go run cmd/server/main.go
 go run cmd/server/main.go --admin-username YourName --admin-key your-admin-key
 ```
 
-### 4. (Optional) Create a config file
+### 5. (Optional) Create a config file
 Create `config.json` in the project root:
 ```json
 {
@@ -123,7 +128,7 @@ Create `config.json` in the project root:
 
 *If you don't have a config file, simply create a new `config.json` in your project root using the example above. The client will look for this file by default. You can also specify a different path with the `--config` flag.*
 
-### 5. Run the client
+### 6. Run the client
 ```sh
 # With flags:
 go run client/main.go --username Cody --theme patriot --server ws://localhost:9090/ws
