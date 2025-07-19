@@ -159,19 +159,27 @@ cloudflared tunnel --url http://localhost:9090
 This will give you a public `https://` URL you can use for your client/server.
 
 ### 3. Update your client config
-- Use the public `wss://.../ws` URL as your server address.
+
+* After running the tunnel, Cloudflare will give you a public `https://your-tunnel.trycloudflare.com` URL.
+* To use it in your client, convert it to a WebSocket URL by replacing `https://` with `wss://` and appending `/ws`.
 
 **Example:**
+If Cloudflare gives you:
 
-**Server:**
-```sh
-go run cmd/server/main.go --admin Cody --admin Crystal --admin-key your-admin-key
-cloudflared tunnel --url http://localhost:9090
+```
+https://bold-forest-cat.trycloudflare.com
 ```
 
-**Client:**
+You should use:
+
+```
+wss://bold-forest-cat.trycloudflare.com/ws
+```
+
+in your client command like this:
+
 ```sh
-go run client/main.go --username Cody --admin --admin-key your-admin-key --server wss://your-tunnel-url.trycloudflare.com/ws
+go run client/main.go --username Cody --admin --admin-key your-admin-key --server wss://bold-forest-cat.trycloudflare.com/ws
 ```
 
 **Note:**
