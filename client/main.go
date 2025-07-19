@@ -91,20 +91,29 @@ type themeStyles struct {
 	UserList lipgloss.Style // NEW: user list panel
 	Me       lipgloss.Style // NEW: current user style
 	Other    lipgloss.Style // NEW: other user style
+
+	Background lipgloss.Style // NEW: main background
+	Header     lipgloss.Style // NEW: header background
+	Footer     lipgloss.Style // NEW: footer background
+	Input      lipgloss.Style // NEW: input background
 }
 
 // Base theme style helper
 func baseThemeStyles() themeStyles {
 	return themeStyles{
-		User:     lipgloss.NewStyle().Bold(true),
-		Time:     lipgloss.NewStyle().Faint(true),
-		Msg:      lipgloss.NewStyle(),
-		Banner:   lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
-		Box:      lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#AAAAAA")),
-		Mention:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
-		UserList: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#AAAAAA")).Padding(0, 1),
-		Me:       lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true),
-		Other:    lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")),
+		User:       lipgloss.NewStyle().Bold(true),
+		Time:       lipgloss.NewStyle().Faint(true),
+		Msg:        lipgloss.NewStyle(),
+		Banner:     lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
+		Box:        lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#AAAAAA")),
+		Mention:    lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
+		UserList:   lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#AAAAAA")).Padding(0, 1),
+		Me:         lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true),
+		Other:      lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")),
+		Background: lipgloss.NewStyle(),
+		Header:     lipgloss.NewStyle(),
+		Footer:     lipgloss.NewStyle(),
+		Input:      lipgloss.NewStyle(),
 	}
 }
 
@@ -119,6 +128,11 @@ func getThemeStyles(theme string) themeStyles {
 		s.Mention = s.Mention.Foreground(lipgloss.Color("#FFD700")) // Gold
 		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#002868"))
 		s.Me = s.Me.Foreground(lipgloss.Color("#BF0A30"))
+		// Background and UI
+		s.Background = lipgloss.NewStyle().Background(lipgloss.Color("#00203F")) // Deep navy
+		s.Header = lipgloss.NewStyle().Background(lipgloss.Color("#BF0A30")).Foreground(lipgloss.Color("#FFFFFF")).Bold(true)
+		s.Footer = lipgloss.NewStyle().Background(lipgloss.Color("#00203F")).Foreground(lipgloss.Color("#FFD700"))
+		s.Input = lipgloss.NewStyle().Background(lipgloss.Color("#002868")).Foreground(lipgloss.Color("#FFFFFF"))
 	case "retro":
 		s.User = s.User.Foreground(lipgloss.Color("#FF8800"))              // Orange
 		s.Time = s.Time.Foreground(lipgloss.Color("#00FF00")).Faint(false) // Green
@@ -127,6 +141,11 @@ func getThemeStyles(theme string) themeStyles {
 		s.Mention = s.Mention.Foreground(lipgloss.Color("#00FFFF")) // Cyan
 		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#FF8800"))
 		s.Me = s.Me.Foreground(lipgloss.Color("#FF8800"))
+		// Background and UI
+		s.Background = lipgloss.NewStyle().Background(lipgloss.Color("#181818")) // Retro dark
+		s.Header = lipgloss.NewStyle().Background(lipgloss.Color("#FF8800")).Foreground(lipgloss.Color("#181818")).Bold(true)
+		s.Footer = lipgloss.NewStyle().Background(lipgloss.Color("#181818")).Foreground(lipgloss.Color("#00FF00"))
+		s.Input = lipgloss.NewStyle().Background(lipgloss.Color("#222200")).Foreground(lipgloss.Color("#FFFFAA"))
 	case "modern":
 		s.User = s.User.Foreground(lipgloss.Color("#4F8EF7"))              // Blue
 		s.Time = s.Time.Foreground(lipgloss.Color("#A0A0A0")).Faint(false) // Gray
@@ -135,6 +154,11 @@ func getThemeStyles(theme string) themeStyles {
 		s.Mention = s.Mention.Foreground(lipgloss.Color("#FF5F5F")) // Red
 		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#4F8EF7"))
 		s.Me = s.Me.Foreground(lipgloss.Color("#4F8EF7"))
+		// Background and UI
+		s.Background = lipgloss.NewStyle().Background(lipgloss.Color("#181C24")) // Modern dark blue-gray
+		s.Header = lipgloss.NewStyle().Background(lipgloss.Color("#4F8EF7")).Foreground(lipgloss.Color("#FFFFFF")).Bold(true)
+		s.Footer = lipgloss.NewStyle().Background(lipgloss.Color("#181C24")).Foreground(lipgloss.Color("#4F8EF7"))
+		s.Input = lipgloss.NewStyle().Background(lipgloss.Color("#23272E")).Foreground(lipgloss.Color("#E0E0E0"))
 	}
 	return s
 }
@@ -474,25 +498,16 @@ func (m *model) listenWebSocket() tea.Cmd {
 
 func (m *model) View() string {
 	// Header
-	headerStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color("#36C5F0")).
-		Foreground(lipgloss.Color("230")).
-		Bold(true).
-		Padding(0, 1)
-	footerStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color("#222222")).
-		Foreground(lipgloss.Color("#36C5F0")).
-		Padding(0, 1)
-
-	totalWidth := m.viewport.Width + userListWidth + 4 // chat + userlist + borders
-	header := headerStyle.Width(totalWidth).Render(" marchat ")
-
-	cmds := ":clear :theme NAME :time"
-	if *isAdmin {
-		cmds += " :cleardb"
-	}
-	footer := footerStyle.Width(totalWidth).Render(
-		"[Enter] Send  [Up/Down] Scroll  [Esc/Ctrl+C] Quit  Commands: " + cmds,
+	header := m.styles.Header.Width(m.viewport.Width + userListWidth + 4).Render(" marchat ")
+	footer := m.styles.Footer.Width(m.viewport.Width + userListWidth + 4).Render(
+		"[Enter] Send  [Up/Down] Scroll  [Esc/Ctrl+C] Quit  Commands: " +
+			func() string {
+				cmds := ":clear :theme NAME :time"
+				if *isAdmin {
+					cmds += " :cleardb"
+				}
+				return cmds
+			}(),
 	)
 
 	// Banner
@@ -506,7 +521,7 @@ func (m *model) View() string {
 				bannerText = "⏳ Sending..."
 			}
 		}
-		bannerBox = lipgloss.NewStyle().
+		bannerBox = m.styles.Banner.
 			Width(m.viewport.Width).
 			PaddingLeft(1).
 			Background(lipgloss.Color("#FF5F5F")).
@@ -516,16 +531,13 @@ func (m *model) View() string {
 	}
 
 	// Chat and user list layout
-	chatBoxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("#36C5F0")).
-		Padding(0, 1)
+	chatBoxStyle := m.styles.Box
 	chatPanel := chatBoxStyle.Width(m.viewport.Width).Render(m.viewport.View())
 	userPanel := m.userListViewport.View()
 	row := lipgloss.JoinHorizontal(lipgloss.Top, userPanel, chatPanel)
 
 	// Input
-	inputPanel := chatBoxStyle.Width(m.viewport.Width).Render(m.textarea.View())
+	inputPanel := m.styles.Input.Width(m.viewport.Width).Render(m.textarea.View())
 
 	// Compose layout
 	ui := lipgloss.JoinVertical(lipgloss.Left,
@@ -535,7 +547,7 @@ func (m *model) View() string {
 		inputPanel,
 		footer,
 	)
-	return ui
+	return m.styles.Background.Render(ui)
 }
 
 func renderEmojis(s string) string {
