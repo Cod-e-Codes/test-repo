@@ -141,6 +141,7 @@ func ServeWs(hub *Hub, db *sql.DB, adminUsername string) http.HandlerFunc {
 			return
 		}
 		client := &Client{hub: hub, conn: conn, send: make(chan interface{}, 256), db: db, username: username}
+		log.Printf("Client %s connected", username)
 		hub.register <- client
 
 		// Send recent messages to new client

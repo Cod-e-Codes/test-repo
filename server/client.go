@@ -41,10 +41,10 @@ func (c *Client) readPump() {
 		err := c.conn.ReadJSON(&msg)
 		if err != nil {
 			// Check if this is a normal disconnect vs an actual error
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure) {
 				log.Printf("Client %s disconnected unexpectedly: %v", c.username, err)
 			} else {
-				log.Printf("Client %s disconnected", c.username)
+				log.Printf("Client %s disconnected normally", c.username)
 			}
 			break
 		}
