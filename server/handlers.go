@@ -114,13 +114,17 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string) http.Han
 		var hs shared.Handshake
 		err = conn.ReadJSON(&hs)
 		if err != nil {
-			conn.WriteMessage(websocket.CloseMessage, []byte("Invalid handshake"))
+			if err := conn.WriteMessage(websocket.CloseMessage, []byte("Invalid handshake")); err != nil {
+				log.Printf("WriteMessage error: %v", err)
+			}
 			conn.Close()
 			return
 		}
 		username := strings.TrimSpace(hs.Username)
 		if username == "" {
-			conn.WriteMessage(websocket.CloseMessage, []byte("Username required"))
+			if err := conn.WriteMessage(websocket.CloseMessage, []byte("Username required")); err != nil {
+				log.Printf("WriteMessage error: %v", err)
+			}
 			conn.Close()
 			return
 		}
@@ -128,7 +132,9 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string) http.Han
 		isAdmin := false
 		if hs.Admin {
 			if _, ok := auth.admins[lu]; !ok {
-				conn.WriteMessage(websocket.CloseMessage, []byte("Not an admin user"))
+				if err := conn.WriteMessage(websocket.CloseMessage, []byte("Not an admin user")); err != nil {
+					log.Printf("WriteMessage error: %v", err)
+				}
 				conn.Close()
 				return
 			}

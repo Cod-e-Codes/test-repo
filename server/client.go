@@ -29,9 +29,13 @@ func (c *Client) readPump() {
 		c.conn.Close()
 	}()
 	c.conn.SetReadLimit(512)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		log.Printf("SetReadDeadline error: %v", err)
+	}
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+			log.Printf("SetReadDeadline error: %v", err)
+		}
 		return nil
 	})
 	for {
@@ -83,7 +87,9 @@ func (c *Client) writePump() {
 		case msg, ok := <-c.send:
 			if !ok {
 				// Channel closed, send close message
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					log.Printf("WriteMessage error: %v", err)
+				}
 				return
 			}
 			switch v := msg.(type) {
