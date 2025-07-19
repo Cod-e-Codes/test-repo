@@ -40,7 +40,12 @@ func (c *Client) readPump() {
 		var msg shared.Message
 		err := c.conn.ReadJSON(&msg)
 		if err != nil {
-			log.Println("readPump error:", err)
+			// Check if this is a normal disconnect vs an actual error
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("Client %s disconnected unexpectedly: %v", c.username, err)
+			} else {
+				log.Printf("Client %s disconnected", c.username)
+			}
 			break
 		}
 		// Handle :cleardb command
@@ -88,21 +93,21 @@ func (c *Client) writePump() {
 			case shared.Message:
 				err := c.conn.WriteJSON(v)
 				if err != nil {
-					log.Println("writePump error:", err)
+					log.Printf("Failed to send message to %s: %v", c.username, err)
 					return
 				}
 			case WSMessage:
 				err := c.conn.WriteJSON(v)
 				if err != nil {
-					log.Println("writePump error:", err)
+					log.Printf("Failed to send system message to %s: %v", c.username, err)
 					return
 				}
 			default:
-				log.Println("writePump: unknown message type")
+				log.Printf("Unknown message type for client %s", c.username)
 			}
 		case <-ticker.C:
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Println("writePump ping error:", err)
+				log.Printf("Failed to send ping to %s: %v", c.username, err)
 				return
 			}
 		}
