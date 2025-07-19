@@ -47,6 +47,11 @@ func InsertMessage(db *sql.DB, msg shared.Message) {
 	if err != nil {
 		log.Println("Insert error:", err)
 	}
+	// Enforce message cap: keep only the most recent 1000 messages
+	_, err = db.Exec(`DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT 1000)`)
+	if err != nil {
+		log.Println("Error enforcing message cap:", err)
+	}
 }
 
 func GetRecentMessages(db *sql.DB) []shared.Message {
