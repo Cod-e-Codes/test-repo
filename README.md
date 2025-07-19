@@ -283,9 +283,6 @@ Modular architecture: client, server logic, and shared types are separated for c
 - [ ] **UI polish: styled '+N more' line, userListWidth constant**
   Visual improvements to make layout and overflow cleaner.
 
-- [ ] **Fix admin functionality**
-  The `:cleardb` command and admin URL features need to be debugged and made functional.
-
 ---
 
 ## Contributing
