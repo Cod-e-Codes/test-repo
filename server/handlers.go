@@ -139,7 +139,9 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string) http.Han
 				return
 			}
 			if hs.AdminKey != auth.adminKey {
-				conn.WriteMessage(websocket.CloseMessage, []byte("Invalid admin key"))
+				if err := conn.WriteMessage(websocket.CloseMessage, []byte("Invalid admin key")); err != nil {
+					log.Printf("WriteMessage error: %v", err)
+				}
 				conn.Close()
 				return
 			}
@@ -148,7 +150,9 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string) http.Han
 		// Check for duplicate username
 		for client := range hub.clients {
 			if strings.EqualFold(client.username, username) {
-				conn.WriteMessage(websocket.CloseMessage, []byte("Username already taken"))
+				if err := conn.WriteMessage(websocket.CloseMessage, []byte("Username already taken")); err != nil {
+					log.Printf("WriteMessage error: %v", err)
+				}
 				conn.Close()
 				return
 			}
