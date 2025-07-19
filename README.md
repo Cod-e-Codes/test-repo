@@ -178,6 +178,7 @@ marchat/
 │   └── schema.sql
 ├── shared/           # Shared types
 │   └── types.go
+├── config.json       # Example or user config file (see Quick Start)
 ├── go.mod
 ├── go.sum
 └── README.md
