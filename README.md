@@ -40,7 +40,6 @@
 
 - [Introduction](#introduction)
 - [Features](#features)
-  - [At a Glance](#features-at-a-glance)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
 - [Project Structure](#project-structure)
