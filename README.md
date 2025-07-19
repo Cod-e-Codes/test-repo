@@ -53,8 +53,6 @@
 - [Contributing](#contributing)
 - [License](#license)
 
-A modern, retro-inspired terminal chat app for father-son coding sessions. Built with Go, Bubble Tea, and SQLite (pure Go driver, no C compiler required). Fast, hackable, and ready for remote pair programming.
-
 > ⚠️ **Admin features are still under construction.**  
 > Using `admin` as a username is currently **not allowed**—the server will reject it, even if the correct admin key is provided. Admin commands are not yet functional.
 
