@@ -7,7 +7,7 @@ import (
 	"marchat/shared"
 	"net/http"
 	"sort"
-	"time"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
@@ -89,59 +89,61 @@ func (h *Hub) broadcastUserList() {
 	}
 }
 
-func ClearHandler(db *sql.DB, hub *Hub, adminKey string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Admin-Key") != adminKey {
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("Forbidden: invalid admin key"))
-			return
-		}
-		err := ClearMessages(db)
-		if err != nil {
-			http.Error(w, "Failed to clear messages", http.StatusInternalServerError)
-			return
-		}
-		// Broadcast a system message about clearing chat
-		systemMsg := shared.Message{
-			Sender:    "System",
-			Content:   "Chat history cleared by admin.",
-			CreatedAt: time.Now(),
-		}
-		hub.broadcast <- systemMsg
-		w.WriteHeader(http.StatusOK)
-	}
+type adminAuth struct {
+	admins   map[string]struct{}
+	adminKey string
 }
 
-func ServeWs(hub *Hub, db *sql.DB, adminUsername string) http.HandlerFunc {
+func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string) http.HandlerFunc {
+	auth := adminAuth{admins: make(map[string]struct{}), adminKey: adminKey}
+	for _, u := range adminList {
+		auth.admins[strings.ToLower(u)] = struct{}{}
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		username := r.URL.Query().Get("username")
-		realUser := r.URL.Query().Get("real_user")
-		if username == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Username required"))
-			return
-		}
-		// Only allow adminUsername to connect as 'admin'
-		if username == "admin" && realUser != adminUsername {
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("Unauthorized admin username"))
-			return
-		}
-		// Check for duplicate username
-		for client := range hub.clients {
-			if client.username == username {
-				w.WriteHeader(http.StatusConflict)
-				w.Write([]byte("Username already taken"))
-				return
-			}
-		}
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Println("WebSocket upgrade error:", err)
 			return
 		}
-		client := &Client{hub: hub, conn: conn, send: make(chan interface{}, 256), db: db, username: username}
-		log.Printf("Client %s connected", username)
+		// Expect handshake as first message
+		var hs shared.Handshake
+		err = conn.ReadJSON(&hs)
+		if err != nil {
+			conn.WriteMessage(websocket.CloseMessage, []byte("Invalid handshake"))
+			conn.Close()
+			return
+		}
+		username := strings.TrimSpace(hs.Username)
+		if username == "" {
+			conn.WriteMessage(websocket.CloseMessage, []byte("Username required"))
+			conn.Close()
+			return
+		}
+		lu := strings.ToLower(username)
+		isAdmin := false
+		if hs.Admin {
+			if _, ok := auth.admins[lu]; !ok {
+				conn.WriteMessage(websocket.CloseMessage, []byte("Not an admin user"))
+				conn.Close()
+				return
+			}
+			if hs.AdminKey != auth.adminKey {
+				conn.WriteMessage(websocket.CloseMessage, []byte("Invalid admin key"))
+				conn.Close()
+				return
+			}
+			isAdmin = true
+		}
+		// Check for duplicate username
+		for client := range hub.clients {
+			if strings.EqualFold(client.username, username) {
+				conn.WriteMessage(websocket.CloseMessage, []byte("Username already taken"))
+				conn.Close()
+				return
+			}
+		}
+		client := &Client{hub: hub, conn: conn, send: make(chan interface{}, 256), db: db, username: username, isAdmin: isAdmin}
+		log.Printf("Client %s connected (admin=%v)", username, isAdmin)
 		hub.register <- client
 
 		// Send recent messages to new client

@@ -45,6 +45,7 @@ var (
 	theme      = flag.String("theme", "", "Theme (overrides config)")
 )
 
+var isAdmin = flag.Bool("admin", false, "Connect as admin (requires --admin-key)")
 var adminKey = flag.String("admin-key", "", "Admin key for privileged commands like :cleardb")
 var adminURL = flag.String("admin-url", "", "Base HTTP(S) URL for admin commands (e.g. https://yourserver)")
 
@@ -211,9 +212,6 @@ type UserList struct {
 func (m *model) connectWebSocket(serverURL string) error {
 	escapedUsername := url.QueryEscape(m.cfg.Username)
 	fullURL := serverURL + "?username=" + escapedUsername
-	if m.cfg.Username == "admin" {
-		fullURL += "&real_user=" + escapedUsername
-	}
 	conn, _, err := websocket.DefaultDialer.Dial(fullURL, nil)
 	if err != nil {
 		return err
@@ -223,6 +221,18 @@ func (m *model) connectWebSocket(serverURL string) error {
 	m.banner = "✅ Connected to server!"
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 	m.wg.Add(1)
+	// Send handshake as first message
+	handshake := shared.Handshake{
+		Username: m.cfg.Username,
+		Admin:    *isAdmin,
+		AdminKey: "",
+	}
+	if *isAdmin {
+		handshake.AdminKey = *adminKey
+	}
+	if err := m.conn.WriteJSON(handshake); err != nil {
+		return err
+	}
 	// Set pong handler
 	m.conn.SetPongHandler(func(appData string) error {
 		return nil
@@ -371,6 +381,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if text == ":cleardb" {
+				if !*isAdmin {
+					m.banner = "You are not authenticated as admin."
+					m.textarea.SetValue("")
+					return m, nil
+				}
 				err := sendClearDB(m.cfg.AdminURL, *adminKey)
 				if err != nil {
 					m.banner = "Failed to clear DB: " + err.Error()
@@ -463,7 +478,7 @@ func (m *model) View() string {
 	header := headerStyle.Width(totalWidth).Render(" marchat ")
 
 	cmds := ":clear :theme NAME :time"
-	if m.cfg.Username == "admin" {
+	if *isAdmin {
 		cmds += " :cleardb"
 	}
 	footer := footerStyle.Width(totalWidth).Render(

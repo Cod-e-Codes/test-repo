@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"log"
 	"marchat/shared"
-	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -15,14 +14,13 @@ const (
 	pingPeriod = (pongWait * 9) / 10 // send pings at 90% of pongWait
 )
 
-const adminSecret = "changeme" // Set this securely in production
-
 type Client struct {
 	hub      *Hub
 	conn     *websocket.Conn
 	send     chan interface{}
 	db       *sql.DB
 	username string
+	isAdmin  bool // new
 }
 
 func (c *Client) readPump() {
@@ -49,9 +47,8 @@ func (c *Client) readPump() {
 			break
 		}
 		// Handle :cleardb command
-		if msg.Content == ":cleardb" || strings.HasPrefix(msg.Content, ":cleardb ") {
-			parts := strings.Fields(msg.Content)
-			if msg.Sender == "admin" && (len(parts) == 1 || (len(parts) == 2 && parts[1] == adminSecret)) {
+		if msg.Content == ":cleardb" {
+			if c.isAdmin {
 				log.Println("[ADMIN] Clearing message database via WebSocket...")
 				err := ClearMessages(c.db)
 				if err != nil {
@@ -65,7 +62,7 @@ func (c *Client) readPump() {
 					}
 				}
 			} else {
-				log.Printf("Unauthorized cleardb attempt by %s\n", msg.Sender)
+				log.Printf("Unauthorized cleardb attempt by %s\n", c.username)
 			}
 			continue // Don't insert this as a normal message
 		}

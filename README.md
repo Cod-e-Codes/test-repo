@@ -198,25 +198,24 @@ Modular architecture: client, server logic, and shared types are separated for c
 ## Admin Mode: Privileged Commands & Security
 
 > Admin commands like `:cleardb` require:
-> - The `admin` username (only allowed for the configured user; currently, all `admin` logins are rejected)
-> - A valid `--admin-key` and `--admin-url`
-> 
-> ⚠️ Admin features are under construction — some commands are non-functional, and connecting as `admin` is currently disabled.
+> - The `--admin` flag and a valid `--admin-key` (case-insensitive username match)
+> - Only users listed as admins on the server (via repeated --admin flags) can authenticate as admin
+> - All admin actions are performed over WebSocket (no HTTP endpoints)
 > 
 > ⚠️ **Important:** Do not use the default admin key (`changeme`) in production. Change it immediately to avoid security risks.
 
+- **To launch the server with multiple admins:**
+  ```sh
+  go run cmd/server/main.go --admin Cody --admin Alice --admin-key your-admin-key
+  ```
 - **To connect as admin (WebSocket):**
   ```sh
-  go run client/main.go --username admin --server wss://your-url/ws?real_user=Cody
+  go run client/main.go --username Cody --admin --admin-key your-admin-key --server ws://localhost:9090/ws
   ```
-- **Required for admin commands (like :cleardb) — HTTP base URL:**
-  ```sh
-  --admin-url https://your-url
-  ```
-- All privileged commands (like `:cleardb`) are only available to the admin user, and require the HTTP(S) base URL for admin commands (not the WebSocket URL).
-- Any other user attempting to connect as `admin` will be rejected by the server.
-- **Note:** The `:cleardb` command will POST to `https://your-url/clear` (not the WebSocket URL).
-- Planned improvements: make admin commands fully functional and secure; finalize and document admin HTTP URL behavior.
+- Only authenticated admins can use privileged commands like `:cleardb`.
+- Admin usernames are case-insensitive (e.g. `Cody`, `cody`, and `CODY` are equivalent).
+- The admin key is only sent at handshake, not with every command.
+- The `/clear` HTTP endpoint and all `real_user` logic have been removed for security and simplicity.
 
 ---
 
