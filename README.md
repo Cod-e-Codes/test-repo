@@ -1,53 +1,95 @@
+<details>
+<summary>✨ marchat startup banner</summary>
+
+```
+⢀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣶⣶⣶⣶⣶⣶⣶⣶⣶⣦⡀⠀⠀⠀⠀⠀⠀⣀⣀⣀⣀⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀  
+⣿⣷⠀⠀⣀⣤⣴⣾⣿⡿⣿⣧⣿⣶⣿⣿⣿⣽⣿⣽⣿⣷⣤⣤⣴⣶⣾⣿⣿⡿⠿⠛⠛⠿⣷⡀⢀⣀⣀⣀⣀⡀⠀⠀⠀⠀  
+⠈⣿⣶⣿⣿⣛⣿⣶⣿⣿⣿⣿⣛⣿⣭⣿⣽⣿⣹⣿⣻⣿⡿⠿⠛⠛⠋⠉⠀⢀⣀⣀⣀⣀⣈⣿⠿⠿⠟⠻⠿⢿⡇⠀⠀⠀  
+⠀⢹⣿⣿⣿⣿⡟⣿⣯⣿⣿⣿⣿⢿⣿⢻⣟⣻⡟⢿⠿⣿⣇⣄⣠⣤⣴⣶⣾⣿⡿⠿⠿⠻⠿⠇⠀⣀⣀⣀⣀⣸⡇⠀⠀⠀  
+⠀⠀⢻⣿⣿⣿⣿⡿⣿⡛⣿⣥⣿⣿⣿⣿⢿⡿⣿⣿⣷⣿⣿⢿⣿⠿⠟⠋⠉⠀⢀⣀⣀⣀⣀⡘⣿⣿⠿⠿⠿⢿⡇⠀⠀⠀  
+⠀⠀⠈⣿⡏⢿⣿⣷⣾⣿⡟⢿⣋⣿⣴⣿⣾⣷⣿⣷⣾⣾⣿⡆⠀⣀⣤⣤⣶⣾⣿⠿⠟⠛⠻⠿⣇⣀⣠⣤⣤⣼⡇⠀⠀⠀  
+⠀⠀⠀⠸⣿⡀⢻⣿⣯⣸⣷⣾⡿⠟⠋⠉⠀⠀⠀⠀⠀⠀⠀⠘⣿⣿⠿⠟⠛⠉⢀⣠⣤⣤⣤⣥⣽⡿⠿⠿⠿⠿⡇⠀⠀⠀  
+⠀⠀⠀⠀⢻⣷⠀⢻⣿⠟⠋⠁⠀⢀⣠⣤⣴⣶⣶⣶⣶⣾⣶⣾⡁⣀⣀⣤⣴⣾⣿⠿⠛⠋⠉⠉⢳⣤⣤⣤⣤⣤⣷⠀⠀⠀  
+⠀⠀⠀⠀⠈⣿⣇⠀⣿⣀⣠⣴⣾⣿⡿⠟⠋⠉⠉⠀⠀⠀⠈⠉⣿⠿⠟⠛⠋⠁⢀⣤⣶⣶⣶⣶⣾⠟⠛⠋⠉⠉⢿⠀⠀⠀  
+⠀⠀⠀⠀⠀⠘⣿⡆⠸⣿⡿⠟⠋⠁⢀⣀⣤⣴⣶⣶⣶⣶⣶⣾⣇⣀⣤⣤⣶⣾⡿⠛⠋⠉⠉⠉⠉⣤⣴⣶⣶⠶⢿⣇⠀⠀  
+⠀⠀⠀⠀⠀⠀⢹⣿⡀⣿⡄⣀⣤⣾⡿⠟⠋⠉⠉⠁⠀⠀⠀⠀⡿⠛⠛⠛⠉⠁⣀⣴⣾⣿⣿⣿⣿⡟⠉⠀⠀⣀⣀⣿⡀⠀  
+⠀⠀⠀⠀⠀⠀⠀⢿⣧⢸⣿⠟⠋⠁⣀⣠⣤⣴⣶⣾⣿⣿⣿⣿⣧⣤⣤⣶⠾⠟⠛⠉⢁⣀⣀⣀⣀⢰⣶⣿⠿⠿⠿⠿⣧⠀  
+⠀⠀⠀⠀⠀⠀⠀⠈⣿⡆⣿⣠⣴⣿⣿⣿⠿⠟⠛⠉⠉⠀⠀⢠⡟⠋⠉⣀⣠⣴⣾⠿⠿⠟⠛⠛⠛⣿⠏⠀⠀⣀⣀⣀⣿⡄  
+⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⣿⡿⠟⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠸⣧⣶⠿⠛⠋⠁⠀⠀⠀⠀⠀⠀⠘⣿⣴⣾⠿⠛⠋⠉⠉⠁  
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠁⠀⠀⠀⠀⠀⠀⠀  
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⣿⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀  
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀  
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀  
+
+░███     ░███                                ░██                      ░██    
+░████   ░████                                ░██                      ░██    
+░██░██ ░██░██  ░██████   ░██░████  ░███████  ░████████   ░██████   ░████████ 
+░██ ░████ ░██       ░██  ░███     ░██    ░██ ░██    ░██       ░██     ░██    
+░██  ░██  ░██  ░███████  ░██      ░██        ░██    ░██  ░███████     ░██    
+░██       ░██ ░██   ░██  ░██      ░██    ░██ ░██    ░██ ░██   ░██     ░██    
+░██       ░██  ░█████░██ ░██       ░███████  ░██    ░██  ░█████░██     ░████ 
+```
+
+</details>
+
 # marchat 🧃
 
-[![Go Version](https://img.shields.io/badge/go-1.18%2B-blue?logo=go)](https://go.dev/dl/)
+[![Go Version](https://img.shields.io/badge/go-1.24%2B-blue?logo=go)](https://go.dev/dl/)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub Repo](https://img.shields.io/badge/github-repo-blue?logo=github)](https://github.com/Cod-e-Codes/marchat)
 
 A modern, retro-inspired terminal chat app for father-son coding sessions. Built with Go, Bubble Tea, and SQLite (pure Go driver, no C compiler required). Fast, hackable, and ready for remote pair programming.
 
+> ⚠️ **Admin features are still under construction.**  
+> Using `admin` as a username is currently **not allowed**—the server will reject it, even if the correct admin key is provided. Admin commands are not yet functional.
+
+---
+
+## What is this?
+
+`marchat` is a minimalist terminal-based group chat app designed for real-time, distraction-free conversations. Whether you're pair programming, self-hosting a LAN party, or just chatting from two terminals, it's lightweight, hackable, and built for fun.
+
+## Why Marchat?
+
+Built for father-son coding sessions, marchat is about sharing the joy of hacking, learning, and chatting in a terminal. It's a fun, retro-inspired project for anyone who loves the command line, real-time collaboration, or just wants a simple, self-hosted chat.
+
+📽️ [Watch the demo video](#) — coming soon!
+
+---
+
+## ✨ Features At a Glance
+- Terminal UI (TUI) with Bubble Tea
+- WebSocket-based real-time chat
+- Configurable themes and auto-converted emoji
+- Live user list with mention highlights
+- Admin mode (restricted access)
+
 ---
 
 ## Features
 
-- **Terminal UI**: Beautiful, scrollable chat using [Bubble Tea](https://github.com/charmbracelet/bubbletea)
+- **Terminal UI (TUI)**: Beautiful, scrollable chat using [Bubble Tea](https://github.com/charmbracelet/bubbletea)
 - **Go WebSocket Server**: Real-time, robust, and cross-platform
 - **SQLite (pure Go)**: No C compiler needed (uses `modernc.org/sqlite`)
 - **Usernames & Timestamps**: See who said what, and when
 - **Color Themes**: Slack, Discord, AIM, or classic
-- **Emoji Support**: ASCII emoji auto-conversion
+- **Emoji Support**: Auto-converts ASCII emoji like `:)` to Unicode equivalents.
 - **Configurable**: Set username, server URL, and theme via config or flags
-- **User List**: Live-updating user list panel with a fixed width (constant), and up to 20 users shown
+- **User List**: Live-updating user list panel with a fixed width (constant), and up to 20 users are shown
 - **Message Cap**: Only the last 100 messages are kept in memory for performance
 - **Mention Highlighting**: Regex-based mention detection for `@username` (full-message highlight)
 - **Ping/Pong Heartbeat**: Robust WebSocket connection with ping/pong heartbeat
 - **Easy Quit**: Press `ctrl+c` or `Esc` to exit the chat
 - **Graceful Shutdown**: Clean exit with panic prevention
 - **Polished UI**: User list width is consistent, and the '+N more' line is styled (italic/dimmed) for clarity
-- **Admin Security**: Only the configured admin user can connect as `admin`
-- **Separate Admin HTTP URL**: For admin commands like `:cleardb`, you must provide the HTTP(S) base URL via `--admin-url`
+- **Admin Security**: Only the configured admin user can connect as `admin` (currently non-functional; see below)
 - **ASCII Art Banner**: Server displays a beautiful banner on startup with connection URLs and admin info
 
 ---
 
-## Admin Security: Restricting the `admin` Username & Admin HTTP URL
-
-- Only the user specified by the server's `--admin-username` flag (default: `Cody`) can connect as `username=admin`.
-- The admin secret is hardcoded as `changeme` in the server (change this for production).
-- **Security note**: Always change the default admin secret in production deployments.
-- To connect as admin, use:
-
-  ```sh
-  go run client/main.go --username admin --server wss://your-url/ws?real_user=Cody --admin-url https://your-url
-  ```
-  (Replace `Cody` and the URLs with your actual admin username and deployment.)
-- All privileged commands (like `:cleardb`) are only available to the admin user, and require the HTTP(S) base URL for admin commands (not the WebSocket URL).
-- Any other user attempting to connect as `admin` will be rejected by the server.
-- **Note:** The `:cleardb` command will POST to `https://your-url/clear` (not the WebSocket URL).
-
----
-
 ## Quick Start
+
+🛠️ You can configure marchat via flags or a `config.json`. Flags override config file values.
 
 ### 1. Clone the repo
 ```sh
@@ -67,7 +109,7 @@ go run cmd/server/main.go
 
 **Optional:** Customize admin settings (admin key is the secret used to authorize admin commands):
 ```sh
-go run cmd/server/main.go --admin-username YourName --admin-key your-secret-key
+go run cmd/server/main.go --admin-username YourName --admin-key your-admin-key
 ```
 
 ### 4. (Optional) Create a config file
@@ -90,22 +132,24 @@ go run client/main.go --username Cody --theme slack --server ws://localhost:9090
 go run client/main.go --config config.json
 ```
 
+*If no flags or config are provided, the client uses default values.*
+
 ---
 
 ## Usage
 - **Send messages**: Type and press Enter
 - **Quit**: Press `ctrl+c` or `Esc` to exit the chat
-- **Themes**: `slack`, `discord`, `aim`, or leave blank for default
-- **Emoji**: `:), :(, :D, <3, :P` auto-convert to Unicode
+- **Themes**: `slack`, `discord`, `aim` (case-insensitive), or leave blank for default
+- **Emoji**: Common ASCII emoji like `:)`, `:(`, `:D`, `<3`, and `:P` are automatically converted to their Unicode equivalents.
 - **Scroll**: Use Up/Down arrows or your mouse to scroll chat
 - **Switch theme**: Type `:theme <name>` and press Enter (persists in config)
 - **Toggle timestamp format**: Type `:time` and press Enter (persists in config)
 - **ASCII art banner**: Displays connection info on server startup; can be disabled via config or flag
-- **Clear chat (client only)**: Type `:clear` and press Enter (clears local buffer, doesn't affect others)
-- **Clear all messages (wipe DB)**: Type `:cleardb` and press Enter (admin only, removes all messages for everyone)
+- **Clear chat (client only)**: Type `:clear` and press Enter (clears your local buffer only — does not affect others)
+- **Clear all messages (wipe DB)**: Type `:cleardb` and press Enter (admin only, currently non-functional)
 - **Banner**: Status and error messages appear above chat
 - **Mentions**: Use `@username` to highlight a user (full-message highlight, not partial)
-- **User List**: Up to 20 users shown in a fixed-width panel, with a styled `+N more` indicator if more are online
+- **User List**: Up to 20 users are shown in a fixed-width panel, with a styled `+N more` indicator if more are online
 
 ---
 
@@ -114,7 +158,8 @@ go run client/main.go --config config.json
 marchat/
 ├── client/           # TUI client (Bubble Tea)
 │   ├── main.go
-│   └── config/config.go
+│   └── config/
+│       └── config.go
 ├── cmd/server/       # Server entrypoint
 │   └── main.go
 ├── server/           # Server logic (DB, handlers, WebSocket)
@@ -130,10 +175,37 @@ marchat/
 └── README.md
 ```
 
+Modular architecture: client, server logic, and shared types are separated for clarity and maintainability.
+
+---
+
+## Admin Mode: Privileged Commands & Security
+
+> Admin commands like `:cleardb` require:
+> - The `admin` username (only allowed for the configured user; currently, all `admin` logins are rejected)
+> - A valid `--admin-key` and `--admin-url`
+> 
+> ⚠️ Admin features are under construction — some commands are non-functional, and connecting as `admin` is currently disabled.
+
+- **To connect as admin (WebSocket):**
+  ```sh
+  go run client/main.go --username admin --server wss://your-url/ws?real_user=Cody
+  ```
+- **Required for admin commands (like :cleardb) — HTTP base URL:**
+  ```sh
+  --admin-url https://your-url
+  ```
+- The admin key is hardcoded as `changeme` in the server (change this for production).
+- **Security note**: Always change the default admin key in production deployments.
+- All privileged commands (like `:cleardb`) are only available to the admin user, and require the HTTP(S) base URL for admin commands (not the WebSocket URL).
+- Any other user attempting to connect as `admin` will be rejected by the server.
+- **Note:** The `:cleardb` command will POST to `https://your-url/clear` (not the WebSocket URL).
+- Planned improvements: make admin commands fully functional and secure; finalize and document admin HTTP URL behavior.
+
 ---
 
 ## Tech Stack
-- [Go](https://golang.org/) 1.18+
+- [Go](https://golang.org/) 1.24+
 - [Bubble Tea](https://github.com/charmbracelet/bubbletea) (TUI)
 - [Lipgloss](https://github.com/charmbracelet/lipgloss) (styling)
 - [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (pure Go SQLite, no C compiler required)
@@ -154,9 +226,13 @@ marchat/
 - **Messages not showing or chat not updating**
   - Check your WebSocket connection and server logs for errors.
 - **Too many users in user list**
-  - Only up to 20 users are shown, with a styled `+N more` indicator if more users are online.
+  - Only up to 20 users are shown, with a styled `+N more` indicator if more are online.
 - **Cross-platform**: Runs on Linux, macOS, and Windows terminals
 - **Firewall/Port**: Ensure port 9090 is open for remote connections
+- **Admin commands non-functional**
+  - `:cleardb` and admin URL features are under development.
+
+*If reporting a bug, please include your version or commit hash.*
 
 ---
 
@@ -164,7 +240,7 @@ marchat/
 
 ### ✅ Completed or In Progress
 
-- [x] **Admin username restriction for privileged commands** *(Partially implemented — logic in place, currently being debugged)*
+- [x] **Admin username restriction for privileged commands** *(Partially implemented — logic in place, but admin commands are currently non-functional)*
 - [x] **User list with live updates** *(Fully implemented; fixed-width styling pending optional)*
 - [x] **Regex-based mention highlighting (full-message)** *(Implemented — highlights entire message if `@username` found)*
 - [x] **Graceful shutdown and panic prevention** *(Implemented — server handles disconnects and client exits cleanly)*
@@ -180,6 +256,8 @@ marchat/
 
 - [ ] **Separate admin HTTP URL for privileged commands**
   Structure in place but currently non-functional — requires further debugging/finalization.
+- [ ] **Fix admin functionality**
+  The `:cleardb` command and admin URL features need to be debugged and made functional.
 
 ---
 
