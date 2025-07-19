@@ -479,7 +479,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case quitMsg:
 		return m, tea.Quit
 	case tea.MouseMsg:
-		if v.Type == tea.MouseWheelUp || v.Type == tea.MouseWheelDown {
+		if (v.Button == tea.MouseButtonWheelUp || v.Button == tea.MouseButtonWheelDown) && v.Action == tea.MouseActionPress {
 			return m, nil // Ignore mouse scroll
 		}
 		return m, nil // Return for other mouse events
