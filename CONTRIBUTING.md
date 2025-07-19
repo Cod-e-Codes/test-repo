@@ -22,6 +22,11 @@ Thank you for your interest in contributing!
 - Be respectful and constructive in all discussions.
 - All contributions are welcome—no idea is too small!
 
+## Automation
+
+- All pull requests must pass the GitHub Actions CI checks (build, test, lint) before being merged.
+- Dependency updates are handled automatically by Dependabot. Please do not manually update dependencies unless necessary for a bugfix or feature.
+
 ---
 
 Thank you for helping make marchat better! 
