@@ -82,6 +82,11 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 ---
 
+## ⚙️ Prerequisites
+
+- Install [Go 1.24+](https://go.dev/dl/) if you haven’t already
+  - *(Check with `go version` in your terminal)*
+
 ## Quick Start
 
 🛠️ You can configure marchat via flags or a `config.json`. Flags override config file values.
@@ -135,11 +140,6 @@ go run client/main.go --config config.json
 ```
 
 *If no flags or config are provided, the client uses default values.*
-
-## ⚙️ Prerequisites
-
-- Install [Go 1.24+](https://go.dev/dl/) if you haven’t already
-  - *(Check with `go version` in your terminal)*
 
 ---
 
