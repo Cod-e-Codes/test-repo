@@ -13,6 +13,16 @@ import (
 	"time"
 )
 
+// Multi-admin support
+// Usage: --admin Cody --admin Alice --admin-key changeme
+//
+// Remove old --admin-username logic
+
+type multiFlag []string
+
+func (m *multiFlag) String() string       { return strings.Join(*m, ",") }
+func (m *multiFlag) Set(val string) error { *m = append(*m, val); return nil }
+
 var adminUsers multiFlag
 var adminKey = flag.String("admin-key", "", "Admin key for privileged commands (required)")
 
@@ -37,7 +47,6 @@ func printBanner(addr string, admins []string) {
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀  
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀  
 
- 
 ░███     ░███                                ░██                      ░██    
 ░████   ░████                                ░██                      ░██    
 ░██░██ ░██░██  ░██████   ░██░████  ░███████  ░████████   ░██████   ░████████ 
@@ -50,12 +59,8 @@ func printBanner(addr string, admins []string) {
 	fmt.Println("\U0001F4A1 Tip: Use --username <admin> --admin --admin-key <key> to connect as admin")
 }
 
-type multiFlag []string
-
-func (m *multiFlag) String() string       { return strings.Join(*m, ",") }
-func (m *multiFlag) Set(val string) error { *m = append(*m, val); return nil }
-
 func main() {
+	flag.Var(&adminUsers, "admin", "Admin username (can be specified multiple times, case-insensitive)")
 	flag.Parse()
 	if len(adminUsers) == 0 {
 		log.Fatal("At least one --admin username is required.")
