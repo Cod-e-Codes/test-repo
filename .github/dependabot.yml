@@ -1,0 +1,6 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/" # Location of go.mod and go.sum
+    schedule:
+      interval: "weekly"
