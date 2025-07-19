@@ -45,7 +45,6 @@
 - [Project Structure](#project-structure)
 - [Admin Mode](#admin-mode-privileged-commands--security)
 - [Security](#security)
-- [Known Issues](#known-issues)
 - [Tech Stack](#tech-stack)
 - [Troubleshooting](#troubleshooting)
 - [Next Steps](#next-steps)
@@ -220,12 +219,6 @@ Modular architecture: client, server logic, and shared types are separated for c
 > - Use `wss://` (secure WebSocket) URLs in production, not `ws://`
 > - Ensure firewall rules allow your chosen port (default: 9090)
 > - Consider using a reverse proxy (nginx, etc.) for additional security
-
----
-
-## Known Issues
-
-- Admin functionality is stable and fully functional for authenticated admins. If you encounter any issues or unexpected behavior, please open an issue on GitHub.
 
 ---
 
