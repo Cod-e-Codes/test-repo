@@ -139,13 +139,18 @@ go run client/main.go --config config.json
 
 *If no flags or config are provided, the client uses default values.*
 
+## ⚙️ Prerequisites
+
+- Install [Go 1.24+](https://go.dev/dl/) if you haven’t already
+  - *(Check with `go version` in your terminal)*
+
 ---
 
 ## Usage
 - **Send messages**: Type and press Enter
 - **Quit**: Press `ctrl+c` or `Esc` to exit the chat
 - **Themes**: `patriot`, `retro`, `modern` (case-insensitive), or leave blank for default
-- **Emoji support**: Common ASCII emoticons (e.g. `:)`, `:(`, `:D`, `<3`, `:P`) automatically convert to Unicode emoji.
+- **Emoji support**: Common ASCII emoticons (e.g. `:)`, `:(`, `:D`, `<3`, `:P`) automatically convert to Unicode.
   - Supported: `:)`, `:(`, `:D`, `<3`, `:P`
 - **Scroll**: Use Up/Down arrows or your mouse to scroll chat
 - **Switch theme**: Type `:theme <name>` and press Enter (persists in config)
