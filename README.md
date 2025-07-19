@@ -203,7 +203,7 @@ Modular architecture: client, server logic, and shared types are separated for c
   ```
 - **To connect as admin (WebSocket):**
   ```sh
-  go run client/main.go --username Cody --admin --admin-key your-admin-key --server ws://localhost:9090/ws
+  go run client/main.go --username Cody --admin --admin-key your-admin-key --server wss://localhost:9090/ws
   ```
 - Only authenticated admins can use privileged commands like `:cleardb`.
 - Admin usernames are case-insensitive (e.g. `Cody`, `cody`, and `CODY` are equivalent).
