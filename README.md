@@ -53,8 +53,8 @@
 - [Contributing](#contributing)
 - [License](#license)
 
-> ⚠️ **Admin features are still under construction.**  
-> Using `admin` as a username is currently **not allowed**—the server will reject it, even if the correct admin key is provided. Admin commands are not yet functional.
+> ⚠️ **Admin features require authentication.**  
+> Only users listed as admins (via `--admin` flags, case-insensitive) and providing the correct key can use admin commands. All admin actions are performed over WebSocket.
 
 ---
 
@@ -162,7 +162,7 @@ go run client/main.go --config config.json
 - **Toggle timestamp format**: Type `:time` and press Enter (persists in config)
 - **ASCII art banner**: Displays connection info on server startup; can be disabled via config or flag
 - **Clear chat (client only)**: Type `:clear` and press Enter (clears your local buffer only — does not affect others)
-- **Clear all messages (wipe DB)**: Type `:cleardb` and press Enter (admin only, currently non-functional — wipes entire database)
+- **Clear all messages (wipe DB)**: Type `:cleardb` and press Enter (admin only — wipes entire database for all users)
 - **Banner**: Status and error messages appear above chat
 - **Mentions**: Use `@username` to highlight a user (full-message highlight, not partial)
 - **User List**: Up to 20 users are shown in a fixed-width panel, with a styled `+N more` indicator if more are online
@@ -231,9 +231,7 @@ Modular architecture: client, server logic, and shared types are separated for c
 
 ## Known Issues
 
-- **Admin username blocked**: Using `admin` is currently **disallowed**; login attempts are rejected, even with a valid admin key. This is a temporary limitation and will be addressed in a future release. [See tracking issue](https://github.com/Cod-e-Codes/marchat/issues/1)
-- **Admin commands non-functional**: Commands like `:cleardb` are under development and not yet working
-- **Default admin key**: The server uses `changeme` as the default admin key — **change this in production!**
+- Admin functionality is under active testing; if you encounter any issues or unexpected behavior, please open an issue on GitHub.
 
 ---
 
@@ -290,8 +288,6 @@ Modular architecture: client, server logic, and shared types are separated for c
 - [ ] **UI polish: styled '+N more' line, userListWidth constant**
   Visual improvements to make layout and overflow cleaner.
 
-- [ ] **Separate admin HTTP URL for privileged commands**
-  Structure in place but currently non-functional — requires further debugging/finalization.
 - [ ] **Fix admin functionality**
   The `:cleardb` command and admin URL features need to be debugged and made functional.
 
