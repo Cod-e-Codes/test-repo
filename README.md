@@ -73,7 +73,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 ---
 
-## ✨ Features At a Glance
+## Features At a Glance
 - Terminal UI (TUI) with Bubble Tea
 - WebSocket-based real-time chat
 - Configurable themes and auto-converted emoji
