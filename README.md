@@ -83,7 +83,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 ---
 
-## ⚙️ Prerequisites
+## Prerequisites
 
 - Install [Go 1.24+](https://go.dev/dl/) if you haven’t already
   - *(Check with `go version` in your terminal)*
