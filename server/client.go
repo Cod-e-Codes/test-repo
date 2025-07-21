@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"marchat/shared"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -100,7 +101,9 @@ func (c *Client) writePump() {
 		case msg, ok := <-c.send:
 			if !ok {
 				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-					log.Printf("WriteMessage error: %v", err)
+					if !strings.Contains(err.Error(), "use of closed network connection") {
+						log.Printf("WriteMessage error: %v", err)
+					}
 				}
 				return
 			}
@@ -108,13 +111,17 @@ func (c *Client) writePump() {
 			case shared.Message:
 				err := c.conn.WriteJSON(v)
 				if err != nil {
-					log.Printf("Failed to send message to %s: %v", c.username, err)
+					if !strings.Contains(err.Error(), "use of closed network connection") {
+						log.Printf("Failed to send message to %s: %v", c.username, err)
+					}
 					return
 				}
 			case WSMessage:
 				err := c.conn.WriteJSON(v)
 				if err != nil {
-					log.Printf("Failed to send system message to %s: %v", c.username, err)
+					if !strings.Contains(err.Error(), "use of closed network connection") {
+						log.Printf("Failed to send system message to %s: %v", c.username, err)
+					}
 					return
 				}
 			default:
@@ -122,7 +129,9 @@ func (c *Client) writePump() {
 			}
 		case <-ticker.C:
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Printf("Failed to send ping to %s: %v", c.username, err)
+				if !strings.Contains(err.Error(), "use of closed network connection") {
+					log.Printf("Failed to send ping to %s: %v", c.username, err)
+				}
 				return
 			}
 		}
