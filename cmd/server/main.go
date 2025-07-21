@@ -54,7 +54,7 @@ func printBanner(addr string, admins []string) {
 ░██  ░██  ░██  ░███████  ░██      ░██        ░██    ░██  ░███████     ░██    
 ░██       ░██ ░██   ░██  ░██      ░██    ░██ ░██    ░██ ░██   ░██     ░██    
 ░██       ░██  ░█████░██ ░██       ░███████  ░██    ░██  ░█████░██     ░████ `)
-	fmt.Printf("\U0001F310 WebSocket: ws://%s/ws\n", addr)
+	fmt.Printf("\U0001F310 WebSocket: wss://%s/ws\n", addr)
 	fmt.Printf("\U0001F511 Admins: %s\n", strings.Join(admins, ", "))
 	fmt.Println("\U0001F4A1 Tip: Use --username <admin> --admin --admin-key <key> to connect as admin")
 }
