@@ -396,7 +396,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.reconnectDelay = reconnectMaxDelay
 			}
 		}
-		log.Printf("Reconnect in %v", delay)
 		return m, tea.Tick(delay, func(time.Time) tea.Msg {
 			return m.Init()()
 		})
