@@ -70,6 +70,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 - **Terminal UI (TUI):** Beautiful, scrollable chat using [Bubble Tea](https://github.com/charmbracelet/bubbletea)
 - **Real-time WebSocket Chat:** Fast, robust, and cross-platform server/client
 - **Themes:** Choose from `patriot`, `retro`, or `modern` for a unique look
+- **Small File Sharing (<1MB):** Instantly send and receive small files with `:sendfile <path>` and save them with `:savefile <filename>`
 - **Emoji Support:** Auto-converts common ASCII emoji (e.g. `:)`, `:(`, `:D`, `<3`, `:P`) to Unicode
 - **Live User List:** See who’s online in a fixed-width, styled panel (up to 20 users shown)
 - **@Mention Highlighting:** Messages with `@username` highlight for all users in the chat
@@ -190,12 +191,18 @@ go run client/main.go --username Cody --admin --admin-key your-admin-key --serve
 
 ## Usage
 - **Send messages**: Type and press Enter
+- **Send a file**: `:sendfile <path>` (max 1MB)
+- **Save a received file**: `:savefile <filename>`
 - **Quit**: Press `ctrl+c` or `Esc` to exit the chat
 - **Themes**: `patriot`, `retro`, `modern` (case-insensitive), or leave blank for default
+- **Small file sharing**: Send files up to 1MB with `:sendfile <path>`, and save received files with `:savefile <filename>`
 - **Emoji support**: Common ASCII emoticons (e.g. `:)`, `:(`, `:D`, `<3`, `:P`) automatically convert to Unicode.
   - Supported: `:)`, `:(`, `:D`, `<3`, `:P`
 - **Scroll**: Use Up/Down arrows or your mouse to scroll chat
+- **File size limit**: Only files under 1MB can be sent
 - **Switch theme**: Type `:theme <name>` and press Enter (persists in config)
+- **Send a file**: Type `:sendfile <path>` and press Enter
+- **Save a file**: Type `:savefile <filename>` and press Enter (after receiving a file)
 - **Toggle timestamp format**: Type `:time` and press Enter (persists in config)
 - **ASCII art banner**: Displays connection info on server startup; can be disabled via config or flag
 - **Clear chat (client only)**: Type `:clear` and press Enter (clears your local buffer only — does not affect others)

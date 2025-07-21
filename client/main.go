@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -37,8 +38,17 @@ const reconnectMaxDelay = 30 * time.Second // for exponential backoff
 
 var mentionRegex *regexp.Regexp
 
+// Remove debugLog variable and logger setup
+
 func init() {
 	mentionRegex = regexp.MustCompile(`\B@([a-zA-Z0-9_]+)\b`)
+	// Set up debug logger
+	f, err := os.OpenFile("marchat-debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err == nil {
+		log.SetOutput(f)
+	} else {
+		log.SetOutput(os.Stderr)
+	}
 }
 
 var (
@@ -77,7 +87,8 @@ type model struct {
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
 
-	reconnectDelay time.Duration // for exponential backoff
+	reconnectDelay time.Duration               // for exponential backoff
+	receivedFiles  map[string]*shared.FileMeta // filename -> filemeta for saving
 }
 
 type themeStyles struct {
@@ -171,6 +182,7 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 	var b strings.Builder
 	var prevDate string
 	for _, msg := range msgs {
+		// Remove debugLog.Printf
 		sender := msg.Sender
 		align := lipgloss.Left
 		msgBoxStyle := lipgloss.NewStyle().Width(width - 4)
@@ -192,27 +204,33 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 			timeFmt = "03:04:05 PM"
 		}
 		timestamp := styles.Time.Render(msg.CreatedAt.Format(timeFmt))
-		content := renderEmojis(msg.Content)
-		// Improved mention highlighting: highlight if any @username in user list (case-insensitive)
-		matches := mentionRegex.FindAllStringSubmatch(msg.Content, -1)
-		highlight := false
-		for _, m := range matches {
-			if len(m) > 1 {
-				for _, u := range users {
-					if strings.EqualFold(m[1], u) {
-						highlight = true
+		var content string
+		if msg.Type == shared.FileMessageType && msg.File != nil {
+			fileInfo := styles.Mention.Render("[File] ") + styles.User.Render(msg.File.Filename) + styles.Time.Render(fmt.Sprintf(" (%d bytes)", msg.File.Size))
+			content = fileInfo + "\n" + styles.Msg.Render("Type :savefile "+msg.File.Filename+" to save.")
+		} else {
+			content = renderEmojis(msg.Content)
+			// Improved mention highlighting: highlight if any @username in user list (case-insensitive)
+			matches := mentionRegex.FindAllStringSubmatch(msg.Content, -1)
+			highlight := false
+			for _, m := range matches {
+				if len(m) > 1 {
+					for _, u := range users {
+						if strings.EqualFold(m[1], u) {
+							highlight = true
+							break
+						}
+					}
+					if highlight {
 						break
 					}
 				}
-				if highlight {
-					break
-				}
 			}
-		}
-		if highlight {
-			content = styles.Mention.Render(content)
-		} else {
-			content = styles.Msg.Render(content)
+			if highlight {
+				content = styles.Mention.Render(content)
+			} else {
+				content = styles.Msg.Render(content)
+			}
 		}
 		meta := styles.User.Render(sender) + " " + timestamp
 		wrapped := msgBoxStyle.Render(content)
@@ -288,16 +306,18 @@ func (m *model) connectWebSocket(serverURL string) error {
 					m.msgChan <- wsErr(err)
 					return
 				}
-				// Try to unmarshal as wsMsg
+				// Try to unmarshal as shared.Message first
+				var msg shared.Message
+				if err := json.Unmarshal(raw, &msg); err == nil {
+					if msg.Sender != "" {
+						m.msgChan <- msg
+						continue
+					}
+				}
+				// Then try as wsMsg
 				var ws wsMsg
 				if err := json.Unmarshal(raw, &ws); err == nil && ws.Type != "" {
 					m.msgChan <- ws
-					continue
-				}
-				// Otherwise, try as shared.Message
-				var msg shared.Message
-				if err := json.Unmarshal(raw, &msg); err == nil && msg.Sender != "" {
-					m.msgChan <- msg
 					continue
 				}
 			}
@@ -347,11 +367,19 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.listenWebSocket()
 	case shared.Message:
+		// Remove debugLog.Printf
 		// Cap messages to maxMessages
 		if len(m.messages) >= maxMessages {
 			m.messages = m.messages[len(m.messages)-maxMessages+1:]
 		}
 		m.messages = append(m.messages, v)
+		// Store file in memory for session if file message
+		if v.Type == shared.FileMessageType && v.File != nil {
+			if m.receivedFiles == nil {
+				m.receivedFiles = make(map[string]*shared.FileMeta)
+			}
+			m.receivedFiles[v.File.Filename] = v.File
+		}
 		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.users, m.viewport.Width, m.twentyFourHour))
 		m.viewport.GotoBottom()
 		m.sending = false // Only set sending=false after receiving echo
@@ -393,7 +421,71 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "enter":
 			text := m.textarea.Value()
-			if strings.HasPrefix(text, ":theme ") {
+			if strings.HasPrefix(text, ":sendfile ") {
+				parts := strings.SplitN(text, " ", 2)
+				if len(parts) == 2 {
+					path := strings.TrimSpace(parts[1])
+					if path != "" {
+						data, err := os.ReadFile(path)
+						if err != nil {
+							m.banner = "❌ Failed to read file: " + err.Error()
+							m.textarea.SetValue("")
+							return m, nil
+						}
+						if len(data) > 1024*1024 {
+							m.banner = "❌ File too large (max 1MB)"
+							m.textarea.SetValue("")
+							return m, nil
+						}
+						filename := filepath.Base(path)
+						msg := shared.Message{
+							Sender:    m.cfg.Username,
+							Type:      shared.FileMessageType,
+							CreatedAt: time.Now(),
+							File: &shared.FileMeta{
+								Filename: filename,
+								Size:     int64(len(data)),
+								Data:     data,
+							},
+						}
+						if m.conn != nil {
+							err := m.conn.WriteJSON(msg)
+							if err != nil {
+								m.banner = "❌ Failed to send file (connection lost)"
+								m.textarea.SetValue("")
+								return m, m.listenWebSocket()
+							}
+							m.banner = "File sent: " + filename
+						}
+						m.textarea.SetValue("")
+						return m, m.listenWebSocket()
+					}
+				}
+			}
+			if strings.HasPrefix(text, ":savefile ") {
+				parts := strings.SplitN(text, " ", 2)
+				if len(parts) == 2 {
+					filename := strings.TrimSpace(parts[1])
+					if m.receivedFiles != nil {
+						file, ok := m.receivedFiles[filename]
+						if ok {
+							err := os.WriteFile(filename, file.Data, 0644)
+							if err != nil {
+								m.banner = "❌ Failed to save file: " + err.Error()
+							} else {
+								m.banner = "File saved: " + filename
+							}
+						} else {
+							m.banner = "❌ No such file received: " + filename
+						}
+					} else {
+						m.banner = "❌ No files received yet."
+					}
+					m.textarea.SetValue("")
+					return m, nil
+				}
+			}
+			if text == ":theme " {
 				parts := strings.SplitN(text, " ", 2)
 				if len(parts) == 2 {
 					m.cfg.Theme = parts[1]
@@ -500,9 +592,9 @@ func (m *model) View() string {
 	// Header
 	header := m.styles.Header.Width(m.viewport.Width + userListWidth + 4).Render(" marchat ")
 	footer := m.styles.Footer.Width(m.viewport.Width + userListWidth + 4).Render(
-		"[Enter] Send  [Up/Down] Scroll  [Esc/Ctrl+C] Quit  Commands: " +
+		"[Enter] Send  [Up/Down] Scroll  [Esc/Ctrl+C] Quit  Commands: :sendfile <path> :savefile <filename> :clear :theme NAME :time" +
 			func() string {
-				cmds := ":clear :theme NAME :time"
+				cmds := ""
 				if *isAdmin {
 					cmds += " :cleardb"
 				}
