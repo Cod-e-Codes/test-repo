@@ -485,13 +485,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			}
-			if text == ":theme " {
+			if strings.HasPrefix(text, ":theme ") {
 				parts := strings.SplitN(text, " ", 2)
-				if len(parts) == 2 {
-					m.cfg.Theme = parts[1]
+				if len(parts) == 2 && strings.TrimSpace(parts[1]) != "" {
+					m.cfg.Theme = strings.TrimSpace(parts[1])
 					m.styles = getThemeStyles(m.cfg.Theme)
 					_ = config.SaveConfig(*configPath, m.cfg)
 					m.banner = "Theme changed to " + m.cfg.Theme
+				} else {
+					m.banner = "Please provide a theme name."
 				}
 				m.textarea.SetValue("")
 				return m, nil
