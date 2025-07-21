@@ -530,6 +530,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cfg.TwentyFourHour = m.twentyFourHour
 				_ = config.SaveConfig(*configPath, m.cfg) // ignore error for now
 				m.banner = "Timestamp format: " + map[bool]string{true: "24h", false: "12h"}[m.twentyFourHour]
+				m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.users, m.viewport.Width, m.twentyFourHour))
+				m.viewport.GotoBottom()
+				m.textarea.SetValue("")
 				return m, nil
 			}
 			if text != "" {
