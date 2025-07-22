@@ -71,7 +71,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 - **Real-time WebSocket Chat:** Fast, robust, and cross-platform server/client
 - **Themes:** Choose from `patriot`, `retro`, or `modern` for a unique look
 - **Small File Sharing (<1MB):** Instantly send and receive small files with `:sendfile <path>` and save them with `:savefile <filename>`
-- **Emoji Support:** Auto-converts common ASCII emoji (e.g. `:)`, `:(`, `:D`, `<3`, `:P`) to Unicode
+- **Emoji Support:** Auto-converts common ASCII emoji (e.g., `:)`, `:(`, `:D`, `<3`, `:P`) to Unicode
 - **Live User List:** See who’s online in a fixed-width, styled panel (up to 20 users shown)
 - **@Mention Highlighting:** Messages with `@username` highlight for all users in the chat
 - **Admin Mode:** Privileged commands (like `:cleardb`) for authenticated admins only
@@ -92,7 +92,8 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 ## Quick Start
 
-🛠️ You can configure marchat via flags or a `config.json`. Flags override config file values.
+> [!NOTE]
+> You can configure marchat via flags or a `config.json`. Flags override config file values.
 
 ### 1. Clone the repo
 ```sh
@@ -115,7 +116,8 @@ go build ./...
 go run cmd/server/main.go
 ```
 
-**Optional:** Customize admin settings (admin key is the secret used to authorize admin commands):
+> [!TIP]
+> Customize admin settings with `--admin-username` and `--admin-key` for secure privileged access:
 ```sh
 go run cmd/server/main.go --admin-username YourName --admin-key your-admin-key
 ```
@@ -131,24 +133,26 @@ Create `config.json` in the project root:
 }
 ```
 
-*If you don't have a config file, simply create a new `config.json` in your project root using the example above. The client will look for this file by default. You can also specify a different path with the `--config` flag.*
+> [!NOTE]
+> If no `config.json` is found, the client uses default values. Specify a custom config path with `--config`.
 
 ### 6. Run the client
 ```sh
 # With flags:
 go run client/main.go --username Cody --theme patriot --server ws://localhost:9090/ws
 
-# Or with config file (loaded from current working directory):
+# Or with config file:
 go run client/main.go --config config.json
 ```
 
-*If no flags or config are provided, the client uses default values.*
+> [!IMPORTANT]
+> Ensure the server URL uses `ws://` for local development or `wss://` for production (secure WebSocket).
 
 ---
 
 ## Remote Access (Optional)
 
-If you want to make your marchat server accessible from outside your local network (for example, to chat with friends remotely), you can use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/) with `cloudflared`.
+If you want to make your marchat server accessible from outside your local network (e.g., to chat with friends remotely), use [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/).
 
 ### 1. Download cloudflared
 - [Get cloudflared for your OS](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/)
@@ -157,59 +161,45 @@ If you want to make your marchat server accessible from outside your local netwo
 ```sh
 cloudflared tunnel --url http://localhost:9090
 ```
-This will give you a public `https://` URL you can use for your client/server.
+
+> [!TIP]
+> Cloudflare provides a public `https://` URL. Convert it to `wss://.../ws` for the client (e.g., `https://bold-forest-cat.trycloudflare.com` becomes `wss://bold-forest-cat.trycloudflare.com/ws`).
 
 ### 3. Update your client config
-
-* After running the tunnel, Cloudflare will give you a public `https://your-tunnel.trycloudflare.com` URL.
-* To use it in your client, convert it to a WebSocket URL by replacing `https://` with `wss://` and appending `/ws`.
-
-**Example:**
-If Cloudflare gives you:
-
-```
-https://bold-forest-cat.trycloudflare.com
-```
-
-You should use:
-
-```
-wss://bold-forest-cat.trycloudflare.com/ws
-```
-
-in your client command like this:
-
 ```sh
 go run client/main.go --username Cody --admin --admin-key your-admin-key --server wss://bold-forest-cat.trycloudflare.com/ws
 ```
 
-**Note:**
-- You do not need to sign up for a Cloudflare account for temporary tunnels.
-- For persistent tunnels or custom domains, see the [Cloudflare Tunnel docs](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/).
+> [!NOTE]
+> Temporary tunnels don’t require a Cloudflare account. For persistent tunnels, see the [Cloudflare Tunnel docs](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/).
 
 ---
 
 ## Usage
-- **Send messages**: Type and press Enter
-- **Send a file**: `:sendfile <path>` (max 1MB)
-- **Save a received file**: `:savefile <filename>`
-- **Quit**: Press `ctrl+c` or `Esc` to exit the chat
-- **Themes**: `patriot`, `retro`, `modern` (case-insensitive), or leave blank for default
-- **Small file sharing**: Send files up to 1MB with `:sendfile <path>`, and save received files with `:savefile <filename>`
-- **Emoji support**: Common ASCII emoticons (e.g. `:)`, `:(`, `:D`, `<3`, `:P`) automatically convert to Unicode.
-  - Supported: `:)`, `:(`, `:D`, `<3`, `:P`
-- **Scroll**: Use Up/Down arrows or your mouse to scroll chat
-- **File size limit**: Only files under 1MB can be sent
-- **Switch theme**: Type `:theme <name>` and press Enter (persists in config)
-- **Send a file**: Type `:sendfile <path>` and press Enter
-- **Save a file**: Type `:savefile <filename>` and press Enter (after receiving a file)
-- **Toggle timestamp format**: Type `:time` and press Enter (persists in config)
-- **ASCII art banner**: Displays connection info on server startup; can be disabled via config or flag
-- **Clear chat (client only)**: Type `:clear` and press Enter (clears your local buffer only — does not affect others)
-- **Clear all messages (wipe DB)**: Type `:cleardb` and press Enter (admin only — wipes entire database for all users)
-- **Banner**: Status and error messages appear above chat
-- **Mentions**: Use `@username` to highlight a user (full-message highlight, not partial)
-- **User List**: Up to 20 users are shown in a fixed-width panel, with a styled `+N more` indicator if more are online
+
+Interact with marchat using the following commands and features:
+
+- **Send messages**: Type and press `Enter`.
+- **File sharing**:
+  - Send files (<1MB): `:sendfile <path>`
+  - Save received files: `:savefile <filename>`
+- **Emoji support**: Auto-converts ASCII emoticons to Unicode (`:)`, `:(`, `:D`, `<3`, `:P`).
+- **Mentions**: Use `@username` to highlight a user (full message highlighted).
+- **Scroll**: Use Up/Down arrows or mouse to navigate chat history.
+- **Commands**:
+  - `:theme <name>`: Switch theme (`patriot`, `retro`, `modern`; persists in config).
+  - `:time`: Toggle 12/24-hour timestamp format (persists in config).
+  - `:clear`: Clear local chat buffer (client-side only, does not affect others).
+  - `:cleardb`: Wipe entire server database (admin only).
+- **User list**: Displays up to 20 online users, with a styled `+N more` indicator for additional users.
+- **ASCII art banner**: Shows connection info on server startup (disable via config or flag).
+- **Quit**: Press `Ctrl+C` or `Esc` to exit.
+
+> [!CAUTION]
+> The `:cleardb` command permanently deletes all messages in the server database. Use with caution, as this action cannot be undone.
+
+> [!NOTE]
+> File transfers are limited to 1MB to ensure performance. Larger files should be shared via other methods.
 
 ---
 
@@ -242,35 +232,35 @@ Modular architecture: client, server logic, and shared types are separated for c
 
 ## Admin Mode: Privileged Commands & Security
 
-> Admin commands like `:cleardb` require:
-> - The `--admin` flag and a valid `--admin-key` (case-insensitive username match)
-> - Only users listed as admins on the server (via repeated --admin flags) can authenticate as admin
-> - All admin actions are performed over WebSocket (no HTTP endpoints)
-> 
-> ⚡ **Important:** Do not use the default admin key (`changeme`) in production. Change it immediately to avoid security risks.
+> [!IMPORTANT]
+> Admin commands like `:cleardb` require the `--admin` flag and a matching `--admin-key`. Only users listed as admins on the server can authenticate.
 
-- **To launch the server with multiple admins:**
+- **Start server with admins**:
   ```sh
   go run cmd/server/main.go --admin Cody --admin Crystal --admin-key your-admin-key
   ```
-- **To connect as admin (WebSocket):**
+- **Connect as admin**:
   ```sh
   go run client/main.go --username Cody --admin --admin-key your-admin-key --server wss://localhost:9090/ws
   ```
-- Only authenticated admins can use privileged commands like `:cleardb`.
-- Admin usernames are case-insensitive (e.g. `Cody`, `cody`, and `CODY` are equivalent).
-- The admin key is only sent at handshake, not with every command.
-- The `/clear` HTTP endpoint and all `real_user` logic have been removed for security and simplicity.
+
+> [!WARNING]
+> Do not use the default admin key (`changeme`) in production. Change it immediately to prevent unauthorized access.
+
+- Admin usernames are case-insensitive.
+- The admin key is sent only during the WebSocket handshake.
+- All admin actions use WebSocket (no HTTP endpoints).
 
 ---
 
 ## Security
 
-> **Production deployment checklist:**
-> - Change the default admin key (`changeme`) to a secure value
-> - Use `wss://` (secure WebSocket) URLs in production, not `ws://`
-> - Ensure firewall rules allow your chosen port (default: 9090)
-> - Consider using a reverse proxy (nginx, etc.) for additional security
+> [!WARNING]
+> For production deployments:
+> - Change the default admin key (`changeme`) to a secure value.
+> - Use `wss://` for secure WebSocket connections.
+> - Ensure firewall rules allow your chosen port (default: 9090).
+> - Consider a reverse proxy (e.g., nginx) for added security.
 
 ---
 
@@ -291,7 +281,6 @@ Modular architecture: client, server logic, and shared types are separated for c
   - Fixed: The client now guards against double-close of internal channels.
 - **Client fails to connect with `http://` URL**
   - Use a WebSocket URL: `ws://localhost:9090/ws` or `wss://...` for remote.
-  - **URL schemes**: Use `ws://` for local development, `wss://` for production (secure WebSocket)
 - **Mentions not highlighted**
   - Use `@username` exactly (word boundary, not substring).
 - **User list not updating**
@@ -299,15 +288,15 @@ Modular architecture: client, server logic, and shared types are separated for c
 - **Messages not showing or chat not updating**
   - Check your WebSocket connection and server logs for errors.
 - **Old messages missing from chat history**
-  - The server database only keeps the most recent 1000 messages. Older messages are automatically deleted.
+  - The server database only keeps the most recent 1000 messages.
 - **Too many users in user list**
-  - Only up to 20 users are shown, with a styled `+N more` indicator if more are online.
-- **Cross-platform**: Runs on Linux, macOS, and Windows terminals
-- **Firewall/Port**: Ensure port 9090 is open for remote connections
+  - Only up to 20 users are shown, with a styled `+N more` indicator.
+- **Firewall/Port**: Ensure port 9090 is open for remote connections.
 - **Admin commands**
-  - All admin commands (like `:cleardb`) are now fully functional for authenticated admins.
+  - Ensure `--admin` and `--admin-key` match server settings.
 
-*If reporting a bug, please include your version or commit hash.*
+> [!TIP]
+> When reporting bugs, include your version or commit hash for faster resolution.
 
 ---
 
