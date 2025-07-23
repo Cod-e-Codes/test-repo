@@ -85,9 +85,9 @@ go run cmd/server/main.go
 ```
 
 > [!TIP]
-> Customize admin settings with `--admin-username` and `--admin-key` for secure privileged access:
+> Start the server with `--admin` to register an admin username, and use `--admin-key` to secure access:
 ```sh
-go run cmd/server/main.go --admin-username YourName --admin-key your-admin-key
+go run cmd/server/main.go --admin YourName --admin-key your-admin-key
 ```
 
 ### 5. (Optional) Create a config file
