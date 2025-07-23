@@ -1,7 +1,6 @@
 # Binaries
-# *.exe
-# *.exe~
-cloudflared.exe
+*.exe
+*.exe~
 *.dll
 *.so
 *.dylib
@@ -26,4 +25,10 @@ Thumbs.db
 
 # Dependency directories (vendor/ is used in older Go projects)
 vendor/ 
-config.json 
+config.json
+
+# Release binaries
+marchat-*
+
+# Release zips
+v*.zip
