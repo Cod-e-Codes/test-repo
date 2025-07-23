@@ -34,7 +34,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 ## Beta Release
 
-`marchat` is currently in a pre-release phase with version `v0.1.0-beta.1`. This is the first public beta release, featuring prebuilt binaries for Linux, Windows, and macOS (amd64 only). The release includes both `marchat-server` and `marchat-client` executables, allowing you to test the application without building from source.
+`marchat` is currently in a pre-release phase with version `v0.1.0-beta.2`. This is the second public beta release, featuring prebuilt binaries for Linux, Windows, and macOS (amd64 only). The release includes both `marchat-server` and `marchat-client` executables, allowing you to test the application without building from source. This release includes clipboard support and bug fixes from `v0.1.0-beta.1`.
 
 > [!IMPORTANT]
 > This is a beta release intended for early testing and feedback. While stable for general use, some features may change or be refined before the first stable release. Please report any issues or suggestions on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues).
@@ -42,7 +42,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 ### Installing the Beta Release
 
 1. **Download the binaries**:
-   - Visit the [v0.1.0-beta.1 release page](https://github.com/Cod-e-Codes/marchat/releases/tag/v0.1.0-beta.1).
+   - Visit the [v0.1.0-beta.2 release page](https://github.com/Cod-e-Codes/marchat/releases/tag/v0.1.0-beta.2).
    - Download the appropriate archive for your platform (Linux, Windows, or macOS, amd64 only).
    - Extract the archive to a directory of your choice.
 
@@ -57,19 +57,19 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 3. **Run the client**:
    ```sh
+   # Linux/macOS
    ./marchat-client --username Cody --theme patriot --server ws://localhost:9090/ws
+
+   # Windows
+   marchat-client.exe --username Cody --theme patriot --server ws://localhost:9090/ws
    ```
-   - On Windows, use `marchat-client.exe` instead:
-     ```sh
-     marchat-client.exe --username Cody --theme patriot --server ws://localhost:9090/ws
-     ```
    - Alternatively, use a `config.json` file (see [Quick Start](#quick-start) for details).
 
 > [!NOTE]
 > For the beta release, we recommend using the prebuilt binaries (`marchat-server` and `marchat-client`) instead of building from source. The binaries are standalone and include all dependencies.
 
 > [!TIP]
-> To provide feedback on the beta release, create an issue on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues) with details about your experience, including your platform and any bugs encountered. Check the [Full Changelog](https://github.com/Cod-e-Codes/marchat/commits/v0.1.0-beta.1) for details on what’s included in this release.
+> To provide feedback on the beta release, create an issue on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues) with details about your experience, including your platform and any bugs encountered. Check the [Full Changelog](https://github.com/Cod-e-Codes/marchat/commits/v0.1.0-beta.2) for details on what’s included in this release.
 
 ---
 
@@ -329,7 +329,7 @@ Modular architecture: client, server logic, and shared types are separated for c
   - Ensure `--admin` and `--admin-key` match server settings.
 
 > [!TIP]
-> When reporting bugs, include your version or commit hash for faster resolution. For beta release issues, specify that you’re using `v0.1.0-beta.1`.
+> When reporting bugs, include your version or commit hash for faster resolution. For beta release issues, specify that you’re using `v0.1.0-beta.2`.
 
 ---
 
