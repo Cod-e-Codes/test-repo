@@ -8,6 +8,7 @@
 
 ## Table of Contents
 
+- [Beta Release](#beta-release)
 - [Features](#features)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
@@ -29,7 +30,46 @@
 
 Built for father-son coding sessions, marchat is about sharing the joy of hacking, learning, and chatting in a terminal. It's a fun, retro-inspired project for anyone who loves the command line, real-time collaboration, or just wants a simple, self-hosted chat.
 
+---
 
+## Beta Release
+
+`marchat` is currently in a pre-release phase with version `v0.1.0-beta.1`. This is the first public beta release, featuring prebuilt binaries for Linux, Windows, and macOS (amd64 only). The release includes both `marchat-server` and `marchat-client` executables, allowing you to test the application without building from source.
+
+> [!IMPORTANT]
+> This is a beta release intended for early testing and feedback. While stable for general use, some features may change or be refined before the first stable release. Please report any issues or suggestions on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues).
+
+### Installing the Beta Release
+
+1. **Download the binaries**:
+   - Visit the [v0.1.0-beta.1 release page](https://github.com/Cod-e-Codes/marchat/releases/tag/v0.1.0-beta.1).
+   - Download the appropriate archive for your platform (Linux, Windows, or macOS, amd64 only).
+   - Extract the archive to a directory of your choice.
+
+2. **Run the server**:
+   ```sh
+   ./marchat-server
+   ```
+   - Optionally, start the server with admin privileges:
+     ```sh
+     ./marchat-server --admin YourName --admin-key your-admin-key
+     ```
+
+3. **Run the client**:
+   ```sh
+   ./marchat-client --username Cody --theme patriot --server ws://localhost:9090/ws
+   ```
+   - On Windows, use `marchat-client.exe` instead:
+     ```sh
+     marchat-client.exe --username Cody --theme patriot --server ws://localhost:9090/ws
+     ```
+   - Alternatively, use a `config.json` file (see [Quick Start](#quick-start) for details).
+
+> [!NOTE]
+> For the beta release, we recommend using the prebuilt binaries (`marchat-server` and `marchat-client`) instead of building from source. The binaries are standalone and include all dependencies.
+
+> [!TIP]
+> To provide feedback on the beta release, create an issue on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues) with details about your experience, including your platform and any bugs encountered. Check the [Full Changelog](https://github.com/Cod-e-Codes/marchat/commits/v0.1.0-beta.1) for details on what’s included in this release.
 
 ---
 
@@ -42,6 +82,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 - **Emoji Support:** Auto-converts common ASCII emoji (e.g., `:)`, `:(`, `:D`, `<3`, `:P`) to Unicode
 - **Live User List:** See who’s online in a fixed-width, styled panel (up to 20 users shown)
 - **@Mention Highlighting:** Messages with `@username` highlight for all users in the chat
+- **Clipboard Support:** Copy (`Ctrl+C`), paste (`Ctrl+V`), cut (`Ctrl+X`), and select all (`Ctrl+A`) in the textarea
 - **Admin Mode:** Privileged commands (like `:cleardb`) for authenticated admins only
 - **Message Cap:**
   - Only the last 100 messages are kept in memory for client performance
@@ -54,32 +95,38 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 ## Prerequisites
 
-- Install [Go 1.24+](https://go.dev/dl/) if you haven’t already
+- Install [Go 1.24+](https://go.dev/dl/) if you haven’t already (only needed if building from source)
   - *(Check with `go version` in your terminal)*
 - (Optional, for remote access) Download [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/) (`cloudflared.exe` on Windows)
+- (Optional, for clipboard support on Linux) Install `xclip` or `xsel` for `github.com/atotto/clipboard` functionality
 
 ## Quick Start
 
 > [!NOTE]
-> You can configure marchat via flags or a `config.json`. Flags override config file values.
+> You can configure marchat via flags or a `config.json`. Flags override config file values. For the beta release, use the prebuilt binaries as described in [Beta Release](#beta-release).
 
-### 1. Clone the repo
+### 1. Clone the repo (if building from source)
 ```sh
 git clone https://github.com/Cod-e-Codes/marchat.git
 cd marchat
 ```
 
-### 2. Install Go dependencies
+### 2. Install Go dependencies (if building from source)
 ```sh
 go mod tidy
 ```
 
-### 3. Build the project
+### 3. Build the project (if building from source)
 ```sh
 go build ./...
 ```
 
 ### 4. Run the server (port 9090, WebSocket)
+Using the prebuilt binary:
+```sh
+./marchat-server
+```
+Or, if building from source:
 ```sh
 go run cmd/server/main.go
 ```
@@ -87,7 +134,7 @@ go run cmd/server/main.go
 > [!TIP]
 > Start the server with `--admin` to register an admin username, and use `--admin-key` to secure access:
 ```sh
-go run cmd/server/main.go --admin YourName --admin-key your-admin-key
+./marchat-server --admin YourName --admin-key your-admin-key
 ```
 
 ### 5. (Optional) Create a config file
@@ -105,12 +152,21 @@ Create `config.json` in the project root:
 > If no `config.json` is found, the client uses default values. Specify a custom config path with `--config`.
 
 ### 6. Run the client
+Using the prebuilt binary:
 ```sh
-# With flags:
-go run client/main.go --username Cody --theme patriot --server ws://localhost:9090/ws
+# Linux/macOS
+./marchat-client --username Cody --theme patriot --server ws://localhost:9090/ws
 
-# Or with config file:
-go run client/main.go --config config.json
+# Windows
+marchat-client.exe --username Cody --theme patriot --server ws://localhost:9090/ws
+```
+Or, if building from source:
+```sh
+go run client/main.go --username Cody --theme patriot --server ws://localhost:9090/ws
+```
+Or with a config file:
+```sh
+./marchat-client --config config.json
 ```
 
 > [!IMPORTANT]
@@ -135,7 +191,7 @@ cloudflared tunnel --url http://localhost:9090
 
 ### 3. Update your client config
 ```sh
-go run client/main.go --username Cody --admin --admin-key your-admin-key --server wss://bold-forest-cat.trycloudflare.com/ws
+./marchat-client --username Cody --admin --admin-key your-admin-key --server wss://bold-forest-cat.trycloudflare.com/ws
 ```
 
 > [!NOTE]
@@ -153,6 +209,11 @@ Interact with marchat using the following commands and features:
   - Save received files: `:savefile <filename>`
 - **Emoji support**: Auto-converts ASCII emoticons to Unicode (`:)`, `:(`, `:D`, `<3`, `:P`).
 - **Mentions**: Use `@username` to highlight a user (full message highlighted).
+- **Clipboard operations**:
+  - Copy text: `Ctrl+C` (copies textarea content to clipboard)
+  - Paste text: `Ctrl+V` (appends clipboard content to textarea)
+  - Cut text: `Ctrl+X` (copies textarea content to clipboard and clears textarea)
+  - Select all: `Ctrl+A` (copies all textarea content to clipboard)
 - **Scroll**: Use Up/Down arrows or mouse to navigate chat history.
 - **Commands**:
   - `:theme <name>`: Switch theme (`patriot`, `retro`, `modern`; persists in config).
@@ -161,7 +222,7 @@ Interact with marchat using the following commands and features:
   - `:cleardb`: Wipe entire server database (admin only).
 - **User list**: Displays up to 20 online users, with a styled `+N more` indicator for additional users.
 - **ASCII art banner**: Shows connection info on server startup (disable via config or flag).
-- **Quit**: Press `Ctrl+C` or `Esc` to exit.
+- **Quit**: Press `Esc` to exit (`Ctrl+C` is used for copying when textarea is focused).
 
 > [!CAUTION]
 > The `:cleardb` command permanently deletes all messages in the server database. Use with caution, as this action cannot be undone.
@@ -205,11 +266,11 @@ Modular architecture: client, server logic, and shared types are separated for c
 
 - **Start server with admins**:
   ```sh
-  go run cmd/server/main.go --admin Cody --admin Crystal --admin-key your-admin-key
+  ./marchat-server --admin Cody --admin Crystal --admin-key your-admin-key
   ```
 - **Connect as admin**:
   ```sh
-  go run client/main.go --username Cody --admin --admin-key your-admin-key --server wss://localhost:9090/ws
+  ./marchat-client --username Cody --admin --admin-key your-admin-key --server wss://localhost:9090/ws
   ```
 
 > [!WARNING]
@@ -238,8 +299,9 @@ Modular architecture: client, server logic, and shared types are separated for c
 - [Lipgloss](https://github.com/charmbracelet/lipgloss) (styling)
 - [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (pure Go SQLite, no C compiler required)
 - [Gorilla WebSocket](https://github.com/gorilla/websocket) (real-time messaging)
+- [atotto/clipboard](https://github.com/atotto/clipboard) (clipboard operations for copy, paste, cut, and select all)
 
-**Platform Support**: Runs on Linux, macOS, and Windows terminals supporting ANSI escape sequences.
+**Platform Support**: Runs on Linux, macOS, and Windows terminals supporting ANSI escape sequences. Clipboard functionality on Linux requires `xclip` or `xsel`.
 
 ---
 
@@ -259,17 +321,20 @@ Modular architecture: client, server logic, and shared types are separated for c
   - The server database only keeps the most recent 1000 messages.
 - **Too many users in user list**
   - Only up to 20 users are shown, with a styled `+N more` indicator.
+- **Clipboard operations not working**
+  - Ensure `xclip` or `xsel` is installed on Linux for `github.com/atotto/clipboard`.
+  - Verify the textarea is focused when using `Ctrl+C`, `Ctrl+V`, `Ctrl+X`, or `Ctrl+A`.
 - **Firewall/Port**: Ensure port 9090 is open for remote connections.
 - **Admin commands**
   - Ensure `--admin` and `--admin-key` match server settings.
 
 > [!TIP]
-> When reporting bugs, include your version or commit hash for faster resolution.
+> When reporting bugs, include your version or commit hash for faster resolution. For beta release issues, specify that you’re using `v0.1.0-beta.1`.
 
 ---
 
 ## Contributing
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). For the beta release, we especially welcome feedback on usability, bugs, and feature requests via the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues).
 
 ---
 

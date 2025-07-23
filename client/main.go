@@ -23,6 +23,7 @@ import (
 
 	"log"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -367,13 +368,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.listenWebSocket()
 	case shared.Message:
-		// Remove debugLog.Printf
-		// Cap messages to maxMessages
 		if len(m.messages) >= maxMessages {
 			m.messages = m.messages[len(m.messages)-maxMessages+1:]
 		}
 		m.messages = append(m.messages, v)
-		// Store file in memory for session if file message
 		if v.Type == shared.FileMessageType && v.File != nil {
 			if m.receivedFiles == nil {
 				m.receivedFiles = make(map[string]*shared.FileMeta)
@@ -382,13 +380,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.users, m.viewport.Width, m.twentyFourHour))
 		m.viewport.GotoBottom()
-		m.sending = false // Only set sending=false after receiving echo
+		m.sending = false
 		return m, m.listenWebSocket()
 	case wsErr:
 		m.connected = false
 		m.banner = "🚫 Connection lost. Reconnecting..."
 		m.closeWebSocket()
-		// Exponential backoff for reconnect
 		delay := m.reconnectDelay
 		if delay < reconnectMaxDelay {
 			m.reconnectDelay *= 2
@@ -401,7 +398,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 	case tea.KeyMsg:
 		switch v.String() {
-		case "ctrl+c", "esc":
+		case "esc":
 			m.closeWebSocket()
 			return m, tea.Quit
 		case "up":
@@ -418,6 +415,59 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.userListViewport.ScrollDown(1)
 			}
 			return m, nil
+		case "ctrl+c": // Custom Copy
+			if m.textarea.Focused() {
+				text := m.textarea.Value()
+				if text != "" {
+					if err := clipboard.WriteAll(text); err != nil {
+						m.banner = "❌ Failed to copy to clipboard: " + err.Error()
+					} else {
+						m.banner = "✅ Copied to clipboard"
+					}
+				}
+				return m, nil
+			}
+			return m, nil // Return when textarea is not focused
+		case "ctrl+v": // Custom Paste
+			if m.textarea.Focused() {
+				text, err := clipboard.ReadAll()
+				if err != nil {
+					m.banner = "❌ Failed to paste from clipboard: " + err.Error()
+				} else {
+					m.textarea.SetValue(m.textarea.Value() + text)
+				}
+				return m, nil
+			}
+			return m, nil // Return when textarea is not focused
+		case "ctrl+x": // Custom Cut
+			if m.textarea.Focused() {
+				text := m.textarea.Value()
+				if text != "" {
+					if err := clipboard.WriteAll(text); err != nil {
+						m.banner = "❌ Failed to cut to clipboard: " + err.Error()
+					} else {
+						m.textarea.SetValue("")
+						m.banner = "✅ Cut to clipboard"
+					}
+				}
+				return m, nil
+			}
+			return m, nil // Return when textarea is not focused
+		case "ctrl+a": // Custom Select All
+			if m.textarea.Focused() {
+				m.textarea.SetCursor(0)
+				// Since textarea doesn't support selecting all, we can copy all text to clipboard
+				text := m.textarea.Value()
+				if text != "" {
+					if err := clipboard.WriteAll(text); err != nil {
+						m.banner = "❌ Failed to select all: " + err.Error()
+					} else {
+						m.banner = "✅ Selected all and copied to clipboard"
+					}
+				}
+				return m, nil
+			}
+			return m, nil // Return when textarea is not focused
 		case "enter":
 			text := m.textarea.Value()
 			if strings.HasPrefix(text, ":sendfile ") {
@@ -527,7 +577,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if text == ":time" {
 				m.twentyFourHour = !m.twentyFourHour
 				m.cfg.TwentyFourHour = m.twentyFourHour
-				_ = config.SaveConfig(*configPath, m.cfg) // ignore error for now
+				_ = config.SaveConfig(*configPath, m.cfg)
 				m.banner = "Timestamp format: " + map[bool]string{true: "24h", false: "12h"}[m.twentyFourHour]
 				m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.users, m.viewport.Width, m.twentyFourHour))
 				m.viewport.GotoBottom()
@@ -546,7 +596,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					m.banner = ""
 				}
-				// m.sending = false // Now set in shared.Message handler
 				m.textarea.SetValue("")
 				return m, m.listenWebSocket()
 			}
@@ -568,7 +617,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.SetWidth(chatWidth)
 		m.userListViewport.Width = userListWidth
 		m.userListViewport.Height = m.height - m.textarea.Height() - 6
-		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.users, chatWidth, m.twentyFourHour))
+		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.users, m.viewport.Width, m.twentyFourHour))
 		m.viewport.GotoBottom()
 		m.userListViewport.SetContent(renderUserList(m.users, m.cfg.Username, m.styles, userListWidth))
 		return m, nil
@@ -707,6 +756,7 @@ func main() {
 		cfg.Theme = "modern"
 	}
 
+	// Setup textarea
 	ta := textarea.New()
 	ta.Placeholder = "Type your message..."
 	ta.Focus()
