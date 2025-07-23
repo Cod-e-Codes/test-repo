@@ -2,20 +2,63 @@
 
 ## Supported Versions
 
-marchat is currently in active development and has not yet had an official release.  
+`marchat` is currently in **pre-release** (v0.1.0-beta).  
 All security updates and fixes are applied to the `main` branch.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| unreleased (main) | :white_check_mark: |
-| released versions | :x:                |
+| Version            | Supported |
+|--------------------|-----------|
+| v0.1.x (main)      | ✅        |
+| Earlier versions   | ❌        |
+
+---
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in marchat, please do **not** open a public issue.  
-Instead, report it privately by emailing [cod.e.codes.dev@gmail.com] or by using GitHub’s [private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing/privately-reporting-a-security-vulnerability).
+If you discover a security vulnerability in `marchat`, please do **not** open a public GitHub issue.
 
-We will respond as quickly as possible, typically within a few business days.  
-If the vulnerability is confirmed, we will work to release a fix and coordinate disclosure.
+Instead, report it privately through one of the following:
 
-Thank you for helping keep marchat and its users safe!
+- GitHub: [Private Security Advisory](https://github.com/Cod-e-Codes/marchat/security/advisories/new)
+- Email: [cod.e.codes.dev@gmail.com](mailto:cod.e.codes.dev@gmail.com)
+
+> [!IMPORTANT]
+> Your report will only be visible to maintainers and select collaborators until a fix is released.
+
+---
+
+## Disclosure Process
+
+We aim to respond to reports within **2–3 business days**.  
+If confirmed:
+1. We'll investigate and prepare a fix in a private branch or fork.
+2. We may coordinate with you on the disclosure timeline.
+3. We'll publish a GitHub Security Advisory and credit contributors (if applicable).
+
+---
+
+## Requesting a CVE
+
+If the issue meets CVE criteria and you want one assigned, let us know in your report.  
+GitHub is a CVE Numbering Authority and can issue one after disclosure.
+
+---
+
+## Scope
+
+This policy applies only to the official `marchat` codebase:  
+[`https://github.com/Cod-e-Codes/marchat`](https://github.com/Cod-e-Codes/marchat)
+
+It **does not cover**:
+- Misconfigurations in self-hosted deployments
+- Issues caused by modified forks or downstream packaging
+- General UX/UI feedback or feature requests
+
+---
+
+## Questions?
+
+For general bugs or feature requests, please use:
+- [GitHub Issues](https://github.com/Cod-e-Codes/marchat/issues)
+- [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions)
+
+Thank you for helping keep `marchat` and its users safe!
