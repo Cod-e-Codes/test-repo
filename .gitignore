@@ -1,6 +1,7 @@
 # Binaries
 # *.exe
 # *.exe~
+cloudflared.exe
 *.dll
 *.so
 *.dylib
