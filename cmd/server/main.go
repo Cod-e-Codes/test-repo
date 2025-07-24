@@ -25,6 +25,7 @@ func (m *multiFlag) Set(val string) error { *m = append(*m, val); return nil }
 
 var adminUsers multiFlag
 var adminKey = flag.String("admin-key", "", "Admin key for privileged commands (required)")
+var port = flag.Int("port", 9090, "Port to listen on (default 9090)")
 
 func printBanner(addr string, admins []string) {
 	fmt.Println(`
@@ -63,12 +64,17 @@ func printBanner(addr string, admins []string) {
 func main() {
 	flag.Var(&adminUsers, "admin", "Admin username (can be specified multiple times, case-insensitive)")
 	flag.Parse()
+
 	if len(adminUsers) == 0 {
 		log.Fatal("At least one --admin username is required.")
 	}
 	if *adminKey == "" {
 		log.Fatal("--admin-key is required.")
 	}
+	if *port < 1 || *port > 65535 {
+		log.Fatal("Port must be between 1 and 65535.")
+	}
+
 	// Normalize admin usernames to lowercase and check for duplicates
 	adminSet := make(map[string]struct{})
 	for _, u := range adminUsers {
@@ -91,9 +97,9 @@ func main() {
 
 	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, *adminKey))
 
-	addr := ":9090"
-	serverAddr := "localhost:9090"
-	log.Println("marchat WebSocket server running on", addr)
+	addr := fmt.Sprintf(":%d", *port)
+	serverAddr := fmt.Sprintf("localhost:%d", *port)
+	log.Printf("marchat WebSocket server running on %s", addr)
 	printBanner(serverAddr, admins)
 
 	// Create a custom server instance
