@@ -207,6 +207,7 @@ Interact with marchat using the following commands and features:
 - **File sharing**:
   - Send files (<1MB): `:sendfile <path>`
   - Save received files: `:savefile <filename>`
+    - If a file with the same name exists, a numeric suffix will be added (e.g., `file[1]`, `file[2]`, etc.). The actual saved filename will be shown in the UI.
 - **Emoji support**: Auto-converts ASCII emoticons to Unicode (`:)`, `:(`, `:D`, `<3`, `:P`).
 - **Mentions**: Use `@username` to highlight a user (full message highlighted).
 - **Clipboard operations**:
@@ -222,7 +223,8 @@ Interact with marchat using the following commands and features:
   - `:cleardb`: Wipe entire server database (admin only).
 - **User list**: Displays up to 20 online users, with a styled `+N more` indicator for additional users.
 - **ASCII art banner**: Shows connection info on server startup (disable via config or flag).
-- **Quit**: Press `Esc` to exit (`Ctrl+C` is used for copying when textarea is focused).
+- **Quit**: Press `Esc` to exit. `[Ctrl+C]` is used for copying when textarea is focused.
+- **Clipboard shortcuts**: `[Ctrl+C]` Copy, `[Ctrl+V]` Paste, `[Ctrl+X]` Cut, `[Ctrl+A]` Select All (copies all to clipboard).
 
 > [!CAUTION]
 > The `:cleardb` command permanently deletes all messages in the server database. Use with caution, as this action cannot be undone.
@@ -264,14 +266,29 @@ Modular architecture: client, server logic, and shared types are separated for c
 > [!IMPORTANT]
 > Admin commands like `:cleardb` require the `--admin` flag and a matching `--admin-key`. Only users listed as admins on the server can authenticate.
 
-- **Start server with admins**:
-  ```sh
-  ./marchat-server --admin Cody --admin Crystal --admin-key your-admin-key
-  ```
-- **Connect as admin**:
-  ```sh
-  ./marchat-client --username Cody --admin --admin-key your-admin-key --server wss://localhost:9090/ws
-  ```
+**Admin Key Configuration (Security Update):**
+
+- The `--admin-key` flag is deprecated and will be removed in a future release.
+- Set your admin key in `config.json` as `"admin_key": "your-admin-key"`.
+- Alternatively, set the `MARCHAT_ADMIN_KEY` environment variable.
+- If neither is set, admin mode is disabled for security.
+
+**Example config.json:**
+```json
+{
+  "username": "Cody",
+  "server_url": "ws://localhost:9090/ws",
+  "theme": "patriot",
+  "twenty_four_hour": true,
+  "admin_key": "your-admin-key"
+}
+```
+
+**To connect as admin:**
+```sh
+./marchat-client --username Cody --admin --server wss://localhost:9090/ws
+# (admin_key will be read from config or env)
+```
 
 > [!WARNING]
 > Do not use the default admin key (`changeme`) in production. Change it immediately to prevent unauthorized access.

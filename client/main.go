@@ -366,6 +366,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, m.listenWebSocket()
 		}
+		if v.Type == "auth_failed" {
+			fmt.Println("Error: admin key rejected. Check your --admin-key or config.")
+			os.Exit(1)
+		}
 		return m, m.listenWebSocket()
 	case shared.Message:
 		if len(m.messages) >= maxMessages {
@@ -414,6 +418,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.userListViewport.ScrollDown(1)
 			}
+			return m, nil
+		case "pgup":
+			m.viewport.ScrollUp(m.viewport.Height)
+			return m, nil
+		case "pgdown":
+			m.viewport.ScrollDown(m.viewport.Height)
 			return m, nil
 		case "ctrl+c": // Custom Copy
 			if m.textarea.Focused() {
@@ -512,27 +522,37 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			if strings.HasPrefix(text, ":savefile ") {
-				parts := strings.SplitN(text, " ", 2)
-				if len(parts) == 2 {
-					filename := strings.TrimSpace(parts[1])
-					if m.receivedFiles != nil {
-						file, ok := m.receivedFiles[filename]
-						if ok {
-							err := os.WriteFile(filename, file.Data, 0644)
-							if err != nil {
-								m.banner = "❌ Failed to save file: " + err.Error()
-							} else {
-								m.banner = "File saved: " + filename
-							}
-						} else {
-							m.banner = "❌ No such file received: " + filename
-						}
-					} else {
-						m.banner = "❌ No files received yet."
-					}
+				filename := strings.TrimSpace(strings.TrimPrefix(text, ":savefile "))
+				if m.receivedFiles == nil || m.receivedFiles[filename] == nil {
+					m.banner = "❌ No files received yet."
 					m.textarea.SetValue("")
 					return m, nil
 				}
+				file := m.receivedFiles[filename]
+				// Check for duplicate filenames and append suffix if needed
+				saveName := file.Filename
+				base := saveName
+				ext := ""
+				if dot := strings.LastIndex(saveName, "."); dot != -1 {
+					base = saveName[:dot]
+					ext = saveName[dot:]
+				}
+				tryName := saveName
+				for i := 1; ; i++ {
+					if _, err := os.Stat(tryName); os.IsNotExist(err) {
+						saveName = tryName
+						break
+					}
+					tryName = fmt.Sprintf("%s[%d]%s", base, i, ext)
+				}
+				err := os.WriteFile(saveName, file.Data, 0644)
+				if err != nil {
+					m.banner = "❌ Failed to save file: " + err.Error()
+				} else {
+					m.banner = "✅ File saved as: " + saveName
+				}
+				m.textarea.SetValue("")
+				return m, nil
 			}
 			if strings.HasPrefix(text, ":theme ") {
 				parts := strings.SplitN(text, " ", 2)
@@ -743,8 +763,9 @@ func main() {
 		cfg.Theme = *theme
 	}
 	if cfg.Username == "" {
-		log.Printf("Username required. Use --username or set in config file.")
-		return
+		fmt.Println("Error: --username not provided and no config found.")
+		flag.Usage()
+		os.Exit(1)
 	}
 	if cfg.ServerURL == "" {
 		cfg.ServerURL = "ws://localhost:9090/ws"
