@@ -26,6 +26,7 @@ Thumbs.db
 # Dependency directories (vendor/ is used in older Go projects)
 vendor/ 
 config.json
+server_config.json
 
 # Release binaries
 marchat-*

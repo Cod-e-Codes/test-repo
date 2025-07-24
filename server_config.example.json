@@ -1,0 +1,5 @@
+{
+  "port": 9090,
+  "admins": ["Cody", "Crystal"],
+  "admin_key": "changeme"
+} 

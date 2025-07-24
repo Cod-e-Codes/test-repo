@@ -121,7 +121,20 @@ go mod tidy
 go build ./...
 ```
 
-### 4. Run the server (port 9090, WebSocket)
+### 4. Create a server config file (REQUIRED)
+Create `server_config.json` in the project root:
+```json
+{
+  "port": 9090,
+  "admins": ["Cody", "Crystal"],
+  "admin_key": "your-admin-key"
+}
+```
+
+> [!NOTE]
+> The server now requires a config file. Command-line flags are deprecated and will be removed in a future release.
+
+### 5. Run the server (port 9090, WebSocket)
 Using the prebuilt binary:
 ```sh
 ./marchat-server
@@ -132,12 +145,9 @@ go run cmd/server/main.go
 ```
 
 > [!TIP]
-> Start the server with `--admin` to register an admin username, and use `--admin-key` to secure access:
-```sh
-./marchat-server --admin YourName --admin-key your-admin-key
-```
+> You can override config values with flags, but this is deprecated and will be removed. Always prefer the config file.
 
-### 5. (Optional) Create a config file
+### 6. (Optional) Create a config file
 Create `config.json` in the project root:
 ```json
 {
@@ -151,7 +161,7 @@ Create `config.json` in the project root:
 > [!NOTE]
 > If no `config.json` is found, the client uses default values. Specify a custom config path with `--config`.
 
-### 6. Run the client
+### 7. Run the client
 Using the prebuilt binary:
 ```sh
 # Linux/macOS
@@ -266,20 +276,11 @@ Modular architecture: client, server logic, and shared types are separated for c
 > [!IMPORTANT]
 > Admin commands like `:cleardb` require the `--admin` flag and a matching `--admin-key`. Only users listed as admins on the server can authenticate.
 
-**Admin Key Configuration (Security Update):**
-
-- The `--admin-key` flag is deprecated and will be removed in a future release.
-- Set your admin key in `config.json` as `"admin_key": "your-admin-key"`.
-- Alternatively, set the `MARCHAT_ADMIN_KEY` environment variable.
-- If neither is set, admin mode is disabled for security.
-
-**Example config.json:**
+**Server Config (server_config.json):**
 ```json
 {
-  "username": "Cody",
-  "server_url": "ws://localhost:9090/ws",
-  "theme": "patriot",
-  "twenty_four_hour": true,
+  "port": 9090,
+  "admins": ["Cody", "Crystal"],
   "admin_key": "your-admin-key"
 }
 ```
