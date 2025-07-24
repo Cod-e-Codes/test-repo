@@ -333,6 +333,18 @@ Modular architecture: client, server logic, and shared types are separated for c
 
 ---
 
+## Feedback
+
+Have ideas for improving marchat? Found a bug or want to request a feature?
+
+- Found a bug? [Open an issue](https://github.com/Cod-e-Codes/marchat/issues)
+- Got an idea or suggestion? [Start a discussion](https://github.com/Cod-e-Codes/marchat/discussions)
+- Trying out the beta? Share your experience in an issue and mention your OS and version
+
+Please keep feedback respectful, constructive, and on-topic — it helps make the project better for everyone.
+
+---
+
 ## Contributing
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). For the beta release, we especially welcome feedback on usability, bugs, and feature requests via the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues).
 
