@@ -141,7 +141,9 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string) http.Han
 			if hs.AdminKey != auth.adminKey {
 				// Send auth_failed message before closing
 				failMsg, _ := json.Marshal(map[string]string{"reason": "invalid admin key"})
-				conn.WriteJSON(WSMessage{Type: "auth_failed", Data: failMsg})
+				if err := conn.WriteJSON(WSMessage{Type: "auth_failed", Data: failMsg}); err != nil {
+					log.Printf("WriteMessage error: %v", err)
+				}
 				conn.Close()
 				return
 			}
