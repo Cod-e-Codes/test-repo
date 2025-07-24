@@ -223,7 +223,7 @@ Interact with marchat using the following commands and features:
   - `:cleardb`: Wipe entire server database (admin only).
 - **User list**: Displays up to 20 online users, with a styled `+N more` indicator for additional users.
 - **ASCII art banner**: Shows connection info on server startup (disable via config or flag).
-- **Quit**: Press `Esc` to exit. `[Ctrl+C]` is used for copying when textarea is focused.
+- **Quit**: Press `Esc` to exit.
 - **Clipboard shortcuts**: `[Ctrl+C]` Copy, `[Ctrl+V]` Paste, `[Ctrl+X]` Cut, `[Ctrl+A]` Select All (copies all to clipboard).
 
 > [!CAUTION]
