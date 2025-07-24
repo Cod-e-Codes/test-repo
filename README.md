@@ -332,19 +332,16 @@ Modular architecture: client, server logic, and shared types are separated for c
 > When reporting bugs, include your version or commit hash for faster resolution. For beta release issues, specify that you’re using `v0.1.0-beta.2`.
 
 ---
----
 
-## 💬 Feedback
+## Feedback
 
-We'd love to hear your thoughts on improving **marchat**! Whether it's a usability improvement, a bug you discovered, or a feature you'd love to see — your input helps shape the future of this project.
+Have ideas for improving marchat? Found a bug or want to request a feature?
 
-- 🐞 **Found a bug?** [Open an issue](https://github.com/Cod-e-Codes/marchat/issues)
-- 💡 **Got an idea or suggestion?** [Start a discussion](https://github.com/Cod-e-Codes/marchat/discussions)
-- 🙌 **Have feedback on the beta?** Share your experience in an [issue](https://github.com/Cod-e-Codes/marchat/issues) with platform details and version info
+- Found a bug? [Open an issue](https://github.com/Cod-e-Codes/marchat/issues)
+- Got an idea or suggestion? [Start a discussion](https://github.com/Cod-e-Codes/marchat/discussions)
+- Trying out the beta? Share your experience in an issue and mention your OS and version
 
-Please keep feedback **respectful**, **constructive**, and **on-topic**. This helps us maintain a positive and productive environment for everyone.
-
-Thanks for helping improve `marchat`! 🚀
+Please keep feedback respectful, constructive, and on-topic — it helps make the project better for everyone.
 
 ---
 
