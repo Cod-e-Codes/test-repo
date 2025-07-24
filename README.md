@@ -339,9 +339,10 @@ Have ideas for improving marchat? Found a bug or want to request a feature?
 
 - Found a bug? [Open an issue](https://github.com/Cod-e-Codes/marchat/issues)
 - Got an idea or suggestion? [Start a discussion](https://github.com/Cod-e-Codes/marchat/discussions)
-- Trying out the beta? Share your experience in an issue and mention your OS and version
+- Trying out the beta? [Open an issue](https://github.com/Cod-e-Codes/marchat/issues) and include your OS and version
 
-Please keep feedback respectful, constructive, and on-topic — it helps make the project better for everyone.
+> [!IMPORTANT]
+> Please keep feedback respectful, constructive, and on-topic. It helps improve the project for everyone.
 
 ---
 
