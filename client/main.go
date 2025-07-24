@@ -645,7 +645,7 @@ func (m *model) View() string {
 	// Header
 	header := m.styles.Header.Width(m.viewport.Width + userListWidth + 4).Render(" marchat ")
 	footer := m.styles.Footer.Width(m.viewport.Width + userListWidth + 4).Render(
-		"[Enter] Send  [Up/Down] Scroll  [Esc/Ctrl+C] Quit  Commands: :sendfile <path> :savefile <filename> :clear :theme NAME :time" +
+		"[Enter] Send  [Up/Down] Scroll  [Esc] Quit  Commands: :sendfile <path> :savefile <filename> :clear :theme NAME :time" +
 			func() string {
 				cmds := ""
 				if *isAdmin {
