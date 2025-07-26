@@ -17,7 +17,7 @@
 - [Security](#security)
 - [Tech Stack](#tech-stack)
 - [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
+- [Contributing & Feedback](#contributing--feedback)
 - [License](#license)
 
 ---
