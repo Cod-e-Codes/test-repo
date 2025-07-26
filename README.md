@@ -37,7 +37,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 `marchat` is currently in a pre-release phase with version `v0.1.0-beta.2`. This is the second public beta release, featuring prebuilt binaries for Linux, Windows, and macOS (amd64 only). The release includes both `marchat-server` and `marchat-client` executables, allowing you to test the application without building from source. This release includes clipboard support and bug fixes from `v0.1.0-beta.1`.
 
 > [!IMPORTANT]
-> This is a beta release intended for early testing and feedback. While stable for general use, some features may change or be refined before the first stable release. Please report any issues or suggestions on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues).
+> This is a beta release intended for early testing and feedback. While stable for general use, some features may change or be refined before the first stable release. Please share your feedback in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions), or report bugs on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues).
 
 ### Installing the Beta Release
 
@@ -69,7 +69,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 > For the beta release, we recommend using the prebuilt binaries (`marchat-server` and `marchat-client`) instead of building from source. The binaries are standalone and include all dependencies.
 
 > [!TIP]
-> To provide feedback on the beta release, create an issue on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues) with details about your experience, including your platform and any bugs encountered. Check the [Full Changelog](https://github.com/Cod-e-Codes/marchat/commits/v0.1.0-beta.2) for details on what’s included in this release.
+> To provide feedback on the beta release, share your thoughts in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions). Found a bug? Create an issue on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues) with your platform details and steps to reproduce. Check the [Full Changelog](https://github.com/Cod-e-Codes/marchat/commits/v0.1.0-beta.2) for details on what's included in this release.
 
 ---
 
@@ -341,63 +341,4 @@ Modular architecture: client, server logic, and shared types are separated for c
   - Only up to 20 users are shown, with a styled `+N more` indicator.
 - **Clipboard operations not working**
   - Ensure `xclip` or `xsel` is installed on Linux for `github.com/atotto/clipboard`.
-  - Verify the textarea is focused when using `Ctrl+C`, `Ctrl+V`, `Ctrl+X`, or `Ctrl+A`.
-- **Firewall/Port**: Ensure port 9090 is open for remote connections.
-- **Admin commands**
-  - Ensure `--admin` and `--admin-key` match server settings.
-
-> [!TIP]
-> When reporting bugs, include your version or commit hash for faster resolution. For beta release issues, specify that you’re using `v0.1.0-beta.2`.
-
----
-
-## Contributing & Feedback
-
-We welcome all contributions to marchat! Here's how to get involved:
-
-### Where to Post
-
-- **GitHub Issues** - For bugs and problems:
-  - Crashes and error messages
-  - Unexpected behavior
-  - Performance problems
-  - Security concerns
-  - Always include your OS, version, and steps to reproduce
-
-- **GitHub Discussions** - For ideas and questions:
-  - Feature requests and suggestions
-  - Questions about setup or usage
-  - Share your experience
-  - Show off your customizations
-  - General feedback and ideas
-
-> [!TIP]
-> Not sure where to post? Start a discussion! We can always convert it to an issue if needed.
-
-### Contributing Code
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for:
-- Code style guidelines
-- Pull request process
-- Development setup
-- Build and test instructions
-
-### Code of Conduct
-
-We follow a [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming community for all. Please read it before participating.
-
-> [!IMPORTANT]
-> Please keep all interactions respectful, constructive, and on-topic. It helps improve the project for everyone.
-
----
-
-## Automation
-
-- **Dependency Updates:** marchat uses [Dependabot](https://github.com/dependabot) to automatically check for and propose updates to Go module dependencies.
-- **Continuous Integration:** All pushes and pull requests are checked by [GitHub Actions](https://github.com/Cod-e-Codes/marchat/actions) for build, test, and linting. Please ensure your PR passes CI before requesting review.
-
----
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+  - Verify the textarea is focused when using `
