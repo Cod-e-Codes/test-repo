@@ -351,30 +351,43 @@ Modular architecture: client, server logic, and shared types are separated for c
 
 ---
 
-## Feedback
+## Contributing & Feedback
 
-Have ideas for improving marchat? Found a bug or want to request a feature?
+We welcome all contributions to marchat! Here's how to get involved:
 
-- Found a bug? [Open an issue](https://github.com/Cod-e-Codes/marchat/issues)
-- Got an idea or suggestion? [Start a discussion](https://github.com/Cod-e-Codes/marchat/discussions)
-- Trying out the beta? [Open an issue](https://github.com/Cod-e-Codes/marchat/issues) and include your OS and version
+### Where to Post
 
-> [!IMPORTANT]
-> Please keep feedback respectful, constructive, and on-topic. It helps improve the project for everyone.
+- **GitHub Issues** - For bugs and problems:
+  - Crashes and error messages
+  - Unexpected behavior
+  - Performance problems
+  - Security concerns
+  - Always include your OS, version, and steps to reproduce
 
----
-
-## Contributing
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
-
-### Feedback Guidelines
-
-- **Bugs & Usability Issues**: Use [GitHub Issues](https://github.com/Cod-e-Codes/marchat/issues) to report bugs, crashes, or usability problems. Please include your OS, version, and steps to reproduce.
-- **Feature Requests & Ideas**: Start a [GitHub Discussion](https://github.com/Cod-e-Codes/marchat/discussions) to propose new features or improvements. This allows for community feedback and refinement before implementation.
-- **Questions & Help**: Use [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions) for general questions, help with setup, or to share your experience with marchat.
+- **GitHub Discussions** - For ideas and questions:
+  - Feature requests and suggestions
+  - Questions about setup or usage
+  - Share your experience
+  - Show off your customizations
+  - General feedback and ideas
 
 > [!TIP]
 > Not sure where to post? Start a discussion! We can always convert it to an issue if needed.
+
+### Contributing Code
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Code style guidelines
+- Pull request process
+- Development setup
+- Build and test instructions
+
+### Code of Conduct
+
+We follow a [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming community for all. Please read it before participating.
+
+> [!IMPORTANT]
+> Please keep all interactions respectful, constructive, and on-topic. It helps improve the project for everyone.
 
 ---
 

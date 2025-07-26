@@ -1,31 +1,67 @@
 # Contributing to marchat
 
-Thank you for your interest in contributing!
+Thank you for your interest in contributing! This guide explains how to contribute effectively.
 
-## How to Contribute
+## Types of Contributions
 
-- **Bug Reports & Feature Requests:**
-  - Open an issue with a clear description and steps to reproduce (if applicable).
+### Bug Reports (GitHub Issues)
+- Use the issue tracker for bugs and problems only
+- Include:
+  - Clear description of the problem
+  - Steps to reproduce
+  - Expected vs actual behavior
+  - Your OS and marchat version
+  - Any relevant logs or screenshots
 
-- **Pull Requests:**
-  - Fork the repo and create your branch from `main`.
-  - Write clear, concise commit messages.
-  - Ensure your code builds and passes tests (if any).
-  - Open a pull request and describe your changes.
+### Ideas and Questions (GitHub Discussions)
+- Start a discussion for:
+  - Feature requests and suggestions
+  - Questions about setup or usage
+  - General feedback and ideas
+  - Sharing your experience
+  - Showing off customizations
 
-## Code Style
-- Use idiomatic Go formatting (`gofmt` or `go fmt`).
-- Keep code readable and well-commented.
-- Prefer small, focused commits and PRs.
+### Code Contributions
 
-## Communication
-- Be respectful and constructive in all discussions.
-- All contributions are welcome—no idea is too small!
+1. **Fork & Clone**
+   - Fork the repo on GitHub
+   - Clone your fork locally
+   - Keep your fork in sync with upstream
+
+2. **Create a Branch**
+   - Branch from `main`
+   - Use a clear, descriptive name
+   - One feature/fix per branch
+
+3. **Code Style**
+   - Use `gofmt` or `go fmt`
+   - Follow idiomatic Go patterns
+   - Keep code readable and well-commented
+   - Write clear commit messages
+
+4. **Testing**
+   - Add tests for new features
+   - Ensure all tests pass locally
+   - Run `go test ./...`
+
+5. **Submit Pull Request**
+   - Push to your fork
+   - Open a PR against `main`
+   - Describe your changes clearly
+   - Link related issues
 
 ## Automation
 
-- All pull requests must pass the GitHub Actions CI checks (build, test, lint) before being merged.
-- Dependency updates are handled automatically by Dependabot. Please do not manually update dependencies unless necessary for a bugfix or feature.
+- GitHub Actions runs CI on all PRs
+- Tests must pass before merge
+- Dependabot handles dependency updates
+- Do not manually update dependencies unless needed for a fix
+
+## Communication
+
+- Be respectful and constructive
+- Follow the [Code of Conduct](CODE_OF_CONDUCT.md)
+- All contributions are welcome—no idea is too small!
 
 ---
 
