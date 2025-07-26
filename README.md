@@ -365,7 +365,16 @@ Have ideas for improving marchat? Found a bug or want to request a feature?
 ---
 
 ## Contributing
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). For the beta release, we especially welcome feedback on usability, bugs, and feature requests via the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+### Feedback Guidelines
+
+- **Bugs & Usability Issues**: Use [GitHub Issues](https://github.com/Cod-e-Codes/marchat/issues) to report bugs, crashes, or usability problems. Please include your OS, version, and steps to reproduce.
+- **Feature Requests & Ideas**: Start a [GitHub Discussion](https://github.com/Cod-e-Codes/marchat/discussions) to propose new features or improvements. This allows for community feedback and refinement before implementation.
+- **Questions & Help**: Use [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions) for general questions, help with setup, or to share your experience with marchat.
+
+> [!TIP]
+> Not sure where to post? Start a discussion! We can always convert it to an issue if needed.
 
 ---
 
