@@ -26,7 +26,7 @@
 
 `marchat` is a minimalist terminal-based group chat app designed for real-time, distraction-free conversations. Whether you're pair programming, self-hosting a LAN party, or just chatting from two terminals, it's lightweight, hackable, and built for fun.
 
-## Why Marchat?
+## Why marchat?
 
 Built for father-son coding sessions, marchat is about sharing the joy of hacking, learning, and chatting in a terminal. It's a fun, retro-inspired project for anyone who loves the command line, real-time collaboration, or just wants a simple, self-hosted chat.
 
