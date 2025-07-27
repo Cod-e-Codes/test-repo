@@ -18,6 +18,7 @@
 - [Tech Stack](#tech-stack)
 - [Troubleshooting](#troubleshooting)
 - [Contributing & Feedback](#contributing--feedback)
+- [What's Next](#whats-next)
 - [License](#license)
 
 ---
@@ -395,6 +396,18 @@ We follow a [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming communit
 
 - **Dependency Updates:** marchat uses [Dependabot](https://github.com/dependabot) to automatically check for and propose updates to Go module dependencies.
 - **Continuous Integration:** All pushes and pull requests are checked by [GitHub Actions](https://github.com/Cod-e-Codes/marchat/actions) for build, test, and linting. Please ensure your PR passes CI before requesting review.
+
+---
+
+## What's Next
+
+marchat is under active development. Near-term priorities include:
+
+- Unifying and stabilizing configuration across the client and server  
+- Expanding notification support (e.g., native system alerts, VS Code integration)  
+- Laying the groundwork for a plugin and extensibility system
+
+Long-term goals are still evolving. Community input is welcome.
 
 ---
 
