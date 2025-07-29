@@ -408,9 +408,16 @@ marchat is under active development. Near-term priorities include:
 - Laying the groundwork for a plugin and extensibility system
 - Implementing optional end-to-end encryption for enhanced security
 - Improving compatibility with low-resource devices (e.g., Raspberry Pi)
-- Enhancing remote access capabilities, including improved NAT traversal and Cloudflare Tunnel support
-- Ensuring better handling of slow or unstable network connections, with retry/backoff logic
+  - Addressing 32-bit vs 64-bit limitations
+  - Ensuring stable file sharing support
+- Enhancing remote access capabilities
+  - Reverse proxy support with proper `X-Forwarded-For` handling
+  - Improved NAT traversal and Cloudflare Tunnel fallback
+  - Custom domain configuration (e.g., `marchat.example.com`)
 - Minimizing memory and CPU usage for smooth performance on lower-end hardware
+- Improving network resilience with retry and backoff strategies
+- Exploring a TUI-based admin console for user and server management
+- Preparing Docker container support for easier self-hosted deployment
 
 Long-term goals are still evolving. Community input is welcome.
 
