@@ -403,9 +403,14 @@ We follow a [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming communit
 
 marchat is under active development. Near-term priorities include:
 
-- Unifying and stabilizing configuration across the client and server  
-- Expanding notification support (e.g., native system alerts, VS Code integration)  
+- Unifying and stabilizing configuration across the client and server
+- Expanding notification support (e.g., native system alerts, VS Code integration)
 - Laying the groundwork for a plugin and extensibility system
+- Implementing optional end-to-end encryption for enhanced security
+- Improving compatibility with low-resource devices (e.g., Raspberry Pi)
+- Enhancing remote access capabilities, including improved NAT traversal and Cloudflare Tunnel support
+- Ensuring better handling of slow or unstable network connections, with retry/backoff logic
+- Minimizing memory and CPU usage for smooth performance on lower-end hardware
 
 Long-term goals are still evolving. Community input is welcome.
 
