@@ -1,0 +1,10 @@
+version: '3.9'
+services:
+  marchat:
+    build: .
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./server_config.json:/marchat/server_config.json
+      - ./marchat.db:/marchat/marchat.db
+    restart: unless-stopped
