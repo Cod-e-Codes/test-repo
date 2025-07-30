@@ -71,6 +71,9 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 > [!NOTE]
 > For the beta release, we recommend using the prebuilt binaries (`marchat-server` and `marchat-client`) instead of building from source. The binaries are standalone and include all dependencies.
 
+> [!IMPORTANT]
+> Launch these executables from a terminal—don’t double-click. Double-clicking produces no visible output and can leave a server running unnoticed on your network.
+
 > [!TIP]
 > To provide feedback on the beta release, share your thoughts in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions). Found a bug? Create an issue on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues) with your platform details and steps to reproduce. Check the [Full Changelog](https://github.com/Cod-e-Codes/marchat/commits/v0.1.0-beta.2) for details on what's included in this release.
 
@@ -209,6 +212,9 @@ cloudflared tunnel --url http://localhost:9090
 
 > [!NOTE]
 > Temporary tunnels don’t require a Cloudflare account. For persistent tunnels, see the [Cloudflare Tunnel docs](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/).
+
+> [!IMPORTANT]
+> Always run `marchat-server` and `marchat-client` from a terminal (shell), not by double-clicking. If you double-click, nothing will appear and the server may be left running silently in the background, potentially exposing a port you didn’t intend.
 
 ---
 
