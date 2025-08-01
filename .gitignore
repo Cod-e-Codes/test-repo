@@ -34,9 +34,10 @@ server_config.json
 .env.local
 .env.production
 
-# Config directories (may contain sensitive data)
+# Ignore everything inside config except .gitkeep and *.go files
 config/*
 !config/.gitkeep
+!config/*.go
 
 # Release binaries
 marchat-*
