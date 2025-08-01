@@ -35,7 +35,7 @@ server_config.json
 .env.production
 
 # Config directories (may contain sensitive data)
-config/
+config/*
 !config/.gitkeep
 
 # Release binaries

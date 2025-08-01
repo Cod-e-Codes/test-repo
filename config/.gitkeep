@@ -1,0 +1,2 @@
+# This file ensures the config directory is tracked in git
+# The directory contents are ignored via .gitignore 

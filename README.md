@@ -189,6 +189,8 @@ You can also specify a custom config directory:
 
 > [!TIP]
 > The server will automatically create the config directory if it doesn't exist. In development mode, it defaults to `./config`. In production, it uses `$XDG_CONFIG_HOME/marchat`.
+> 
+> **Note**: The `config/` directory is tracked in git but its contents are ignored to prevent sensitive configuration files from being committed. The server will create the directory and any necessary files on startup.
 
 ### 6. (Optional) Create a client config file
 Create `config.json` in the project root:
