@@ -751,7 +751,7 @@ marchat is under active development. Recent major improvements include:
 
 - Environment variable support with .env file loading
 - User-configurable static config directory
-- IP address logging and connection tracking
+- IP address logging and connection tracking (including X-Forwarded-For header parsing)
 - Admin commands for user management (:kick, :ban, :unban)
 - Ban management system with automatic cleanup
 - End-to-end encryption with X25519 and ChaCha20-Poly1305
@@ -765,7 +765,7 @@ Near-term priorities include:
   - Addressing 32-bit vs 64-bit limitations
   - Ensuring stable file sharing support
 - Enhancing remote access capabilities
-  - Reverse proxy support with proper `X-Forwarded-For` handling
+  - Full reverse proxy support with proper `X-Forwarded-For` handling
   - Improved NAT traversal and Cloudflare Tunnel fallback
   - Custom domain configuration (e.g., `marchat.example.com`)
 - Minimizing memory and CPU usage for smooth performance on lower-end hardware
