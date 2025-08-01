@@ -50,7 +50,8 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 1. **Download the binaries**:
    - Visit the [v0.1.0-beta.2 release page](https://github.com/Cod-e-Codes/marchat/releases/tag/v0.1.0-beta.2).
-   - Download the appropriate archive for your platform (Linux, Windows, or macOS, amd64 only).
+   - Download the appropriate archive for your platform (Linux, Windows, or macOS).
+   - **Architecture**: amd64/x86_64 only (Intel/AMD 64-bit processors)
    - Extract the archive to a directory of your choice.
 
 2. **Run the server**:
@@ -65,10 +66,10 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 3. **Run the client**:
    ```sh
    # Linux/macOS
-   ./marchat-client --username Cody --theme patriot --server ws://localhost:9090/ws
+   ./marchat-client --username Cody --theme patriot --server ws://localhost:8080/ws
 
    # Windows
-   marchat-client.exe --username Cody --theme patriot --server ws://localhost:9090/ws
+   marchat-client.exe --username Cody --theme patriot --server ws://localhost:8080/ws
    ```
    - Alternatively, use a `config.json` file (see [Quick Start](#quick-start) for details).
 
@@ -107,6 +108,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 - Install [Go 1.24+](https://go.dev/dl/) if you haven’t already (only needed if building from source)
   - *(Check with `go version` in your terminal)*
+- **Architecture**: Requires amd64/x86_64 (Intel/AMD 64-bit processors)
 - (Optional, for remote access) Download [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/) (`cloudflared.exe` on Windows)
 - (Optional, for clipboard support on Linux) Install `xclip` or `xsel` for `github.com/atotto/clipboard` functionality
 
@@ -141,7 +143,8 @@ Set environment variables directly:
 ```sh
 export MARCHAT_PORT=8080
 export MARCHAT_ADMIN_KEY=your-secret-admin-key
-export MARCHAT_USERS=Cody,Crystal,Alice
+export MARCHAT_USERS=Cody,Crystal,Alice  # No spaces between usernames
+export MARCHAT_CONFIG_DIR=/path/to/config  # Optional: custom config directory
 ```
 
 #### Option B: .env File
@@ -154,16 +157,16 @@ cp env.example .env
 # Edit the .env file with your settings
 MARCHAT_PORT=8080
 MARCHAT_ADMIN_KEY=your-secret-admin-key
-MARCHAT_USERS=Cody,Crystal,Alice
+MARCHAT_USERS=Cody,Crystal,Alice  # No spaces between usernames
 MARCHAT_DB_PATH=./config/marchat.db
 MARCHAT_LOG_LEVEL=info
 ```
 
 #### Option C: Legacy JSON Config (Deprecated)
-Create `server_config.json` in the project root:
+Create `server_config.json` in the project root or config directory:
 ```json
 {
-  "port": 9090,
+  "port": 8080,
   "admins": ["Cody", "Crystal"],
   "admin_key": "your-admin-key"
 }
@@ -262,7 +265,7 @@ You can customize the configuration by:
 | `MARCHAT_PORT` | `8080` | Server port |
 | `MARCHAT_ADMIN_KEY` | (required) | Admin authentication key |
 | `MARCHAT_USERS` | (required) | Comma-separated admin usernames |
-| `MARCHAT_DB_PATH` | `./config/marchat.db` | Database file path |
+| `MARCHAT_DB_PATH` | `/marchat/config/marchat.db` | Database file path |
 | `MARCHAT_LOG_LEVEL` | `info` | Log level (debug, info, warn, error) |
 | `MARCHAT_JWT_SECRET` | (auto-generated) | JWT secret for authentication |
 
@@ -300,11 +303,15 @@ cloudflared tunnel --url http://localhost:8080
 
 Interact with marchat using the following commands and features:
 
+> [!TIP]
+> All marchat commands start with a colon (`:`) and are case-sensitive. Commands are processed when you press `Enter`.
+
 - **Send messages**: Type and press `Enter`.
 - **File sharing**:
   - Send files (<1MB): `:sendfile <path>`
   - Save received files: `:savefile <filename>`
-    - If a file with the same name exists, a numeric suffix will be added (e.g., `file[1]`, `file[2]`, etc.). The actual saved filename will be shown in the UI.
+    - If a file with the same name exists, a numeric suffix will be added (e.g., `file[1]`, `file[2]`, etc.)
+    - The actual saved filename will be shown in the UI for confirmation
 - **Emoji support**: Auto-converts ASCII emoticons to Unicode (`:)`, `:(`, `:D`, `<3`, `:P`).
 - **Mentions**: Use `@username` to highlight a user (full message highlighted).
 - **Clipboard operations**:
@@ -313,7 +320,7 @@ Interact with marchat using the following commands and features:
   - Cut text: `Ctrl+X` (copies textarea content to clipboard and clears textarea)
   - Select all: `Ctrl+A` (copies all textarea content to clipboard)
 - **Scroll**: Use Up/Down arrows or mouse to navigate chat history.
-- **Commands**:
+- **Commands** (all commands start with `:` and are case-sensitive):
   - `:theme <name>`: Switch theme (`patriot`, `retro`, `modern`; persists in config).
   - `:time`: Toggle 12/24-hour timestamp format (persists in config).
   - `:clear`: Clear local chat buffer (client-side only, does not affect others).
@@ -345,16 +352,71 @@ marchat/
 │   ├── handlers.go
 │   ├── client.go
 │   ├── hub.go
+│   ├── config.go     # Legacy JSON config support
 │   └── schema.sql
+├── config/           # Configuration package
+│   ├── config.go     # Environment-based configuration
+│   └── config_test.go
 ├── shared/           # Shared types
 │   └── types.go
 ├── config.json       # Example or user config file (see Quick Start)
+├── env.example       # Example environment variables file
 ├── go.mod
 ├── go.sum
 └── README.md
 ```
 
-Modular architecture: client, server logic, and shared types are separated for clarity and maintainability.
+Modular architecture: client, server logic, and shared types are separated for clarity and maintainability. The new `config/` package provides robust environment-variable and `.env` file support.
+
+---
+
+## Configuration System
+
+marchat supports multiple configuration methods with a clear precedence order:
+
+### Configuration Precedence
+1. **Environment Variables** (highest priority)
+2. **.env Files** (loaded from config directory)
+3. **Legacy JSON Config** (deprecated, for backward compatibility)
+
+### Environment Variables
+The following environment variables are supported:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MARCHAT_PORT` | `8080` | Server port |
+| `MARCHAT_ADMIN_KEY` | (required) | Admin authentication key |
+| `MARCHAT_USERS` | (required) | Comma-separated admin usernames |
+| `MARCHAT_DB_PATH` | `./config/marchat.db` | Database file path |
+| `MARCHAT_LOG_LEVEL` | `info` | Log level (debug, info, warn, error) |
+| `MARCHAT_JWT_SECRET` | (auto-generated) | JWT secret for authentication |
+| `MARCHAT_CONFIG_DIR` | (auto-detected) | Custom config directory |
+
+### Configuration Directory
+- **Development**: Defaults to `./config` (when `go.mod` is present)
+- **Production**: Uses `$XDG_CONFIG_HOME/marchat` (follows XDG Base Directory spec)
+- **Custom**: Override with `--config-dir` flag
+
+### Example Configuration Files
+
+**Environment Variables (.env file):**
+```sh
+MARCHAT_PORT=8080
+MARCHAT_ADMIN_KEY=your-secret-admin-key
+MARCHAT_USERS=Cody,Crystal,Alice  # No spaces between usernames
+MARCHAT_DB_PATH=./config/marchat.db
+MARCHAT_LOG_LEVEL=info
+MARCHAT_JWT_SECRET=your-jwt-secret-change-in-production
+```
+
+**Legacy JSON Config (server_config.json):**
+```json
+{
+  "port": 8080,
+  "admins": ["Cody", "Crystal"],
+  "admin_key": "your-admin-key"
+}
+```
 
 ---
 
@@ -363,20 +425,20 @@ Modular architecture: client, server logic, and shared types are separated for c
 > [!IMPORTANT]
 > Admin commands like `:cleardb` require the `--admin` flag and a matching `--admin-key`. Only users listed as admins on the server can authenticate.
 
-**Server Config (server_config.json):**
-```json
-{
-  "port": 9090,
-  "admins": ["Cody", "Crystal"],
-  "admin_key": "your-admin-key"
-}
+**Server Config (Environment Variables or .env file):**
+```sh
+MARCHAT_PORT=8080
+MARCHAT_ADMIN_KEY=your-secret-admin-key
+MARCHAT_USERS=Cody,Crystal
 ```
 
 **To connect as admin:**
 ```sh
-./marchat-client --username Cody --admin --server wss://localhost:9090/ws
-# (admin_key will be read from config or env)
+./marchat-client --username Cody --admin --admin-key your-admin-key --server ws://localhost:8080/ws
 ```
+
+> [!NOTE]
+> The `--admin` flag enables admin mode and allows privileged commands like `:cleardb`. You must also provide the `--admin-key` that matches the server's `MARCHAT_ADMIN_KEY` setting.
 
 > [!WARNING]
 > Do not use the default admin key (`changeme`) in production. Change it immediately to prevent unauthorized access.
@@ -393,8 +455,10 @@ Modular architecture: client, server logic, and shared types are separated for c
 > For production deployments:
 > - Change the default admin key (`changeme`) to a secure value.
 > - Use `wss://` for secure WebSocket connections.
-> - Ensure firewall rules allow your chosen port (default: 9090).
+> - Ensure firewall rules allow your chosen port (default: 8080).
 > - Consider a reverse proxy (e.g., nginx) for added security.
+> - **Network Security**: If exposing to public IP, use TLS/HTTPS or VPN protection
+> - **Access Control**: Restrict server access to trusted networks when possible
 
 ---
 
@@ -415,7 +479,7 @@ Modular architecture: client, server logic, and shared types are separated for c
 - **Panic: `close of closed channel`**
   - Fixed: The client now guards against double-close of internal channels.
 - **Client fails to connect with `http://` URL**
-  - Use a WebSocket URL: `ws://localhost:9090/ws` or `wss://...` for remote.
+  - Use a WebSocket URL: `ws://localhost:8080/ws` or `wss://...` for remote.
 - **Mentions not highlighted**
   - Use `@username` exactly (word boundary, not substring).
 - **User list not updating**
@@ -429,7 +493,9 @@ Modular architecture: client, server logic, and shared types are separated for c
 - **Clipboard operations not working**
   - Ensure `xclip` or `xsel` is installed on Linux for `github.com/atotto/clipboard`.
   - Verify the textarea is focused when using `Ctrl+C`, `Ctrl+V`, `Ctrl+X`, or `Ctrl+A`.
-- **Firewall/Port**: Ensure port 9090 is open for remote connections.
+- **Firewall/Port**: Ensure port 8080 is open for remote connections.
+  - Check system firewall settings and corporate network policies
+  - Some environments may block non-standard ports
 - **Admin commands**
   - Ensure `--admin` and `--admin-key` match server settings.
 

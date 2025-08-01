@@ -93,7 +93,7 @@ func TestLoadConfigWithEnvFile(t *testing.T) {
 	envPath := filepath.Join(tempDir, ".env")
 
 	// Create a test .env file
-	envContent := `MARCHAT_PORT=9090
+	envContent := `MARCHAT_PORT=8080
 MARCHAT_ADMIN_KEY=env-file-key
 MARCHAT_USERS=envuser1,envuser2
 MARCHAT_DB_PATH=/custom/db/path
@@ -110,8 +110,8 @@ MARCHAT_JWT_SECRET=custom-jwt-secret`
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
 
-	if cfg.Port != 9090 {
-		t.Errorf("Expected port 9090, got %d", cfg.Port)
+	if cfg.Port != 8080 {
+		t.Errorf("Expected port 8080, got %d", cfg.Port)
 	}
 	if cfg.AdminKey != "env-file-key" {
 		t.Errorf("Expected admin key 'env-file-key', got '%s'", cfg.AdminKey)
@@ -142,7 +142,7 @@ func TestEnvironmentVariablePrecedence(t *testing.T) {
 	envPath := filepath.Join(tempDir, ".env")
 
 	// Create a .env file with one value
-	envContent := `MARCHAT_PORT=9090
+	envContent := `MARCHAT_PORT=8080
 MARCHAT_ADMIN_KEY=env-file-key
 MARCHAT_USERS=envuser1`
 

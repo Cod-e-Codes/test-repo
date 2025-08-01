@@ -768,7 +768,7 @@ func main() {
 		os.Exit(1)
 	}
 	if cfg.ServerURL == "" {
-		cfg.ServerURL = "ws://localhost:9090/ws"
+		cfg.ServerURL = "ws://localhost:8080/ws"
 	}
 	if !strings.HasPrefix(cfg.ServerURL, "ws://") && !strings.HasPrefix(cfg.ServerURL, "wss://") {
 		log.Printf("Warning: --server should be a WebSocket URL (ws:// or wss://), not http://")
