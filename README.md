@@ -778,4 +778,9 @@ Long-term goals are still evolving. Community input is welcome.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+marchat is open source under the [MIT License](LICENSE).
+
+> **Commercial Plugins & Support**  
+> The core of marchat is free to use, modify, and distribute. Official plugins may be offered separately under paid licenses.  
+> Community plugins are welcome and may be published under any license.  
+> For commercial support or licensing inquiries, contact [cod.e.codes.dev@gmail.com](mailto:cod.e.codes.dev@gmail.com).
