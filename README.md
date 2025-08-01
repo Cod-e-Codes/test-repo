@@ -234,9 +234,22 @@ Or with a config file:
 
 ## Docker Configuration
 
-marchat includes Docker support with environment-based configuration:
+marchat includes Docker support with environment-based configuration and enhanced security features:
+
+### Security Features
+
+> [!IMPORTANT]
+> The Docker container runs as a non-root user (`marchat`) for enhanced security. The container includes build arguments for customizing user/group ownership to prevent volume permission issues.
+
+**Key Security Improvements:**
+- **Non-root Execution**: Container runs as user `marchat` instead of root
+- **Custom User/Group IDs**: Build arguments `USER_ID` and `GROUP_ID` allow matching host user permissions
+- **Permission Management**: Entrypoint script automatically fixes config directory ownership
+- **Minimal Attack Surface**: Uses Alpine Linux with minimal required packages
 
 ### Using Docker Compose
+
+#### Basic Usage
 ```sh
 # Start the service
 docker-compose up -d
@@ -248,8 +261,39 @@ docker-compose logs -f marchat
 docker-compose down
 ```
 
+#### Custom User/Group IDs (Recommended for Production)
+To avoid permission issues with mounted volumes, build with your host user's UID/GID:
+
+```sh
+# Build with custom user/group IDs
+docker-compose build --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)
+
+# Or set environment variables
+USER_ID=$(id -u) GROUP_ID=$(id -g) docker-compose up -d
+```
+
+**Windows PowerShell:**
+```powershell
+# Get current user SID and convert to UID (typically 1000 for first user)
+docker-compose build --build-arg USER_ID=1000 --build-arg GROUP_ID=1000
+```
+
+### Container Architecture
+
+**Entrypoint Script (`entrypoint.sh`):**
+- Automatically fixes config directory ownership at container startup
+- Ensures `/marchat/config` has correct permissions for the `marchat` user
+- Gracefully handles permission errors without failing container startup
+- Executes the main application with proper signal handling
+
+**Config Directory Structure:**
+- **Container Path**: `/marchat/config` (set via `MARCHAT_CONFIG_DIR` environment variable)
+- **Host Mount**: `./config:/marchat/config` (configurable in docker-compose.yml)
+- **Database**: Stored at `/marchat/config/marchat.db` inside container
+
 ### Custom Configuration with Docker
-You can customize the configuration by:
+
+You can customize the configuration through multiple methods:
 
 1. **Environment Variables**: Modify the `environment` section in `docker-compose.yml`
 2. **Mount a .env file**: Uncomment the `env_file` section in `docker-compose.yml`
@@ -258,16 +302,68 @@ You can customize the configuration by:
    volumes:
      - ./my-config:/marchat/config
    ```
+4. **Custom User/Group IDs**: Override build arguments for different permission models:
+   ```yaml
+   build:
+     context: .
+     args:
+       USER_ID: 1001
+       GROUP_ID: 1001
+   ```
 
 ### Environment Variables Reference
+
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MARCHAT_PORT` | `8080` | Server port |
+| `MARCHAT_PORT` | `8080` | Server port (consistent across all Docker configurations) |
 | `MARCHAT_ADMIN_KEY` | (required) | Admin authentication key |
 | `MARCHAT_USERS` | (required) | Comma-separated admin usernames |
 | `MARCHAT_DB_PATH` | `/marchat/config/marchat.db` | Database file path |
 | `MARCHAT_LOG_LEVEL` | `info` | Log level (debug, info, warn, error) |
 | `MARCHAT_JWT_SECRET` | (auto-generated) | JWT secret for authentication |
+| `MARCHAT_CONFIG_DIR` | `/marchat/config` | Config directory path inside container |
+
+### Production Best Practices
+
+**Security Recommendations:**
+- Change the default `MARCHAT_ADMIN_KEY` from `changeme` to a secure value
+- Use custom `MARCHAT_JWT_SECRET` for production deployments
+- Consider using Docker secrets for sensitive environment variables
+- Regularly update the base Alpine Linux image for security patches
+
+**Permission Management:**
+- Use `USER_ID` and `GROUP_ID` build arguments to match your host user
+- Ensure the host config directory has appropriate permissions
+- Monitor container logs for permission-related warnings
+
+**Volume Management:**
+- Use named volumes for persistent data: `marchat_data:/marchat/config`
+- Consider backing up the config directory regularly
+- Test volume permissions in your specific environment
+
+### Troubleshooting Docker Issues
+
+**Permission Denied Errors:**
+```sh
+# Check container user
+docker-compose exec marchat id
+
+# Verify config directory permissions
+docker-compose exec marchat ls -la /marchat/config
+
+# Rebuild with correct UID/GID
+docker-compose build --no-cache --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)
+```
+
+**Port Conflicts:**
+- Ensure port 8080 is available on your host
+- Check for other services using the same port
+- Verify firewall settings allow the connection
+
+**Configuration Issues:**
+- Verify environment variables are set correctly
+- Check that the config directory is properly mounted
+- Review container logs for configuration errors
 
 ---
 
