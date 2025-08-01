@@ -264,7 +264,11 @@ func TestGetDefaultConfigDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to change directory: %v", err)
 	}
-	defer os.Chdir(originalWd)
+	defer func() {
+		if err := os.Chdir(originalWd); err != nil {
+			t.Fatalf("Failed to restore working directory: %v", err)
+		}
+	}()
 
 	configDir := getDefaultConfigDir()
 	if configDir != "./config" {
