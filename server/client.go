@@ -3,9 +3,10 @@ package server
 import (
 	"database/sql"
 	"log"
-	"marchat/shared"
 	"strings"
 	"time"
+
+	"github.com/Cod-e-Codes/marchat/shared"
 
 	"github.com/gorilla/websocket"
 )

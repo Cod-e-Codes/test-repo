@@ -5,13 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"marchat/config"
-	"marchat/server"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"time"
+
+	"github.com/Cod-e-Codes/marchat/config"
+	"github.com/Cod-e-Codes/marchat/server"
 )
 
 // Multi-admin support

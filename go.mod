@@ -1,4 +1,4 @@
-module marchat
+module github.com/Cod-e-Codes/marchat
 
 go 1.24.4
 

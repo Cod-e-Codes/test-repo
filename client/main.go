@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"marchat/client/config"
-	"marchat/shared"
+	"github.com/Cod-e-Codes/marchat/client/config"
+	"github.com/Cod-e-Codes/marchat/shared"
 
 	"os/signal"
 	"syscall"

@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
-	"marchat/shared"
 	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/Cod-e-Codes/marchat/shared"
 
 	"github.com/gorilla/websocket"
 )
