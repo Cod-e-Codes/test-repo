@@ -33,6 +33,10 @@ It runs entirely on a local SQLite database with no external services required â
 
 Built for father-son coding sessions, marchat is about sharing the joy of hacking, learning, and chatting in a terminal. It's a fun, retro-inspired project for anyone who loves the command line, real-time collaboration, or just wants a simple, self-hosted chat.
 
+![Server Demo](demo-server.gif)
+![Client 1 Demo](demo-client-1.gif)
+![Client 2 Demo](demo-client-2.gif)
+
 ---
 
 ## Beta Release
