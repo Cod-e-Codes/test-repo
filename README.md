@@ -106,8 +106,9 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 ## Prerequisites
 
 - **Supported Platforms**: Linux, Windows, and macOS (amd64/x86_64 architecture only)
-- Install [Go 1.24+](https://go.dev/dl/) if you haven't already (only needed if building from source)
+- Install [Go 1.23+](https://go.dev/dl/) if you haven't already (only needed if building from source)
   - *(Check with `go version` in your terminal)*
+  - **Minimum Version**: Go 1.23.0 required for charmbracelet dependencies
 - (Optional, for remote access) Download [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/) (`cloudflared.exe` on Windows)
 - (Optional, for clipboard support on Linux) Install `xclip` or `xsel` for `github.com/atotto/clipboard` functionality
 
@@ -131,6 +132,14 @@ go mod tidy
 ```sh
 go build ./...
 ```
+
+### 3.5. Make binaries executable (Linux/macOS only)
+```sh
+chmod +x marchat-server marchat-client
+```
+
+> [!NOTE]
+> On Windows, the `.exe` extension automatically makes files executable. This step is only needed on Linux and macOS.
 
 ### 4. Configure the server
 
@@ -589,9 +598,12 @@ MARCHAT_USERS=Cody,Crystal
 - **Clipboard operations not working**
   - Ensure `xclip` or `xsel` is installed on Linux for `github.com/atotto/clipboard`.
   - Verify the textarea is focused when using `Ctrl+C`, `Ctrl+V`, `Ctrl+X`, or `Ctrl+A`.
-- **Firewall/Port**: Ensure port 8080 is open for remote connections.
-  - Check system firewall settings and corporate network policies
-  - Some environments may block non-standard ports
+- **Network Connectivity**: Ensure proper network access for remote connections
+  - **Firewall**: Open port 8080 on your system firewall for incoming connections
+  - **LAN Access**: For local network access, ensure the server binds to all interfaces (`0.0.0.0:8080`)
+  - **VPN/Corporate Networks**: Some corporate networks may block non-standard ports or require VPN access
+  - **Router Configuration**: For internet access, configure port forwarding on your router (port 8080)
+  - **Cloudflare Tunnel**: For secure remote access without firewall changes, use Cloudflare Tunnel (see [Remote Access](#remote-access-optional))
 - **Admin commands**
   - Ensure `--admin` and `--admin-key` match server settings.
 
