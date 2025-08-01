@@ -60,7 +60,7 @@ var (
 )
 
 var isAdmin = flag.Bool("admin", false, "Connect as admin (requires --admin-key)")
-var adminKey = flag.String("admin-key", "", "Admin key for privileged commands like :cleardb")
+var adminKey = flag.String("admin-key", "", "Admin key for privileged commands like :cleardb, :kick, :ban, :unban")
 
 type model struct {
 	cfg       config.Config
@@ -705,7 +705,7 @@ func (m *model) View() string {
 			func() string {
 				cmds := ""
 				if *isAdmin {
-					cmds += " :cleardb"
+					cmds += " :cleardb :kick USER :ban USER :unban USER"
 				}
 				return cmds
 			}(),

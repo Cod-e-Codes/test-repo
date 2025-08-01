@@ -428,7 +428,11 @@ Interact with marchat using the following commands and features:
   - `:theme <name>`: Switch theme (`patriot`, `retro`, `modern`; persists in config).
   - `:time`: Toggle 12/24-hour timestamp format (persists in config).
   - `:clear`: Clear local chat buffer (client-side only, does not affect others).
-  - `:cleardb`: Wipe entire server database (admin only).
+  - **Admin Commands** (admin only):
+    - `:cleardb`: Wipe entire server database
+    - `:kick <username>`: Forcibly disconnect a user by username
+    - `:ban <username>`: Ban a user for 24 hours, preventing reconnection
+    - `:unban <username>`: Remove a user from the ban list
 - **User list**: Displays up to 20 online users, with a styled `+N more` indicator for additional users.
 - **ASCII art banner**: Shows connection info on server startup (disable via config or flag).
 - **Quit**: Press `Esc` to exit.
@@ -528,7 +532,26 @@ MARCHAT_JWT_SECRET=your-jwt-secret-change-in-production
 ## Admin Mode: Privileged Commands & Security
 
 > [!IMPORTANT]
-> Admin commands like `:cleardb` require the `--admin` flag and a matching `--admin-key`. Only users listed as admins on the server can authenticate.
+> Admin commands require the `--admin` flag and a matching `--admin-key`. Only users listed as admins on the server can authenticate.
+
+### Admin Commands
+
+The following commands are available to authenticated admins:
+
+- **`:cleardb`** - Wipe entire server database (clears all message history)
+- **`:kick <username>`** - Forcibly disconnect a user by username
+- **`:ban <username>`** - Ban a user for 24 hours, preventing reconnection
+- **`:unban <username>`** - Remove a user from the ban list
+
+### IP Logging & Ban Management
+
+The server now logs IP addresses for all connections and maintains a ban system:
+
+- **IP Address Logging**: All client connections are logged with their IP address
+- **Ban Enforcement**: Banned users cannot connect to the server
+- **Automatic Cleanup**: Expired bans are automatically removed every hour
+- **Ban Duration**: Default ban duration is 24 hours
+- **Proxy Support**: Handles X-Forwarded-For and X-Real-IP headers for reverse proxy setups
 
 **Server Config (Environment Variables or .env file):**
 ```sh
@@ -541,6 +564,27 @@ MARCHAT_USERS=Cody,Crystal
 ```sh
 ./marchat-client --username Cody --admin --admin-key your-admin-key --server ws://localhost:8080/ws
 ```
+
+**Example admin command usage:**
+```sh
+# Kick a user
+:kick Alice
+
+# Ban a user for 24 hours
+:ban Bob
+
+# Unban a user
+:unban Bob
+
+# Clear the database
+:cleardb
+```
+
+**Testing the ban system:**
+1. Connect as admin and ban a user: `:ban TestUser`
+2. Try to connect as the banned user - connection should be rejected
+3. Unban the user: `:unban TestUser`
+4. The user should now be able to connect again
 
 > [!NOTE]
 > The `--admin` flag enables admin mode and allows privileged commands like `:cleardb`. You must also provide the `--admin-key` that matches the server's `MARCHAT_ADMIN_KEY` setting.

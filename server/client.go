@@ -22,7 +22,8 @@ type Client struct {
 	send     chan interface{}
 	db       *sql.DB
 	username string
-	isAdmin  bool // new
+	isAdmin  bool
+	ipAddr   string // Store IP address for logging and ban enforcement
 }
 
 func (c *Client) readPump() {
@@ -62,32 +63,115 @@ func (c *Client) readPump() {
 			c.hub.broadcast <- msg
 			continue
 		}
-		// Handle :cleardb command
-		if msg.Content == ":cleardb" {
+		// Handle admin commands
+		if strings.HasPrefix(msg.Content, ":") {
+			log.Printf("Command received from %s: %s (admin=%v)", c.username, msg.Content, c.isAdmin)
 			if c.isAdmin {
-				log.Println("[ADMIN] Clearing message database via WebSocket...")
-				err := ClearMessages(c.db)
-				if err != nil {
-					log.Println("Failed to clear DB:", err)
-				} else {
-					log.Println("Message DB cleared.")
-					c.hub.broadcast <- shared.Message{
-						Sender:    "System",
-						Content:   "Chat history cleared by admin.",
-						CreatedAt: time.Now(),
-						Type:      shared.TextMessage,
-					}
-				}
+				c.handleAdminCommand(msg.Content)
 			} else {
-				log.Printf("Unauthorized cleardb attempt by %s\n", c.username)
+				log.Printf("Unauthorized admin command attempt by %s: %s", c.username, msg.Content)
 			}
-			continue // Don't insert this as a normal message
+			continue // Don't insert admin commands as normal messages
 		}
 		msg.CreatedAt = time.Now()
 		if msg.Type == "" || msg.Type == shared.TextMessage {
 			InsertMessage(c.db, msg)
 		}
 		c.hub.broadcast <- msg
+	}
+}
+
+// handleAdminCommand processes admin commands
+func (c *Client) handleAdminCommand(command string) {
+	parts := strings.Fields(command)
+	if len(parts) == 0 {
+		return
+	}
+
+	switch parts[0] {
+	case ":cleardb":
+		log.Printf("[ADMIN] Clearing message database via WebSocket by %s...", c.username)
+		err := ClearMessages(c.db)
+		if err != nil {
+			log.Printf("Failed to clear DB: %v", err)
+		} else {
+			log.Printf("Message DB cleared by %s", c.username)
+			c.hub.broadcast <- shared.Message{
+				Sender:    "System",
+				Content:   "Chat history cleared by admin.",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+		}
+
+	case ":kick":
+		if len(parts) < 2 {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Usage: :kick <username>",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+			return
+		}
+		targetUsername := parts[1]
+		c.hub.KickUser(targetUsername, c.username)
+		c.send <- shared.Message{
+			Sender:    "System",
+			Content:   "Kick command executed for user: " + targetUsername,
+			CreatedAt: time.Now(),
+			Type:      shared.TextMessage,
+		}
+
+	case ":ban":
+		if len(parts) < 2 {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Usage: :ban <username>",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+			return
+		}
+		targetUsername := parts[1]
+		c.hub.BanUser(targetUsername, c.username)
+		c.send <- shared.Message{
+			Sender:    "System",
+			Content:   "Ban command executed for user: " + targetUsername + " (24 hours)",
+			CreatedAt: time.Now(),
+			Type:      shared.TextMessage,
+		}
+
+	case ":unban":
+		if len(parts) < 2 {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Usage: :unban <username>",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+			return
+		}
+		targetUsername := parts[1]
+		unbanned := c.hub.UnbanUser(targetUsername, c.username)
+		if unbanned {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "User '" + targetUsername + "' has been unbanned.",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+		} else {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "User '" + targetUsername + "' was not found in the ban list.",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+		}
+
+	default:
+		log.Printf("[ADMIN] Unknown admin command by %s: %s", c.username, command)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"net"
 	"net/http"
 	"sort"
 	"strings"
@@ -26,6 +27,30 @@ type WSMessage struct {
 
 type UserList struct {
 	Users []string `json:"users"`
+}
+
+// getClientIP extracts the real IP address from the request
+func getClientIP(r *http.Request) string {
+	// Check for forwarded headers first (for proxy/reverse proxy scenarios)
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		// X-Forwarded-For can contain multiple IPs, take the first one
+		if comma := strings.Index(xff, ","); comma != -1 {
+			return strings.TrimSpace(xff[:comma])
+		}
+		return strings.TrimSpace(xff)
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+	// Fall back to remote address
+	if r.RemoteAddr != "" {
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err == nil {
+			return host
+		}
+		return r.RemoteAddr
+	}
+	return "unknown"
 }
 
 func CreateSchema(db *sql.DB) {
@@ -160,8 +185,21 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string) http.Han
 				return
 			}
 		}
-		client := &Client{hub: hub, conn: conn, send: make(chan interface{}, 256), db: db, username: username, isAdmin: isAdmin}
-		log.Printf("Client %s connected (admin=%v)", username, isAdmin)
+		// Extract IP address
+		ipAddr := getClientIP(r)
+
+		// Check if user is banned
+		if hub.IsUserBanned(username) {
+			log.Printf("Banned user '%s' (IP: %s) attempted to connect", username, ipAddr)
+			if err := conn.WriteMessage(websocket.CloseMessage, []byte("You are banned from this server")); err != nil {
+				log.Printf("WriteMessage error: %v", err)
+			}
+			conn.Close()
+			return
+		}
+
+		client := &Client{hub: hub, conn: conn, send: make(chan interface{}, 256), db: db, username: username, isAdmin: isAdmin, ipAddr: ipAddr}
+		log.Printf("Client %s connected (admin=%v, IP: %s)", username, isAdmin, ipAddr)
 		hub.register <- client
 
 		// Send recent messages to new client
