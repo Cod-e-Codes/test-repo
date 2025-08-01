@@ -41,7 +41,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 ## Beta Release
 
-`marchat` is currently in a pre-release phase with version `v0.1.0-beta.2`. This is the second public beta release, featuring prebuilt binaries for Linux, Windows, and macOS (amd64 only). The release includes both `marchat-server` and `marchat-client` executables, allowing you to test the application without building from source. This release includes clipboard support and bug fixes from `v0.1.0-beta.1`.
+`marchat` is currently in a pre-release phase with version `v0.1.0-beta.2`. This is the second public beta release, featuring prebuilt binaries for Linux, Windows, and macOS. The release includes both `marchat-server` and `marchat-client` executables, allowing you to test the application without building from source. This release includes clipboard support and bug fixes from `v0.1.0-beta.1`.
 
 > [!IMPORTANT]
 > This is a beta release intended for early testing and feedback. While stable for general use, some features may change or be refined before the first stable release. Please share your feedback in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions), or report bugs on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues).
@@ -51,7 +51,6 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 1. **Download the binaries**:
    - Visit the [v0.1.0-beta.2 release page](https://github.com/Cod-e-Codes/marchat/releases/tag/v0.1.0-beta.2).
    - Download the appropriate archive for your platform (Linux, Windows, or macOS).
-   - **Architecture**: amd64/x86_64 only (Intel/AMD 64-bit processors)
    - Extract the archive to a directory of your choice.
 
 2. **Run the server**:
@@ -106,9 +105,9 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 ## Prerequisites
 
-- Install [Go 1.24+](https://go.dev/dl/) if you haven’t already (only needed if building from source)
+- **Supported Platforms**: Linux, Windows, and macOS (amd64/x86_64 architecture only)
+- Install [Go 1.24+](https://go.dev/dl/) if you haven't already (only needed if building from source)
   - *(Check with `go version` in your terminal)*
-- **Architecture**: Requires amd64/x86_64 (Intel/AMD 64-bit processors)
 - (Optional, for remote access) Download [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/) (`cloudflared.exe` on Windows)
 - (Optional, for clipboard support on Linux) Install `xclip` or `xsel` for `github.com/atotto/clipboard` functionality
 
@@ -457,6 +456,7 @@ marchat/
 │   └── types.go
 ├── config.json       # Example or user config file (see Quick Start)
 ├── env.example       # Example environment variables file
+├── entrypoint.sh     # Docker container startup script
 ├── go.mod
 ├── go.sum
 └── README.md
