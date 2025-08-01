@@ -433,6 +433,9 @@ Interact with marchat using the following commands and features:
     - `:kick <username>`: Forcibly disconnect a user by username
     - `:ban <username>`: Ban a user for 24 hours, preventing reconnection
     - `:unban <username>`: Remove a user from the ban list
+  - **E2E Encryption Commands** (when `--e2e` flag is used):
+    - `:showkey`: Display your public key ID for sharing
+    - `:addkey <username> <base64-key>`: Add another user's public key
 - **User list**: Displays up to 20 online users, with a styled `+N more` indicator for additional users.
 - **ASCII art banner**: Shows connection info on server startup (disable via config or flag).
 - **Quit**: Press `Esc` to exit.
@@ -451,8 +454,10 @@ Interact with marchat using the following commands and features:
 marchat/
 ├── client/           # TUI client (Bubble Tea)
 │   ├── main.go
-│   └── config/
-│       └── config.go
+│   ├── config/
+│   │   └── config.go
+│   └── crypto/       # E2E encryption key management
+│       └── keystore.go
 ├── cmd/server/       # Server entrypoint
 │   └── main.go
 ├── server/           # Server logic (DB, handlers, WebSocket)
@@ -465,8 +470,9 @@ marchat/
 ├── config/           # Configuration package
 │   ├── config.go     # Environment-based configuration
 │   └── config_test.go
-├── shared/           # Shared types
-│   └── types.go
+├── shared/           # Shared types and crypto
+│   ├── types.go
+│   └── crypto.go     # E2E encryption functions
 ├── config.json       # Example or user config file (see Quick Start)
 ├── env.example       # Example environment variables file
 ├── entrypoint.sh     # Docker container startup script
@@ -475,7 +481,7 @@ marchat/
 └── README.md
 ```
 
-Modular architecture: client, server logic, and shared types are separated for clarity and maintainability. The new `config/` package provides robust environment-variable and `.env` file support.
+Modular architecture: client, server logic, and shared types are separated for clarity and maintainability. The new `config/` package provides robust environment-variable and `.env` file support. The `shared/crypto.go` module implements E2E encryption using X25519 key exchange and ChaCha20-Poly1305 authenticated encryption.
 
 ---
 
@@ -553,6 +559,28 @@ The server now logs IP addresses for all connections and maintains a ban system:
 - **Ban Duration**: Default ban duration is 24 hours
 - **Proxy Support**: Handles X-Forwarded-For and X-Real-IP headers for reverse proxy setups
 
+### End-to-End Encryption (E2E)
+
+marchat supports optional end-to-end encryption for enhanced privacy:
+
+- **Cryptographic Stack**: X25519 key exchange + ChaCha20-Poly1305 encryption
+- **Key Management**: Local encrypted keystore with passphrase protection
+- **Forward Secrecy**: Ephemeral session keys for each conversation
+- **Key Exchange**: Manual public key sharing via commands
+- **Server Privacy**: Server stores only encrypted ciphertext, never plaintext
+
+**E2E Usage:**
+```bash
+# Enable E2E encryption
+./marchat-client --e2e --keystore-passphrase your-passphrase --username Alice
+
+# Share your public key
+:showkey
+
+# Add another user's public key
+:addkey Bob <base64-public-key>
+```
+
 **Server Config (Environment Variables or .env file):**
 ```sh
 MARCHAT_PORT=8080
@@ -609,6 +637,19 @@ MARCHAT_USERS=Cody,Crystal
 > - **Network Security**: If exposing to public IP, use TLS/HTTPS or VPN protection
 > - **Access Control**: Restrict server access to trusted networks when possible
 
+### E2E Encryption Security
+
+When using E2E encryption:
+- **Key Storage**: Private keys are encrypted with your passphrase using AES-GCM
+- **Key Exchange**: Public keys must be shared out-of-band (not through the server)
+- **Forward Secrecy**: Each conversation uses unique session keys derived via HKDF
+- **Authentication**: ChaCha20-Poly1305 provides authenticated encryption
+- **Privacy**: Server operators cannot read encrypted messages
+- **Key Management**: Regularly backup your keystore and rotate keys as needed
+
+> [!IMPORTANT]
+> E2E encryption is optional and requires manual key exchange. Without E2E, messages are stored in plaintext on the server.
+
 ---
 
 ## Tech Stack
@@ -618,6 +659,7 @@ MARCHAT_USERS=Cody,Crystal
 - [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (pure Go SQLite, no C compiler required)
 - [Gorilla WebSocket](https://github.com/gorilla/websocket) (real-time messaging)
 - [atotto/clipboard](https://github.com/atotto/clipboard) (clipboard operations for copy, paste, cut, and select all)
+- [golang.org/x/crypto](https://pkg.go.dev/golang.org/x/crypto) (E2E encryption: X25519, ChaCha20-Poly1305, HKDF)
 
 **Platform Support**: Runs on Linux, macOS, and Windows terminals supporting ANSI escape sequences. Clipboard functionality on Linux requires `xclip` or `xsel`.
 

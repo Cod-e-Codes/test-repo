@@ -59,7 +59,11 @@ func CreateSchema(db *sql.DB) {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		sender TEXT,
 		content TEXT,
-		created_at DATETIME
+		created_at DATETIME,
+		is_encrypted BOOLEAN DEFAULT 0,
+		encrypted_data BLOB,
+		nonce BLOB,
+		recipient TEXT
 	);`
 	_, err := db.Exec(schema)
 	if err != nil {
@@ -72,6 +76,21 @@ func InsertMessage(db *sql.DB, msg shared.Message) {
 		msg.Sender, msg.Content, msg.CreatedAt)
 	if err != nil {
 		log.Println("Insert error:", err)
+	}
+	// Enforce message cap: keep only the most recent 1000 messages
+	_, err = db.Exec(`DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT 1000)`)
+	if err != nil {
+		log.Println("Error enforcing message cap:", err)
+	}
+}
+
+// InsertEncryptedMessage stores an encrypted message in the database
+func InsertEncryptedMessage(db *sql.DB, encryptedMsg *shared.EncryptedMessage) {
+	_, err := db.Exec(`INSERT INTO messages (sender, content, created_at, is_encrypted, encrypted_data, nonce, recipient) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		encryptedMsg.Sender, encryptedMsg.Content, encryptedMsg.CreatedAt,
+		encryptedMsg.IsEncrypted, encryptedMsg.Encrypted, encryptedMsg.Nonce, encryptedMsg.Recipient)
+	if err != nil {
+		log.Println("Insert encrypted message error:", err)
 	}
 	// Enforce message cap: keep only the most recent 1000 messages
 	_, err = db.Exec(`DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT 1000)`)

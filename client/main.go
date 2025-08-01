@@ -11,11 +11,13 @@ import (
 	"time"
 
 	"github.com/Cod-e-Codes/marchat/client/config"
+	"github.com/Cod-e-Codes/marchat/client/crypto"
 	"github.com/Cod-e-Codes/marchat/shared"
 
 	"os/signal"
 	"syscall"
 
+	"encoding/base64"
 	"encoding/json"
 
 	"context"
@@ -61,6 +63,8 @@ var (
 
 var isAdmin = flag.Bool("admin", false, "Connect as admin (requires --admin-key)")
 var adminKey = flag.String("admin-key", "", "Admin key for privileged commands like :cleardb, :kick, :ban, :unban")
+var useE2E = flag.Bool("e2e", false, "Enable end-to-end encryption")
+var keystorePassphrase = flag.String("keystore-passphrase", "", "Passphrase for keystore (required for E2E)")
 
 type model struct {
 	cfg       config.Config
@@ -90,6 +94,10 @@ type model struct {
 
 	reconnectDelay time.Duration               // for exponential backoff
 	receivedFiles  map[string]*shared.FileMeta // filename -> filemeta for saving
+
+	// E2E Encryption
+	keystore *crypto.KeyStore
+	useE2E   bool // Flag to enable/disable E2E encryption
 }
 
 type themeStyles struct {
@@ -630,6 +638,63 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.SetValue("")
 				return m, m.listenWebSocket()
 			}
+
+			// E2E Encryption commands
+			if text == ":showkey" {
+				if !m.useE2E {
+					m.banner = "E2E encryption not enabled. Use --e2e flag."
+					m.textarea.SetValue("")
+					return m, nil
+				}
+				pubKeyInfo := m.keystore.GetPublicKeyInfo(m.cfg.Username)
+				if pubKeyInfo != nil {
+					m.banner = fmt.Sprintf("🔑 Your public key ID: %s", pubKeyInfo.KeyID)
+				} else {
+					m.banner = "❌ No public key available"
+				}
+				m.textarea.SetValue("")
+				return m, nil
+			}
+
+			if strings.HasPrefix(text, ":addkey ") {
+				if !m.useE2E {
+					m.banner = "E2E encryption not enabled. Use --e2e flag."
+					m.textarea.SetValue("")
+					return m, nil
+				}
+				parts := strings.Fields(text)
+				if len(parts) < 3 {
+					m.banner = "Usage: :addkey <username> <base64-public-key>"
+					m.textarea.SetValue("")
+					return m, nil
+				}
+				username := parts[1]
+				pubKeyB64 := parts[2]
+
+				// Decode base64 public key
+				pubKey, err := base64.StdEncoding.DecodeString(pubKeyB64)
+				if err != nil {
+					m.banner = "❌ Invalid public key format"
+					m.textarea.SetValue("")
+					return m, nil
+				}
+
+				// Store the public key
+				pubKeyInfo := &shared.PublicKeyInfo{
+					Username:  username,
+					PublicKey: pubKey,
+					CreatedAt: time.Now(),
+					KeyID:     shared.GetKeyID(pubKey),
+				}
+
+				if err := m.keystore.StorePublicKey(pubKeyInfo); err != nil {
+					m.banner = fmt.Sprintf("❌ Failed to store key: %v", err)
+				} else {
+					m.banner = fmt.Sprintf("✅ Added public key for %s (ID: %s)", username, pubKeyInfo.KeyID)
+				}
+				m.textarea.SetValue("")
+				return m, nil
+			}
 			if text == ":time" {
 				m.twentyFourHour = !m.twentyFourHour
 				m.cfg.TwentyFourHour = m.twentyFourHour
@@ -706,6 +771,9 @@ func (m *model) View() string {
 				cmds := ""
 				if *isAdmin {
 					cmds += " :cleardb :kick USER :ban USER :unban USER"
+				}
+				if m.useE2E {
+					cmds += " :showkey :addkey USER KEY"
 				}
 				return cmds
 			}(),
@@ -796,6 +864,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Validate E2E flags
+	if *useE2E && *keystorePassphrase == "" {
+		fmt.Println("❌ Error: --e2e flag requires --keystore-passphrase")
+		fmt.Println("Usage: go run client/main.go --e2e --keystore-passphrase your-passphrase")
+		os.Exit(1)
+	}
+
 	cfg, _ := config.LoadConfig(*configPath)
 	if *serverURL != "" {
 		cfg.ServerURL = *serverURL
@@ -836,6 +911,20 @@ func main() {
 	userListVp := viewport.New(18, 10) // height will be set on resize
 	userListVp.SetContent(renderUserList([]string{cfg.Username}, cfg.Username, getThemeStyles(cfg.Theme), 18))
 
+	// Initialize keystore if E2E is enabled
+	var keystore *crypto.KeyStore
+	if *useE2E {
+		keystorePath := filepath.Join(filepath.Dir(*configPath), "keystore.dat")
+		keystore = crypto.NewKeyStore(keystorePath)
+
+		// Initialize or load keystore
+		if err := keystore.Initialize(*keystorePassphrase); err != nil {
+			fmt.Printf("❌ Error initializing keystore: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("🔐 E2E encryption enabled with keystore: %s\n", keystorePath)
+	}
+
 	m := &model{
 		cfg:              cfg,
 		textarea:         ta,
@@ -844,6 +933,8 @@ func main() {
 		users:            []string{cfg.Username},
 		userListViewport: userListVp,
 		twentyFourHour:   cfg.TwentyFourHour,
+		keystore:         keystore,
+		useE2E:           *useE2E,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
