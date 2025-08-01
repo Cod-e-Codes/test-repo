@@ -747,12 +747,20 @@ We follow a [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming communit
 
 ## What's Next
 
-marchat is under active development. Near-term priorities include:
+marchat is under active development. Recent major improvements include:
 
-- Unifying and stabilizing configuration across the client and server
+- Environment variable support with .env file loading
+- User-configurable static config directory
+- IP address logging and connection tracking
+- Admin commands for user management (:kick, :ban, :unban)
+- Ban management system with automatic cleanup
+- End-to-end encryption with X25519 and ChaCha20-Poly1305
+- Docker container improvements with security enhancements
+
+Near-term priorities include:
+
 - Expanding notification support (e.g., native system alerts, VS Code integration)
 - Laying the groundwork for a plugin and extensibility system
-- Implementing optional end-to-end encryption for enhanced security
 - Improving compatibility with low-resource devices (e.g., Raspberry Pi)
   - Addressing 32-bit vs 64-bit limitations
   - Ensuring stable file sharing support
@@ -763,7 +771,6 @@ marchat is under active development. Near-term priorities include:
 - Minimizing memory and CPU usage for smooth performance on lower-end hardware
 - Improving network resilience with retry and backoff strategies
 - Exploring a TUI-based admin console for user and server management
-- Preparing Docker container support for easier self-hosted deployment
 
 Long-term goals are still evolving. Community input is welcome.
 
