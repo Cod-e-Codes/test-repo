@@ -1,6 +1,10 @@
 services:
   marchat:
-    build: .
+    build:
+      context: .
+      args:
+        USER_ID: 1000
+        GROUP_ID: 1000
     ports:
       - "8080:8080"
     volumes:
@@ -13,6 +17,7 @@ services:
       - MARCHAT_DB_PATH=/marchat/config/marchat.db
       - MARCHAT_LOG_LEVEL=info
       - MARCHAT_JWT_SECRET=your-jwt-secret-change-in-production
+      - MARCHAT_CONFIG_DIR=/marchat/config
     restart: unless-stopped
     # Alternative: mount a .env file instead of using environment block
     # env_file:
