@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"marchat/config"
 	"marchat/server"
 	"net/http"
 	"os"
@@ -24,9 +25,10 @@ func (m *multiFlag) String() string       { return strings.Join(*m, ",") }
 func (m *multiFlag) Set(val string) error { *m = append(*m, val); return nil }
 
 var adminUsers multiFlag
-var adminKey = flag.String("admin-key", "", "Admin key for privileged commands (required)")
-var port = flag.Int("port", 9090, "Port to listen on (default 9090)")
-var configPath = flag.String("config", "server_config.json", "Path to server config file (JSON)")
+var adminKey = flag.String("admin-key", "", "Admin key for privileged commands (deprecated, use MARCHAT_ADMIN_KEY)")
+var port = flag.Int("port", 0, "Port to listen on (deprecated, use MARCHAT_PORT)")
+var configPath = flag.String("config", "", "Path to server config file (JSON, deprecated)")
+var configDir = flag.String("config-dir", "", "Configuration directory (default: ./config in dev, $XDG_CONFIG_HOME/marchat in prod)")
 
 func printBanner(addr string, admins []string) {
 	fmt.Println(`
@@ -40,7 +42,7 @@ func printBanner(addr string, admins []string) {
 ⠀⠀⠀⠀⢻⣷⠀⢻⣿⠟⠋⠁⠀⢀⣠⣤⣴⣶⣶⣶⣶⣾⣶⣾⡁⣀⣀⣤⣴⣾⣿⠿⠛⠋⠉⠉⢳⣤⣤⣤⣤⣤⣷⠀⠀⠀  
 ⠀⠀⠀⠀⠈⣿⣇⠀⣿⣀⣠⣴⣾⣿⡿⠟⠋⠉⠉⠀⠀⠀⠈⠉⣿⠿⠟⠛⠋⠁⢀⣤⣶⣶⣶⣶⣾⠟⠛⠋⠉⠉⢿⠀⠀⠀  
 ⠀⠀⠀⠀⠀⠘⣿⡆⠸⣿⡿⠟⠋⠁⢀⣀⣤⣴⣶⣶⣶⣶⣶⣾⣇⣀⣤⣤⣶⣾⡿⠛⠋⠉⠉⠉⠉⣤⣴⣶⣶⠶⢿⣇⠀⠀  
-⠀⠀⠀⠀⠀⠀⢹⣿⡀⣿⡄⣀⣤⣾⡿⠟⠋⠉⠉⠁⠀⠀⠀⠀⡿⠛⠛⠛⠉⠁⣀⣴⣾⣿⣿⣿⣿⡟⠉⠀⠀⣀⣀⣿⡀⠀  
+⠀⠀⠀⠀⠀⠀⢹⣿⡀⣿⡄⣀⣤⣾⡿⠟⠋⠉⠁⠀⠀⠀⠀⡿⠛⠛⠛⠉⠁⣀⣴⣾⣿⣿⣿⣿⡟⠉⠀⠀⣀⣀⣀⣿⡀⠀  
 ⠀⠀⠀⠀⠀⠀⠀⢿⣧⢸⣿⠟⠋⠁⣀⣠⣤⣴⣶⣾⣿⣿⣿⣿⣧⣤⣤⣶⠾⠟⠛⠉⢁⣀⣀⣀⣀⢰⣶⣿⠿⠿⠿⠿⣧⠀  
 ⠀⠀⠀⠀⠀⠀⠀⠈⣿⡆⣿⣠⣴⣿⣿⣿⠿⠟⠛⠉⠉⠀⠀⢠⡟⠋⠉⣀⣠⣴⣾⠿⠿⠟⠛⠛⠛⣿⠏⠀⠀⣀⣀⣀⣿⡄  
 ⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⣿⡿⠟⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠸⣧⣶⠿⠛⠋⠁⠀⠀⠀⠀⠀⠀⠘⣿⣴⣾⠿⠛⠋⠉⠉⠁  
@@ -63,30 +65,45 @@ func printBanner(addr string, admins []string) {
 }
 
 func main() {
-	flag.Var(&adminUsers, "admin", "[DEPRECATED] Admin username (use config file instead)")
+	flag.Var(&adminUsers, "admin", "[DEPRECATED] Admin username (use MARCHAT_USERS env var instead)")
 	flag.Parse()
 
-	cfg, err := server.LoadConfig(*configPath)
+	// Load configuration from environment variables and .env files
+	cfg, err := config.LoadConfig(*configDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		fmt.Fprintf(os.Stderr, "Please create a server_config.json (see example in repo).\n")
+		fmt.Fprintf(os.Stderr, "Error loading configuration: %v\n", err)
+		fmt.Fprintf(os.Stderr, "\nConfiguration options:\n")
+		fmt.Fprintf(os.Stderr, "  Environment variables:\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_PORT=8080 (default: 8080)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_ADMIN_KEY=your-secret-key (required)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_USERS=user1,user2,user3 (comma-separated, required)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_DB_PATH=/path/to/db (default: $CONFIG_DIR/marchat.db)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_LOG_LEVEL=info (default: info)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_JWT_SECRET=your-jwt-secret (default: auto-generated)\n")
+		fmt.Fprintf(os.Stderr, "  .env file: Create %s/.env with the above variables\n", cfg.ConfigDir)
+		fmt.Fprintf(os.Stderr, "  Config directory: Use --config-dir to specify custom location\n")
 		os.Exit(1)
 	}
 
-	// Warn if flags are used
+	// Warn about deprecated flags
 	if len(adminUsers) > 0 {
-		fmt.Fprintln(os.Stderr, "[WARNING] --admin flag is deprecated. Use admins in config file.")
+		fmt.Fprintln(os.Stderr, "[WARNING] --admin flag is deprecated. Use MARCHAT_USERS environment variable.")
 	}
 	if *adminKey != "" {
-		fmt.Fprintln(os.Stderr, "[WARNING] --admin-key flag is deprecated. Use admin_key in config file.")
+		fmt.Fprintln(os.Stderr, "[WARNING] --admin-key flag is deprecated. Use MARCHAT_ADMIN_KEY environment variable.")
 	}
-	if *port != 9090 {
-		fmt.Fprintln(os.Stderr, "[WARNING] --port flag is deprecated. Use port in config file.")
+	if *port != 0 {
+		fmt.Fprintln(os.Stderr, "[WARNING] --port flag is deprecated. Use MARCHAT_PORT environment variable.")
+	}
+	if *configPath != "" {
+		fmt.Fprintln(os.Stderr, "[WARNING] --config flag is deprecated. Use environment variables or .env file.")
 	}
 
+	// Override with deprecated flags if provided (for backward compatibility)
 	admins := cfg.Admins
 	key := cfg.AdminKey
 	listenPort := cfg.Port
+
 	if len(adminUsers) > 0 {
 		admins = make([]string, len(adminUsers))
 		copy(admins, adminUsers)
@@ -94,15 +111,16 @@ func main() {
 	if *adminKey != "" {
 		key = *adminKey
 	}
-	if *port != 9090 {
+	if *port != 0 {
 		listenPort = *port
 	}
 
+	// Final validation
 	if len(admins) == 0 {
-		log.Fatal("At least one admin username is required (set in config file or --admin flag).")
+		log.Fatal("At least one admin username is required (set MARCHAT_USERS or use --admin flag).")
 	}
 	if key == "" {
-		log.Fatal("admin_key is required (set in config file or --admin-key flag).")
+		log.Fatal("admin_key is required (set MARCHAT_ADMIN_KEY or use --admin-key flag).")
 	}
 	if listenPort < 1 || listenPort > 65535 {
 		log.Fatal("Port must be between 1 and 65535.")
@@ -122,7 +140,8 @@ func main() {
 		admins = append(admins, u)
 	}
 
-	db := server.InitDB("chat.db")
+	// Initialize database with the configured path
+	db := server.InitDB(cfg.DBPath)
 	server.CreateSchema(db)
 
 	hub := server.NewHub()
@@ -133,6 +152,8 @@ func main() {
 	addr := fmt.Sprintf(":%d", listenPort)
 	serverAddr := fmt.Sprintf("localhost:%d", listenPort)
 	log.Printf("marchat WebSocket server running on %s", addr)
+	log.Printf("Configuration directory: %s", cfg.ConfigDir)
+	log.Printf("Database path: %s", cfg.DBPath)
 	printBanner(serverAddr, admins)
 
 	// Create a custom server instance

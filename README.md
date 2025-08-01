@@ -131,7 +131,35 @@ go mod tidy
 go build ./...
 ```
 
-### 4. Create a server config file (REQUIRED)
+### 4. Configure the server
+
+marchat supports multiple configuration methods. Choose one of the following approaches:
+
+#### Option A: Environment Variables (Recommended)
+Set environment variables directly:
+
+```sh
+export MARCHAT_PORT=8080
+export MARCHAT_ADMIN_KEY=your-secret-admin-key
+export MARCHAT_USERS=Cody,Crystal,Alice
+```
+
+#### Option B: .env File
+Create a `.env` file in your config directory:
+
+```sh
+# Copy the example file
+cp env.example .env
+
+# Edit the .env file with your settings
+MARCHAT_PORT=8080
+MARCHAT_ADMIN_KEY=your-secret-admin-key
+MARCHAT_USERS=Cody,Crystal,Alice
+MARCHAT_DB_PATH=./config/marchat.db
+MARCHAT_LOG_LEVEL=info
+```
+
+#### Option C: Legacy JSON Config (Deprecated)
 Create `server_config.json` in the project root:
 ```json
 {
@@ -142,9 +170,9 @@ Create `server_config.json` in the project root:
 ```
 
 > [!NOTE]
-> The server now requires a config file. Command-line flags are deprecated and will be removed in a future release.
+> Environment variables take precedence over .env files, which take precedence over JSON config files. The `--config-dir` flag can be used to specify a custom configuration directory.
 
-### 5. Run the server (port 9090, WebSocket)
+### 5. Run the server (port 8080, WebSocket)
 Using the prebuilt binary:
 ```sh
 ./marchat-server
@@ -154,15 +182,20 @@ Or, if building from source:
 go run cmd/server/main.go
 ```
 
-> [!TIP]
-> You can override config values with flags, but this is deprecated and will be removed. Always prefer the config file.
+You can also specify a custom config directory:
+```sh
+./marchat-server --config-dir /path/to/config
+```
 
-### 6. (Optional) Create a config file
+> [!TIP]
+> The server will automatically create the config directory if it doesn't exist. In development mode, it defaults to `./config`. In production, it uses `$XDG_CONFIG_HOME/marchat`.
+
+### 6. (Optional) Create a client config file
 Create `config.json` in the project root:
 ```json
 {
   "username": "Cody",
-  "server_url": "ws://localhost:9090/ws",
+  "server_url": "ws://localhost:8080/ws",
   "theme": "patriot",
   "twenty_four_hour": true
 }
@@ -175,14 +208,14 @@ Create `config.json` in the project root:
 Using the prebuilt binary:
 ```sh
 # Linux/macOS
-./marchat-client --username Cody --theme patriot --server ws://localhost:9090/ws
+./marchat-client --username Cody --theme patriot --server ws://localhost:8080/ws
 
 # Windows
-marchat-client.exe --username Cody --theme patriot --server ws://localhost:9090/ws
+marchat-client.exe --username Cody --theme patriot --server ws://localhost:8080/ws
 ```
 Or, if building from source:
 ```sh
-go run client/main.go --username Cody --theme patriot --server ws://localhost:9090/ws
+go run client/main.go --username Cody --theme patriot --server ws://localhost:8080/ws
 ```
 Or with a config file:
 ```sh
@@ -191,6 +224,45 @@ Or with a config file:
 
 > [!IMPORTANT]
 > Ensure the server URL uses `ws://` for local development or `wss://` for production (secure WebSocket).
+
+---
+
+## Docker Configuration
+
+marchat includes Docker support with environment-based configuration:
+
+### Using Docker Compose
+```sh
+# Start the service
+docker-compose up -d
+
+# View logs
+docker-compose logs -f marchat
+
+# Stop the service
+docker-compose down
+```
+
+### Custom Configuration with Docker
+You can customize the configuration by:
+
+1. **Environment Variables**: Modify the `environment` section in `docker-compose.yml`
+2. **Mount a .env file**: Uncomment the `env_file` section in `docker-compose.yml`
+3. **Custom Config Directory**: Mount your config directory:
+   ```yaml
+   volumes:
+     - ./my-config:/marchat/config
+   ```
+
+### Environment Variables Reference
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MARCHAT_PORT` | `8080` | Server port |
+| `MARCHAT_ADMIN_KEY` | (required) | Admin authentication key |
+| `MARCHAT_USERS` | (required) | Comma-separated admin usernames |
+| `MARCHAT_DB_PATH` | `./config/marchat.db` | Database file path |
+| `MARCHAT_LOG_LEVEL` | `info` | Log level (debug, info, warn, error) |
+| `MARCHAT_JWT_SECRET` | (auto-generated) | JWT secret for authentication |
 
 ---
 
@@ -203,7 +275,7 @@ If you want to make your marchat server accessible from outside your local netwo
 
 ### 2. Start a tunnel to your local server
 ```sh
-cloudflared tunnel --url http://localhost:9090
+cloudflared tunnel --url http://localhost:8080
 ```
 
 > [!TIP]
