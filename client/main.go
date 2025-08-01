@@ -257,15 +257,30 @@ type UserList struct {
 func (m *model) connectWebSocket(serverURL string) error {
 	escapedUsername := url.QueryEscape(m.cfg.Username)
 	fullURL := serverURL + "?username=" + escapedUsername
-	conn, _, err := websocket.DefaultDialer.Dial(fullURL, nil)
+
+	log.Printf("Attempting to connect to: %s", fullURL)
+	log.Printf("Username: %s, Admin: %v", m.cfg.Username, *isAdmin)
+	if *isAdmin {
+		log.Printf("Admin key: %s", *adminKey)
+	}
+
+	conn, resp, err := websocket.DefaultDialer.Dial(fullURL, nil)
 	if err != nil {
+		if resp != nil {
+			log.Printf("WebSocket connection failed with status %d: %v", resp.StatusCode, err)
+		} else {
+			log.Printf("WebSocket connection failed: %v", err)
+		}
 		return err
 	}
+
+	log.Printf("WebSocket connection established successfully")
 	m.conn = conn
 	m.connected = true
 	m.banner = "✅ Connected to server!"
 	m.ctx, m.cancel = context.WithCancel(context.Background())
 	m.wg.Add(1)
+
 	// Send handshake as first message
 	handshake := shared.Handshake{
 		Username: m.cfg.Username,
@@ -275,13 +290,19 @@ func (m *model) connectWebSocket(serverURL string) error {
 	if *isAdmin {
 		handshake.AdminKey = *adminKey
 	}
+
+	log.Printf("Sending handshake: %+v", handshake)
 	if err := m.conn.WriteJSON(handshake); err != nil {
+		log.Printf("Failed to send handshake: %v", err)
 		return err
 	}
+	log.Printf("Handshake sent successfully")
+
 	// Set pong handler
 	m.conn.SetPongHandler(func(appData string) error {
 		return nil
 	})
+
 	// Start ping goroutine
 	go func() {
 		ticker := time.NewTicker(pingPeriod)
@@ -295,6 +316,7 @@ func (m *model) connectWebSocket(serverURL string) error {
 			}
 		}
 	}()
+
 	go func() {
 		defer m.wg.Done()
 		for {
@@ -304,9 +326,13 @@ func (m *model) connectWebSocket(serverURL string) error {
 			default:
 				_, raw, err := conn.ReadMessage()
 				if err != nil {
+					log.Printf("WebSocket read error: %v", err)
 					m.msgChan <- wsErr(err)
 					return
 				}
+
+				log.Printf("Received message: %s", string(raw))
+
 				// Try to unmarshal as shared.Message first
 				var msg shared.Message
 				if err := json.Unmarshal(raw, &msg); err == nil {
@@ -315,12 +341,16 @@ func (m *model) connectWebSocket(serverURL string) error {
 						continue
 					}
 				}
+
 				// Then try as wsMsg
 				var ws wsMsg
 				if err := json.Unmarshal(raw, &ws); err == nil && ws.Type != "" {
+					log.Printf("Received wsMsg type: %s", ws.Type)
 					m.msgChan <- ws
 					continue
 				}
+
+				log.Printf("Could not parse message: %s", string(raw))
 			}
 		}
 	}()
@@ -367,7 +397,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.listenWebSocket()
 		}
 		if v.Type == "auth_failed" {
-			fmt.Println("Error: admin key rejected. Check your --admin-key or config.")
+			log.Printf("Authentication failed - admin key rejected")
+			var authFail map[string]string
+			if err := json.Unmarshal(v.Data, &authFail); err == nil {
+				log.Printf("Auth failure reason: %s", authFail["reason"])
+			}
+			fmt.Printf("❌ Authentication failed: %s\n", authFail["reason"])
+			fmt.Printf("Check your --admin-key matches the server's MARCHAT_ADMIN_KEY\n")
 			os.Exit(1)
 		}
 		return m, m.listenWebSocket()
@@ -752,6 +788,14 @@ type quitMsg struct{}
 
 func main() {
 	flag.Parse()
+
+	// Validate admin flags
+	if *isAdmin && *adminKey == "" {
+		fmt.Println("❌ Error: --admin flag requires --admin-key")
+		fmt.Println("Usage: go run client/main.go --admin --admin-key your-key")
+		os.Exit(1)
+	}
+
 	cfg, _ := config.LoadConfig(*configPath)
 	if *serverURL != "" {
 		cfg.ServerURL = *serverURL
