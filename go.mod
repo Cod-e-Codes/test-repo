@@ -5,6 +5,7 @@ go 1.23.0
 toolchain go1.24.4
 
 require (
+	github.com/Cod-e-Codes/marchat/plugin/sdk v0.0.0
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.6
@@ -46,3 +47,5 @@ require (
 )
 
 replace github.com/Cod-e-Codes/marchat => ./
+
+replace github.com/Cod-e-Codes/marchat/plugin/sdk => ./plugin/sdk

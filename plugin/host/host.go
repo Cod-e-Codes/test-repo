@@ -36,8 +36,6 @@ type PluginInstance struct {
 	Config   sdk.Config
 	Enabled  bool
 	mu       sync.Mutex
-	ctx      context.Context
-	cancel   context.CancelFunc
 }
 
 // NewPluginHost creates a new plugin host
@@ -150,7 +148,9 @@ func (h *PluginHost) StartPlugin(name string) error {
 
 	// Initialize plugin
 	if err := h.initializePlugin(instance); err != nil {
-		h.StopPlugin(name)
+		if stopErr := h.StopPlugin(name); stopErr != nil {
+			log.Printf("Failed to stop plugin %s after initialization error: %v", name, stopErr)
+		}
 		return fmt.Errorf("failed to initialize plugin %s: %w", name, err)
 	}
 
