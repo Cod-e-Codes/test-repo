@@ -43,15 +43,17 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 ## Beta Release
 
-`marchat` is currently in a pre-release phase with version `v0.1.0-beta.2`. This is the second public beta release, featuring prebuilt binaries for Linux, Windows, and macOS. The release includes both `marchat-server` and `marchat-client` executables, allowing you to test the application without building from source. This release includes clipboard support and bug fixes from `v0.1.0-beta.1`.
+`marchat` is currently in a pre-release phase with version `v0.2.0-beta.1`. This release introduces a comprehensive plugin ecosystem and major security enhancements, transforming marchat into an extensible, secure terminal-based group chat platform.
+
+**This release requires thorough testing** - it includes significant new functionality including plugin system, end-to-end encryption, enhanced security features, and Docker improvements. Please report any issues or provide feedback through GitHub Issues or Discussions.
 
 > [!IMPORTANT]
-> This is a beta release intended for early testing and feedback. While stable for general use, some features may change or be refined before the first stable release. Please share your feedback in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions), or report bugs on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues).
+> This is a beta release with significant new functionality that requires thorough testing. The plugin system, end-to-end encryption, and security features are new and may have edge cases or compatibility issues. Please test extensively and report any problems in [GitHub Issues](https://github.com/Cod-e-Codes/marchat/issues) or share feedback in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions).
 
 ### Installing the Beta Release
 
 1. **Download the binaries**:
-   - Visit the [v0.1.0-beta.2 release page](https://github.com/Cod-e-Codes/marchat/releases/tag/v0.1.0-beta.2).
+   - Visit the [v0.2.0-beta.1 release page](https://github.com/Cod-e-Codes/marchat/releases/tag/v0.2.0-beta.1).
    - Download the appropriate archive for your platform (Linux, Windows, or macOS).
    - Extract the archive to a directory of your choice.
 
@@ -81,7 +83,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 > Launch these executables from a terminal—don’t double-click. Double-clicking produces no visible output and can leave a server running unnoticed on your network.
 
 > [!TIP]
-> To provide feedback on the beta release, share your thoughts in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions). Found a bug? Create an issue on the [GitHub Issues page](https://github.com/Cod-e-Codes/marchat/issues) with your platform details and steps to reproduce. Check the [Full Changelog](https://github.com/Cod-e-Codes/marchat/commits/v0.1.0-beta.2) for details on what's included in this release.
+> This release includes major new features that need extensive testing. Please test the plugin system, end-to-end encryption, admin commands, and Docker functionality thoroughly. Report any issues in [GitHub Issues](https://github.com/Cod-e-Codes/marchat/issues) with detailed steps to reproduce. Share your testing experience in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions). Check the [Full Changelog](https://github.com/Cod-e-Codes/marchat/commits/v0.2.0-beta.1) for details on what's included in this release.
 
 ---
 
@@ -89,19 +91,23 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 - **Terminal UI (TUI):** Beautiful, scrollable chat using [Bubble Tea](https://github.com/charmbracelet/bubbletea)
 - **Real-time WebSocket Chat:** Fast, robust, and cross-platform server/client
+- **Plugin Ecosystem:** External plugin support with terminal-native store and hot reloading
+- **End-to-End Encryption:** Optional X25519 key exchange with ChaCha20-Poly1305 encryption
+- **Enhanced Security:** IP logging, ban management, admin commands for user control
 - **Themes:** Choose from `patriot`, `retro`, or `modern` for a unique look
 - **Small File Sharing (<1MB):** Instantly send and receive small files with `:sendfile <path>` and save them with `:savefile <filename>`
 - **Emoji Support:** Auto-converts common ASCII emoji (e.g., `:)`, `:(`, `:D`, `<3`, `:P`) to Unicode
 - **Live User List:** See who’s online in a fixed-width, styled panel (up to 20 users shown)
 - **@Mention Highlighting:** Messages with `@username` highlight for all users in the chat
 - **Clipboard Support:** Copy (`Ctrl+C`), paste (`Ctrl+V`), cut (`Ctrl+X`), and select all (`Ctrl+A`) in the textarea
-- **Admin Mode:** Privileged commands (like `:cleardb`) for authenticated admins only
+- **Admin Mode:** Privileged commands (like `:cleardb`, `:kick`, `:ban`, `:unban`) for authenticated admins only
 - **Message Cap:**
   - Only the last 100 messages are kept in memory for client performance
   - The server database automatically caps messages at 1000; oldest messages are deleted to make room for new ones
-- **Configurable:** Set username, server URL, and theme via config file or flags
+- **Configurable:** Set username, server URL, and theme via config file, flags, or environment variables
 - **Graceful Shutdown:** Clean exit and robust connection handling (ping/pong heartbeat)
 - **ASCII Art Banner:** Server displays a beautiful banner with connection info on startup
+- **Docker Support:** Non-root container execution with enhanced security features
 
 ---
 
@@ -430,6 +436,14 @@ Interact with marchat using the following commands and features:
   - `:theme <name>`: Switch theme (`patriot`, `retro`, `modern`; persists in config).
   - `:time`: Toggle 12/24-hour timestamp format (persists in config).
   - `:clear`: Clear local chat buffer (client-side only, does not affect others).
+  - **Plugin Commands**:
+    - `:store`: Open plugin store TUI for browsing and installing plugins
+    - `:plugin list`: List installed plugins
+    - `:plugin enable <name>`: Enable a plugin
+    - `:plugin disable <name>`: Disable a plugin
+    - `:plugin install <name>`: Install plugin from store
+    - `:plugin uninstall <name>`: Uninstall a plugin (admin only)
+    - `:refresh`: Refresh plugin store
   - **Admin Commands** (admin only):
     - `:cleardb`: Wipe entire server database
     - `:kick <username>`: Forcibly disconnect a user by username
@@ -460,15 +474,35 @@ marchat/
 │   │   └── config.go
 │   └── crypto/       # E2E encryption key management
 │       └── keystore.go
-├── cmd/server/       # Server entrypoint
-│   └── main.go
+├── cmd/
+│   ├── server/       # Server entrypoint
+│   │   └── main.go
+│   └── license/      # License management CLI
+│       └── main.go
 ├── server/           # Server logic (DB, handlers, WebSocket)
 │   ├── db.go
 │   ├── handlers.go
 │   ├── client.go
 │   ├── hub.go
 │   ├── config.go     # Legacy JSON config support
+│   ├── plugin_commands.go  # Plugin command integration
 │   └── schema.sql
+├── plugin/           # Plugin ecosystem
+│   ├── sdk/          # Plugin development SDK
+│   │   └── plugin.go
+│   ├── host/         # Plugin subprocess management
+│   │   └── host.go
+│   ├── manager/      # Plugin installation and lifecycle
+│   │   └── manager.go
+│   ├── store/        # Plugin store TUI
+│   │   └── store.go
+│   ├── license/      # License validation system
+│   │   └── validator.go
+│   ├── examples/     # Example plugins
+│   │   └── echo/
+│   ├── registry/     # Community plugin registry
+│   │   └── registry.json
+│   └── README.md     # Plugin development guide
 ├── config/           # Configuration package
 │   ├── config.go     # Environment-based configuration
 │   └── config_test.go
@@ -478,12 +512,15 @@ marchat/
 ├── config.json       # Example or user config file (see Quick Start)
 ├── env.example       # Example environment variables file
 ├── entrypoint.sh     # Docker container startup script
+├── PLUGIN_ECOSYSTEM.md  # Comprehensive plugin documentation
 ├── go.mod
 ├── go.sum
 └── README.md
 ```
 
-Modular architecture: client, server logic, and shared types are separated for clarity and maintainability. The new `config/` package provides robust environment-variable and `.env` file support. The `shared/crypto.go` module implements E2E encryption using X25519 key exchange and ChaCha20-Poly1305 authenticated encryption.
+Modular architecture: client, server logic, shared types, and plugin ecosystem are separated for clarity and maintainability. The `config/` package provides robust environment-variable and `.env` file support. The `shared/crypto.go` module implements E2E encryption using X25519 key exchange and ChaCha20-Poly1305 authenticated encryption. The plugin ecosystem provides extensibility through external Go binaries with terminal-native management interfaces.
+
+For detailed information about the plugin system, see [PLUGIN_ECOSYSTEM.md](PLUGIN_ECOSYSTEM.md).
 
 ---
 
@@ -751,18 +788,21 @@ We follow a [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming communit
 
 marchat is under active development. Recent major improvements include:
 
+- Comprehensive plugin ecosystem with external plugin support
+- Terminal-native plugin store with TUI interface
+- End-to-end encryption with X25519 and ChaCha20-Poly1305
+- Enhanced security with IP logging and ban management
+- Docker container improvements with non-root execution
 - Environment variable support with .env file loading
 - User-configurable static config directory
-- IP address logging and connection tracking (including X-Forwarded-For header parsing)
 - Admin commands for user management (:kick, :ban, :unban)
 - Ban management system with automatic cleanup
-- End-to-end encryption with X25519 and ChaCha20-Poly1305
-- Docker container improvements with security enhancements
 
 Near-term priorities include:
 
-- Expanding notification support (e.g., native system alerts, VS Code integration)
-- Laying the groundwork for a plugin and extensibility system
+- Expanding the plugin ecosystem with more official plugins
+- Improving plugin development tools and documentation
+- Enhancing notification support (e.g., native system alerts, VS Code integration)
 - Improving compatibility with low-resource devices (e.g., Raspberry Pi)
   - Addressing 32-bit vs 64-bit limitations
   - Ensuring stable file sharing support
@@ -773,6 +813,7 @@ Near-term priorities include:
 - Minimizing memory and CPU usage for smooth performance on lower-end hardware
 - Improving network resilience with retry and backoff strategies
 - Exploring a TUI-based admin console for user and server management
+- Plugin marketplace and community plugin discovery
 
 Long-term goals are still evolving. Community input is welcome.
 
