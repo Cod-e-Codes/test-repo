@@ -47,6 +47,16 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 **This release requires thorough testing** - it includes significant new functionality including plugin system, end-to-end encryption, enhanced security features, and Docker improvements. Please report any issues or provide feedback through GitHub Issues or Discussions.
 
+### Security Advisory
+
+**Important**: The initial `v0.2.0-beta.1` release contained Zip Slip vulnerabilities in the plugin manager (CWE-22). These have been fixed in the source code but are present in the pre-built binaries. 
+
+**Affected**: Plugin archive extraction in `v0.2.0-beta.1` binaries
+**Fixed**: Source code updated with path validation to prevent directory traversal attacks
+**Recommendation**: Build from source or wait for `v0.2.0-beta.2` release
+
+The vulnerabilities were in `plugin/manager/manager.go` and affected ZIP and TAR.GZ archive extraction. Malicious plugin archives could potentially write files outside the intended plugin directory. The fix adds comprehensive path validation to prevent directory traversal attacks.
+
 > [!IMPORTANT]
 > This is a beta release with significant new functionality that requires thorough testing. The plugin system, end-to-end encryption, and security features are new and may have edge cases or compatibility issues. Please test extensively and report any problems in [GitHub Issues](https://github.com/Cod-e-Codes/marchat/issues) or share feedback in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions).
 
