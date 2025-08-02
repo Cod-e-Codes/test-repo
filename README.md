@@ -27,9 +27,9 @@
 
 ## What is this?
 
-`marchat` is a minimalist terminal-based group chat app for real-time conversations — currently in beta, with encryption, plugins, and Docker support coming in v1.
+`marchat` is a minimalist terminal-based group chat app for real-time conversations — currently in beta, featuring optional end-to-end encryption, a plugin ecosystem, and Docker support.
 
-It runs entirely on a local SQLite database with no external services required — unless remote access is desired, which will be supported natively in v1.
+It runs entirely on a local SQLite database with no external services required — unless remote access is desired, which will be supported natively in a future release.
 
 ## Why marchat?
 
