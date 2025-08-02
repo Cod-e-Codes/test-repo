@@ -181,6 +181,27 @@ func (pm *PluginManager) downloadPlugin(plugin *store.StorePlugin, pluginPath st
 	}
 }
 
+// isPathSafe validates that a path doesn't contain directory traversal elements
+func isPathSafe(path string) bool {
+	// Check for directory traversal attempts
+	if strings.Contains(path, "..") {
+		return false
+	}
+
+	// Check for absolute paths
+	if filepath.IsAbs(path) {
+		return false
+	}
+
+	// Check for paths that start with common problematic patterns
+	cleanPath := filepath.Clean(path)
+	if strings.HasPrefix(cleanPath, "..") || strings.HasPrefix(cleanPath, "/") || strings.HasPrefix(cleanPath, "\\") {
+		return false
+	}
+
+	return true
+}
+
 // extractZip extracts a zip file
 func (pm *PluginManager) extractZip(reader io.Reader, pluginPath string) error {
 	// Create temporary file
@@ -205,6 +226,11 @@ func (pm *PluginManager) extractZip(reader io.Reader, pluginPath string) error {
 
 	// Extract files
 	for _, file := range zipReader.File {
+		// Validate path to prevent zip slip attacks
+		if !isPathSafe(file.Name) {
+			return fmt.Errorf("unsafe file path in archive: %s", file.Name)
+		}
+
 		filePath := filepath.Join(pluginPath, file.Name)
 
 		if file.FileInfo().IsDir() {
@@ -268,6 +294,11 @@ func (pm *PluginManager) extractTarGz(reader io.Reader, pluginPath string) error
 		}
 		if err != nil {
 			return fmt.Errorf("failed to read tar header: %w", err)
+		}
+
+		// Validate path to prevent zip slip attacks
+		if !isPathSafe(header.Name) {
+			return fmt.Errorf("unsafe file path in archive: %s", header.Name)
 		}
 
 		filePath := filepath.Join(pluginPath, header.Name)
