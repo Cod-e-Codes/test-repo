@@ -21,5 +21,6 @@
   ],
   "permissions": [],
   "settings": {},
-  "min_version": "0.1.0"
+  "min_version": "0.1.0",
+  "checksum": "sha256:5EEC9C09774735C1B95F3FFEBB6AB685BD03965DE37A0E383E596C1BBD26F339"
 } 
