@@ -43,19 +43,18 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 ## Beta Release
 
-`marchat` is currently in a pre-release phase with version `v0.2.0-beta.1`. This release introduces a comprehensive plugin ecosystem and major security enhancements, transforming marchat into an extensible, secure terminal-based group chat platform.
+`marchat` is currently in a pre-release phase with version `v0.2.0-beta.2`. This release introduces a comprehensive plugin ecosystem and major security enhancements, transforming marchat into an extensible, secure terminal-based group chat platform.
 
 **This release requires thorough testing** - it includes significant new functionality including plugin system, end-to-end encryption, enhanced security features, and Docker improvements. Please report any issues or provide feedback through GitHub Issues or Discussions.
 
 ### Security Advisory
 
-**Important**: The initial `v0.2.0-beta.1` release contained Zip Slip vulnerabilities in the plugin manager (CWE-22). These have been fixed in the source code but are present in the pre-built binaries. 
+**Resolved**: The Zip Slip vulnerabilities (CWE-22) that were present in `v0.2.0-beta.1` have been fixed in `v0.2.0-beta.2`.
 
-**Affected**: Plugin archive extraction in `v0.2.0-beta.1` binaries
-**Fixed**: Source code updated with path validation to prevent directory traversal attacks
-**Recommendation**: Build from source or wait for `v0.2.0-beta.2` release
+**Fixed in v0.2.0-beta.2**: Plugin archive extraction now includes comprehensive path validation to prevent directory traversal attacks
+**Recommendation**: Update to `v0.2.0-beta.2` or later for secure plugin functionality
 
-The vulnerabilities were in `plugin/manager/manager.go` and affected ZIP and TAR.GZ archive extraction. Malicious plugin archives could potentially write files outside the intended plugin directory. The fix adds comprehensive path validation to prevent directory traversal attacks.
+The security fix adds the `isPathSafe()` function that validates file paths in `plugin/manager/manager.go` to prevent malicious plugin archives from writing files outside the intended plugin directory.
 
 > [!IMPORTANT]
 > This is a beta release with significant new functionality that requires thorough testing. The plugin system, end-to-end encryption, and security features are new and may have edge cases or compatibility issues. Please test extensively and report any problems in [GitHub Issues](https://github.com/Cod-e-Codes/marchat/issues) or share feedback in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions).
@@ -63,7 +62,7 @@ The vulnerabilities were in `plugin/manager/manager.go` and affected ZIP and TAR
 ### Installing the Beta Release
 
 1. **Download the binaries**:
-   - Visit the [v0.2.0-beta.1 release page](https://github.com/Cod-e-Codes/marchat/releases/tag/v0.2.0-beta.1).
+   - Visit the [v0.2.0-beta.2 release page](https://github.com/Cod-e-Codes/marchat/releases/tag/v0.2.0-beta.2).
    - Download the appropriate archive for your platform (Linux, Windows, or macOS).
    - Extract the archive to a directory of your choice.
 
@@ -93,7 +92,7 @@ The vulnerabilities were in `plugin/manager/manager.go` and affected ZIP and TAR
 > Launch these executables from a terminal—don’t double-click. Double-clicking produces no visible output and can leave a server running unnoticed on your network.
 
 > [!TIP]
-> This release includes major new features that need extensive testing. Please test the plugin system, end-to-end encryption, admin commands, and Docker functionality thoroughly. Report any issues in [GitHub Issues](https://github.com/Cod-e-Codes/marchat/issues) with detailed steps to reproduce. Share your testing experience in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions). Check the [Full Changelog](https://github.com/Cod-e-Codes/marchat/commits/v0.2.0-beta.1) for details on what's included in this release.
+> This release includes major new features that need extensive testing. Please test the plugin system, end-to-end encryption, admin commands, and Docker functionality thoroughly. Report any issues in [GitHub Issues](https://github.com/Cod-e-Codes/marchat/issues) with detailed steps to reproduce. Share your testing experience in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions). Check the [Full Changelog](https://github.com/Cod-e-Codes/marchat/commits/v0.2.0-beta.2) for details on what's included in this release.
 
 ---
 
