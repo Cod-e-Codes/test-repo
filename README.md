@@ -6,21 +6,22 @@
 [![Go Version](https://img.shields.io/badge/go-1.24%2B-blue?logo=go)](https://go.dev/dl/)
 [![cloudflared](https://img.shields.io/badge/cloudflared-download-ff6f00?logo=cloudflare)](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/)
 
-## Table of Contents
+## Table of Contents  
 
-- [Beta Release](#beta-release)
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Usage](#usage)
-- [Project Structure](#project-structure)
-- [Admin Mode](#admin-mode-privileged-commands--security)
-- [Security](#security)
-- [Tech Stack](#tech-stack)
-- [Troubleshooting](#troubleshooting)
-- [Contributing & Feedback](#contributing--feedback)
-- [What's Next](#whats-next)
-- [Acknowledgements](#acknowledgements)
-- [License](#license)
+- [Beta Release](#beta-release)  
+- [Features](#features)  
+- [Quick Start](#quick-start)  
+- [Usage](#usage)  
+- [Project Structure](#project-structure)  
+- [Admin Mode](#admin-mode-privileged-commands--security)  
+- [Security](#security)  
+- [Tech Stack](#tech-stack)  
+- [Troubleshooting](#troubleshooting)  
+- [Contributing & Feedback](#contributing--feedback)  
+- [What's Next](#whats-next)  
+- [Acknowledgements](#acknowledgements)  
+- [Security Disclaimer](#security-disclaimer)  
+- [License](#license)  
 
 ---
 
@@ -783,8 +784,11 @@ Long-term goals are still evolving. Community input is welcome.
   
 ---
 
-## License
+## Security Disclaimer
 
+This software is provided as-is, without warranty. If you modify the source code or expose `marchat` to the public Internet, you are solely responsible for securing your deployment. Misconfigurations or insecure modifications can expose you to real-world risk.
+
+## License
 marchat is open source under the [MIT License](LICENSE).
 
 > **Commercial Plugins & Support**  
