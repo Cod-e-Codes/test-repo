@@ -19,6 +19,7 @@
 - [Troubleshooting](#troubleshooting)
 - [Contributing & Feedback](#contributing--feedback)
 - [What's Next](#whats-next)
+- [Acknowledgements](#acknowledgements)
 - [License](#license)
 
 ---
@@ -774,6 +775,12 @@ Near-term priorities include:
 
 Long-term goals are still evolving. Community input is welcome.
 
+---
+
+## Acknowledgements
+
+- [@cmckerley](https://github.com/cmckerley) – for early Docker testing, feedback on configuration edge cases, and helping identify system-level bugs during setup.
+  
 ---
 
 ## License
