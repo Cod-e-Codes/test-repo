@@ -729,6 +729,11 @@ When using E2E encryption:
   - **Cloudflare Tunnel**: For secure remote access without firewall changes, use Cloudflare Tunnel (see [Remote Access](#remote-access-optional))
 - **Admin commands**
   - Ensure `--admin` and `--admin-key` match server settings.
+- **Server fails to start or ignores `.env`**
+  - If running the binary outside the cloned repo, either:
+    - Set `--config-dir` to the path containing your `.env`
+    - Or set all required `MARCHAT_*` environment variables in your terminal
+  - The server defaults to `./config`, so running inside the repo often works best
 
 > [!TIP]
 > When reporting bugs, include your version or commit hash for faster resolution. For beta release issues, specify that you're using `v0.1.0-beta.2`.
