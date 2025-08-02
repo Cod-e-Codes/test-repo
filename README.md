@@ -45,17 +45,6 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 `marchat` is currently in a pre-release phase with version `v0.2.0-beta.2`. This release introduces a comprehensive plugin ecosystem and major security enhancements, transforming marchat into an extensible, secure terminal-based group chat platform.
 
-**This release requires thorough testing** - it includes significant new functionality including plugin system, end-to-end encryption, enhanced security features, and Docker improvements. Please report any issues or provide feedback through GitHub Issues or Discussions.
-
-### Security Advisory
-
-**Resolved**: The Zip Slip vulnerabilities (CWE-22) that were present in `v0.2.0-beta.1` have been fixed in `v0.2.0-beta.2`.
-
-**Fixed in v0.2.0-beta.2**: Plugin archive extraction now includes comprehensive path validation to prevent directory traversal attacks
-**Recommendation**: Update to `v0.2.0-beta.2` or later for secure plugin functionality
-
-The security fix adds the `isPathSafe()` function that validates file paths in `plugin/manager/manager.go` to prevent malicious plugin archives from writing files outside the intended plugin directory.
-
 > [!IMPORTANT]
 > This is a beta release with significant new functionality that requires thorough testing. The plugin system, end-to-end encryption, and security features are new and may have edge cases or compatibility issues. Please test extensively and report any problems in [GitHub Issues](https://github.com/Cod-e-Codes/marchat/issues) or share feedback in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions).
 
