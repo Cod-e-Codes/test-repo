@@ -32,11 +32,12 @@ func TestLoadConfig(t *testing.T) {
 		if cfg.AdminKey != "test-key" {
 			t.Errorf("Expected admin key 'test-key', got '%s'", cfg.AdminKey)
 		}
-		if len(cfg.Admins) != 2 {
-			t.Errorf("Expected 2 admins, got %d", len(cfg.Admins))
-		}
-		if cfg.Admins[0] != "user1" || cfg.Admins[1] != "user2" {
-			t.Errorf("Expected admins ['user1', 'user2'], got %v", cfg.Admins)
+		expected := []string{"user1", "user2"}
+		sort.Strings(expected)
+		sort.Strings(cfg.Admins)
+
+		if !reflect.DeepEqual(cfg.Admins, expected) {
+			t.Errorf("Expected admins %v, got %v", expected, cfg.Admins)
 		}
 	})
 
