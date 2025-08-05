@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -148,7 +149,15 @@ func main() {
 	// Set up plugin directories
 	pluginDir := cfg.ConfigDir + "/plugins"
 	dataDir := cfg.ConfigDir + "/data"
-	registryURL := "file:///C:/Users/codyl/CursorProjects/marchat/plugin/registry/registry.json"
+
+	// Get the current working directory to build the registry path
+	currentDir, err := os.Getwd()
+	if err != nil {
+		log.Printf("Warning: Could not get current directory: %v", err)
+		currentDir = "."
+	}
+	registryPath := filepath.Join(currentDir, "plugin", "registry", "registry.json")
+	registryURL := "file:///" + filepath.ToSlash(registryPath)
 
 	// Create plugin directories if they don't exist
 	if err := os.MkdirAll(pluginDir, 0755); err != nil {
