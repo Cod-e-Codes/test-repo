@@ -83,7 +83,6 @@ func (h *PluginHost) LoadPlugin(name string) error {
 		if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
 			return fmt.Errorf("plugin binary not found: %s", binaryPath)
 		}
-		binaryName = name
 	}
 
 	// Create plugin instance
