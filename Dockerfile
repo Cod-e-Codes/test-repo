@@ -6,7 +6,7 @@ RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -o marchat-server ./cmd/server
 
 # === Runtime Stage ===
-FROM alpine:latest
+FROM alpine:3.21
 
 # Build arguments for user/group ID
 ARG USER_ID=1000
