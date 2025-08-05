@@ -71,10 +71,19 @@ func (h *PluginHost) LoadPlugin(name string) error {
 		return fmt.Errorf("invalid plugin manifest: %w", err)
 	}
 
-	// Check if plugin binary exists
-	binaryPath := filepath.Join(pluginPath, name)
+	// Check if plugin binary exists (with .exe extension on Windows)
+	binaryName := name
+	if filepath.Ext(name) == "" {
+		binaryName = name + ".exe"
+	}
+	binaryPath := filepath.Join(pluginPath, binaryName)
 	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
-		return fmt.Errorf("plugin binary not found: %s", binaryPath)
+		// Try without .exe extension as fallback
+		binaryPath = filepath.Join(pluginPath, name)
+		if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+			return fmt.Errorf("plugin binary not found: %s", binaryPath)
+		}
+		binaryName = name
 	}
 
 	// Create plugin instance
@@ -116,8 +125,27 @@ func (h *PluginHost) StartPlugin(name string) error {
 	}
 
 	// Start plugin subprocess
-	binaryPath := filepath.Join(instance.Config.PluginDir, name)
-	cmd := exec.CommandContext(context.Background(), binaryPath)
+	binaryName := name
+	if filepath.Ext(name) == "" {
+		binaryName = name + ".exe"
+	}
+	binaryPath := filepath.Join(instance.Config.PluginDir, binaryName)
+
+	// Check if the .exe version exists, otherwise use the original name
+	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+		binaryPath = filepath.Join(instance.Config.PluginDir, name)
+	}
+
+	log.Printf("[DEBUG] Starting plugin %s with binary path: %s", name, binaryPath)
+	log.Printf("[DEBUG] Plugin directory: %s", instance.Config.PluginDir)
+
+	// Use absolute path for the executable
+	absBinaryPath, err := filepath.Abs(binaryPath)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	cmd := exec.CommandContext(context.Background(), absBinaryPath)
 	cmd.Dir = instance.Config.PluginDir
 
 	// Set up pipes for communication
@@ -312,26 +340,30 @@ func (h *PluginHost) UpdateUserList(users []string) {
 	h.mu.Unlock()
 }
 
-// initializePlugin sends initialization data to a plugin
+// initializePlugin sends an initialization request to the plugin
 func (h *PluginHost) initializePlugin(instance *PluginInstance) error {
+	log.Printf("[DEBUG] Initializing plugin %s", instance.Name)
+
 	initData := map[string]interface{}{
 		"config": instance.Config,
-		"users":  h.userList,
 	}
 
-	req := sdk.PluginRequest{
+	initRequest := sdk.PluginRequest{
 		Type: "init",
 		Data: mustMarshal(initData),
 	}
 
-	return h.sendRequest(instance, req)
+	log.Printf("[DEBUG] Sending init request to plugin %s", instance.Name)
+	if err := h.sendRequest(instance, initRequest); err != nil {
+		return fmt.Errorf("failed to send init request: %w", err)
+	}
+
+	log.Printf("[DEBUG] Plugin %s initialized successfully", instance.Name)
+	return nil
 }
 
 // sendRequest sends a request to a plugin
 func (h *PluginHost) sendRequest(instance *PluginInstance, req sdk.PluginRequest) error {
-	instance.mu.Lock()
-	defer instance.mu.Unlock()
-
 	if instance.Stdin == nil {
 		return fmt.Errorf("plugin stdin is not available")
 	}
@@ -341,25 +373,36 @@ func (h *PluginHost) sendRequest(instance *PluginInstance, req sdk.PluginRequest
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
+	log.Printf("[DEBUG] Sending request to plugin %s: %s", instance.Name, string(data))
+
 	// Send request with newline delimiter
 	data = append(data, '\n')
 	_, err = instance.Stdin.Write(data)
-	return err
+	if err != nil {
+		log.Printf("[DEBUG] Failed to write to plugin %s stdin: %v", instance.Name, err)
+		return err
+	}
+
+	log.Printf("[DEBUG] Successfully sent request to plugin %s", instance.Name)
+	return nil
 }
 
 // handlePluginOutput handles stdout from a plugin
 func (h *PluginHost) handlePluginOutput(instance *PluginInstance) {
+	log.Printf("[DEBUG] Starting output handler for plugin %s", instance.Name)
 	decoder := json.NewDecoder(instance.Stdout)
 	for {
 		var response sdk.PluginResponse
 		if err := decoder.Decode(&response); err != nil {
 			if err == io.EOF {
+				log.Printf("[DEBUG] Plugin %s stdout closed", instance.Name)
 				break
 			}
 			log.Printf("Failed to decode plugin %s response: %v", instance.Name, err)
 			continue
 		}
 
+		log.Printf("[DEBUG] Received response from plugin %s: %+v", instance.Name, response)
 		h.handlePluginResponse(instance, response)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Cod-e-Codes/marchat/plugin/sdk"
@@ -71,6 +72,7 @@ func main() {
 
 	// Log to stderr
 	log.SetOutput(os.Stderr)
+	log.Printf("Echo plugin started, waiting for requests...")
 
 	for {
 		var req sdk.PluginRequest
@@ -79,12 +81,17 @@ func main() {
 			break
 		}
 
+		log.Printf("Received request: %+v", req)
 		response := plugin.handleRequest(req)
+		log.Printf("Sending response: %+v", response)
 
 		if err := encoder.Encode(response); err != nil {
 			log.Printf("Failed to encode response: %v", err)
 			break
 		}
+
+		// Ensure the response is flushed
+		os.Stdout.Sync()
 	}
 }
 
@@ -173,11 +180,25 @@ func (p *EchoPlugin) handleRequest(req sdk.PluginRequest) sdk.PluginResponse {
 			}
 		}
 
+		log.Printf("Received command: %s with args: %v", req.Command, args)
+
 		// Handle echo command
 		if req.Command == "echo" && len(args) > 0 {
+			// Handle quoted arguments
+			var content string
+			if len(args) == 1 && strings.HasPrefix(args[0], `"`) && strings.HasSuffix(args[0], `"`) {
+				// Single quoted argument
+				content = strings.Trim(args[0], `"`)
+			} else {
+				// Join all arguments into a single message
+				content = strings.Join(args, " ")
+			}
+
+			log.Printf("Echoing content: '%s'", content)
+
 			echoMsg := sdk.Message{
 				Sender:    "EchoBot",
-				Content:   args[0],
+				Content:   content,
 				CreatedAt: time.Now(),
 			}
 

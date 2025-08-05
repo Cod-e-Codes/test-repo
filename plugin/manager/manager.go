@@ -159,25 +159,42 @@ func (pm *PluginManager) GetStore() *store.Store {
 
 // downloadPlugin downloads a plugin from the given URL
 func (pm *PluginManager) downloadPlugin(plugin *store.StorePlugin, pluginPath string) error {
-	resp, err := http.Get(plugin.DownloadURL)
-	if err != nil {
-		return fmt.Errorf("failed to download plugin: %w", err)
-	}
-	defer resp.Body.Close()
+	var reader io.Reader
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download failed with status %d", resp.StatusCode)
+	if strings.HasPrefix(plugin.DownloadURL, "file://") {
+		// Handle local file URLs
+		filePath := strings.TrimPrefix(plugin.DownloadURL, "file://")
+		filePath = strings.TrimPrefix(filePath, "/")
+		filePath = strings.ReplaceAll(filePath, "/", "\\")
+
+		file, err := os.Open(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to open local plugin file: %w", err)
+		}
+		defer file.Close()
+		reader = file
+	} else {
+		// Handle HTTP URLs
+		resp, err := http.Get(plugin.DownloadURL)
+		if err != nil {
+			return fmt.Errorf("failed to download plugin: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("download failed with status %d", resp.StatusCode)
+		}
+		reader = resp.Body
 	}
 
 	// Determine file type and extract
-	contentType := resp.Header.Get("Content-Type")
-	if strings.Contains(contentType, "application/zip") {
-		return pm.extractZip(resp.Body, pluginPath)
-	} else if strings.Contains(contentType, "application/gzip") || strings.Contains(contentType, "application/x-gzip") {
-		return pm.extractTarGz(resp.Body, pluginPath)
+	if strings.HasSuffix(plugin.DownloadURL, ".zip") {
+		return pm.extractZip(reader, pluginPath)
+	} else if strings.HasSuffix(plugin.DownloadURL, ".tar.gz") || strings.HasSuffix(plugin.DownloadURL, ".tgz") {
+		return pm.extractTarGz(reader, pluginPath)
 	} else {
 		// Assume it's a single binary
-		return pm.downloadBinary(resp.Body, pluginPath, plugin.Name)
+		return pm.downloadBinary(reader, pluginPath, plugin.Name)
 	}
 }
 
@@ -366,10 +383,27 @@ func (pm *PluginManager) downloadBinary(reader io.Reader, pluginPath, pluginName
 func (pm *PluginManager) validateChecksum(pluginPath, expectedChecksum string) error {
 	// Calculate SHA256 of the plugin binary
 	pluginName := filepath.Base(pluginPath)
-	binaryPath := filepath.Join(pluginPath, pluginName)
 
-	file, err := os.Open(binaryPath)
-	if err != nil {
+	// Try different possible binary names
+	binaryNames := []string{
+		pluginName,
+		pluginName + ".exe",
+		pluginName + ".bat",
+	}
+
+	var binaryPath string
+	var file *os.File
+	var err error
+
+	for _, name := range binaryNames {
+		binaryPath = filepath.Join(pluginPath, name)
+		file, err = os.Open(binaryPath)
+		if err == nil {
+			break
+		}
+	}
+
+	if file == nil {
 		return fmt.Errorf("failed to open binary for checksum: %w", err)
 	}
 	defer file.Close()
@@ -380,7 +414,14 @@ func (pm *PluginManager) validateChecksum(pluginPath, expectedChecksum string) e
 	}
 
 	calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
-	if calculatedChecksum != expectedChecksum {
+
+	// Handle both formats: just hash or "sha256:hash"
+	expectedHash := expectedChecksum
+	if strings.HasPrefix(expectedChecksum, "sha256:") {
+		expectedHash = strings.TrimPrefix(expectedChecksum, "sha256:")
+	}
+
+	if calculatedChecksum != expectedHash {
 		return fmt.Errorf("checksum mismatch: expected %s, got %s", expectedChecksum, calculatedChecksum)
 	}
 

@@ -54,24 +54,48 @@ func NewStore(registryURL, cacheDir string) *Store {
 
 // Refresh fetches the latest plugin registry
 func (s *Store) Refresh() error {
-	resp, err := http.Get(s.registryURL)
-	if err != nil {
-		return fmt.Errorf("failed to fetch registry: %w", err)
-	}
-	defer resp.Body.Close()
+	var data []byte
+	var err error
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("registry returned status %d", resp.StatusCode)
+	if strings.HasPrefix(s.registryURL, "file://") {
+		// Handle local file URLs
+		filePath := strings.TrimPrefix(s.registryURL, "file://")
+		filePath = strings.TrimPrefix(filePath, "/")
+		filePath = strings.ReplaceAll(filePath, "/", "\\")
+		data, err = os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to read local registry: %w", err)
+		}
+	} else {
+		// Handle HTTP URLs
+		resp, err := http.Get(s.registryURL)
+		if err != nil {
+			return fmt.Errorf("failed to fetch registry: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("registry returned status %d", resp.StatusCode)
+		}
+
+		data, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read registry: %w", err)
+		}
 	}
 
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read registry: %w", err)
-	}
-
+	// Try to parse as array first (old format)
 	var plugins []StorePlugin
 	if err := json.Unmarshal(data, &plugins); err != nil {
-		return fmt.Errorf("failed to parse registry: %w", err)
+		// If that fails, try to parse as object with plugins field (new format)
+		var registry struct {
+			Version string        `json:"version"`
+			Plugins []StorePlugin `json:"plugins"`
+		}
+		if err := json.Unmarshal(data, &registry); err != nil {
+			return fmt.Errorf("failed to parse registry: %w", err)
+		}
+		plugins = registry.Plugins
 	}
 
 	s.plugins = plugins

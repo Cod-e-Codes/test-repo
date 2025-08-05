@@ -217,7 +217,16 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string) http.Han
 			return
 		}
 
-		client := &Client{hub: hub, conn: conn, send: make(chan interface{}, 256), db: db, username: username, isAdmin: isAdmin, ipAddr: ipAddr}
+		client := &Client{
+			hub:                  hub,
+			conn:                 conn,
+			send:                 make(chan interface{}, 256),
+			db:                   db,
+			username:             username,
+			isAdmin:              isAdmin,
+			ipAddr:               ipAddr,
+			pluginCommandHandler: hub.pluginCommandHandler,
+		}
 		log.Printf("Client %s connected (admin=%v, IP: %s)", username, isAdmin, ipAddr)
 		hub.register <- client
 

@@ -17,13 +17,14 @@ const (
 )
 
 type Client struct {
-	hub      *Hub
-	conn     *websocket.Conn
-	send     chan interface{}
-	db       *sql.DB
-	username string
-	isAdmin  bool
-	ipAddr   string // Store IP address for logging and ban enforcement
+	hub                  *Hub
+	conn                 *websocket.Conn
+	send                 chan interface{}
+	db                   *sql.DB
+	username             string
+	isAdmin              bool
+	ipAddr               string // Store IP address for logging and ban enforcement
+	pluginCommandHandler *PluginCommandHandler
 }
 
 func (c *Client) readPump() {
@@ -81,13 +82,81 @@ func (c *Client) readPump() {
 	}
 }
 
+// parseCommandWithQuotes parses a command string, respecting quoted arguments
+func parseCommandWithQuotes(command string) []string {
+	var parts []string
+	var current strings.Builder
+	inQuotes := false
+	escapeNext := false
+
+	for _, char := range command {
+		if escapeNext {
+			current.WriteRune(char)
+			escapeNext = false
+			continue
+		}
+
+		if char == '\\' {
+			escapeNext = true
+			continue
+		}
+
+		if char == '"' {
+			inQuotes = !inQuotes
+			continue
+		}
+
+		if char == ' ' && !inQuotes {
+			if current.Len() > 0 {
+				parts = append(parts, current.String())
+				current.Reset()
+			}
+		} else {
+			current.WriteRune(char)
+		}
+	}
+
+	// Add the last part
+	if current.Len() > 0 {
+		parts = append(parts, current.String())
+	}
+
+	return parts
+}
+
 // handleAdminCommand processes admin commands
 func (c *Client) handleAdminCommand(command string) {
-	parts := strings.Fields(command)
+	// Parse command with proper quote handling
+	parts := parseCommandWithQuotes(command)
 	if len(parts) == 0 {
 		return
 	}
 
+	// First, try to handle plugin commands
+	if c.pluginCommandHandler != nil {
+		cmd := strings.TrimPrefix(parts[0], ":")
+		args := parts[1:]
+
+		log.Printf("[DEBUG] Trying plugin command: %s with args: %v", cmd, args)
+		response, err := c.pluginCommandHandler.HandlePluginCommand(cmd, args, c.isAdmin)
+		if err == nil {
+			// Plugin command was handled successfully
+			log.Printf("[DEBUG] Plugin command handled successfully: %s", response)
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   response,
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+			return
+		} else {
+			log.Printf("[DEBUG] Plugin command failed: %v", err)
+		}
+	} else {
+		log.Printf("[DEBUG] No plugin command handler available")
+	}
+
+	// Fall back to built-in admin commands
 	switch parts[0] {
 	case ":cleardb":
 		log.Printf("[ADMIN] Clearing message database via WebSocket by %s...", c.username)

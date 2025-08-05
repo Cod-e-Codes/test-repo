@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Cod-e-Codes/marchat/plugin/manager"
 	"github.com/Cod-e-Codes/marchat/shared"
 )
 
@@ -18,15 +19,24 @@ type Hub struct {
 	// Ban management
 	bans     map[string]time.Time // username -> ban expiry time
 	banMutex sync.RWMutex
+
+	// Plugin management
+	pluginManager        *manager.PluginManager
+	pluginCommandHandler *PluginCommandHandler
 }
 
-func NewHub() *Hub {
+func NewHub(pluginDir, dataDir, registryURL string) *Hub {
+	pluginManager := manager.NewPluginManager(pluginDir, dataDir, registryURL)
+	pluginCommandHandler := NewPluginCommandHandler(pluginManager)
+
 	return &Hub{
-		clients:    make(map[*Client]bool),
-		broadcast:  make(chan interface{}),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		bans:       make(map[string]time.Time),
+		clients:              make(map[*Client]bool),
+		broadcast:            make(chan interface{}),
+		register:             make(chan *Client),
+		unregister:           make(chan *Client),
+		bans:                 make(map[string]time.Time),
+		pluginManager:        pluginManager,
+		pluginCommandHandler: pluginCommandHandler,
 	}
 }
 
@@ -124,6 +134,30 @@ func (h *Hub) Run() {
 		defer ticker.Stop()
 		for range ticker.C {
 			h.CleanupExpiredBans()
+		}
+	}()
+
+	// Start plugin message handler goroutine
+	go func() {
+		for msg := range h.pluginManager.GetMessageChannel() {
+			// Convert plugin message to shared message
+			sharedMsg := shared.Message{
+				Sender:    msg.Sender,
+				Content:   msg.Content,
+				CreatedAt: msg.CreatedAt,
+				Type:      shared.TextMessage,
+			}
+
+			// Broadcast plugin message to all clients
+			for client := range h.clients {
+				select {
+				case client.send <- sharedMsg:
+				default:
+					log.Printf("Dropping client %s due to full send channel\n", client.username)
+					close(client.send)
+					delete(h.clients, client)
+				}
+			}
 		}
 	}()
 

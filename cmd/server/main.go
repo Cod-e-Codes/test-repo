@@ -145,7 +145,20 @@ func main() {
 	db := server.InitDB(cfg.DBPath)
 	server.CreateSchema(db)
 
-	hub := server.NewHub()
+	// Set up plugin directories
+	pluginDir := cfg.ConfigDir + "/plugins"
+	dataDir := cfg.ConfigDir + "/data"
+	registryURL := "file:///C:/Users/codyl/CursorProjects/marchat/plugin/registry/registry.json"
+
+	// Create plugin directories if they don't exist
+	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+		log.Printf("Warning: Failed to create plugin directory %s: %v", pluginDir, err)
+	}
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		log.Printf("Warning: Failed to create data directory %s: %v", dataDir, err)
+	}
+
+	hub := server.NewHub(pluginDir, dataDir, registryURL)
 	go hub.Run()
 
 	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, key))
