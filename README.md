@@ -200,9 +200,6 @@ Create `config.json` for client configuration:
 
 ### Admin Commands
 
-<details>
-<summary>Admin Commands (Click to expand)</summary>
-
 | Command | Description | Example |
 |---------|-------------|---------|
 | `:cleardb` | Wipe server database | `:cleardb` |
@@ -214,7 +211,6 @@ Create `config.json` for client configuration:
 ```bash
 ./marchat-client --username admin1 --admin --admin-key your-key --server ws://localhost:8080/ws
 ```
-</details>
 
 ### E2E Encryption Commands
 
