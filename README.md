@@ -45,7 +45,7 @@ marchat is a self-hosted terminal chat application that runs entirely on a local
 | Feature | Description |
 |---------|-------------|
 | **Terminal UI** | Beautiful TUI built with Bubble Tea |
-| **Real-time Chat** | WebSocket-based messaging with <100ms latency |
+| **Real-time Chat** | Fast WebSocket-based messaging with a lightweight SQLite backend |
 | **Plugin System** | Install and manage plugins via `:store` and `:plugin` commands |
 | **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305 |
 | **File Sharing** | Send files up to 1MB with `:sendfile` |
