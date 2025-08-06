@@ -1,6 +1,6 @@
 # marchat
 
-<img src="marchat-transparent.svg" alt="marchat - terminal chat application" width="200" height="auto">
+<img src="assets/marchat-transparent.svg" alt="marchat - terminal chat application" width="200" height="auto">
 
 [![Go CI](https://github.com/Cod-e-Codes/marchat/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/Cod-e-Codes/marchat/actions/workflows/go.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -10,8 +10,8 @@
 
 A minimalist terminal-based group chat application with real-time messaging, optional end-to-end encryption, and a plugin ecosystem. Built for developers who love the command line.
 
-![Server Demo](demo-server.gif "marchat server startup with ASCII art banner")
-![Client Demo](demo-client-1.gif "marchat client interface with chat and user list")
+![Server Demo](assets/demo-server.gif "marchat server startup with ASCII art banner")
+![Client Demo](assets/demo-client-1.gif "marchat client interface with chat and user list")
 
 ## Table of Contents
 
