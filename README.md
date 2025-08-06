@@ -51,7 +51,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 ### Installing the Beta Release
 
 1. **Download the binaries**:
-   - Visit the [v0.2.0-beta.2 release page](https://github.com/Cod-e-Codes/marchat/releases/tag/v0.2.0-beta.2).
+   - Visit the [v0.2.0-beta.3 release page](https://github.com/Cod-e-Codes/marchat/releases/tag/v0.2.0-beta.3).
    - Download the appropriate archive for your platform (Linux, Windows, or macOS).
    - Extract the archive to a directory of your choice.
 
@@ -81,7 +81,26 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 > Launch these executables from a terminal—don’t double-click. Double-clicking produces no visible output and can leave a server running unnoticed on your network.
 
 > [!TIP]
-> This release includes major new features that need extensive testing. Please test the plugin system, end-to-end encryption, admin commands, and Docker functionality thoroughly. Report any issues in [GitHub Issues](https://github.com/Cod-e-Codes/marchat/issues) with detailed steps to reproduce. Share your testing experience in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions). Check the [Full Changelog](https://github.com/Cod-e-Codes/marchat/commits/v0.2.0-beta.2) for details on what's included in this release.
+> This release includes major new features that need extensive testing. Please test the plugin system, end-to-end encryption, admin commands, and Docker functionality thoroughly. Report any issues in [GitHub Issues](https://github.com/Cod-e-Codes/marchat/issues) with detailed steps to reproduce. Share your testing experience in [GitHub Discussions](https://github.com/Cod-e-Codes/marchat/discussions). Check the [Full Changelog](https://github.com/Cod-e-Codes/marchat/commits/v0.2.0-beta.3) for details on what's included in this release.
+
+### Docker Hub
+
+Pre-built Docker images are available on Docker Hub:
+
+```bash
+# Pull the latest release
+docker pull codecodesxyz/marchat:v0.2.0-beta.3
+
+# Or use the latest tag
+docker pull codecodesxyz/marchat:latest
+
+# Run with environment variables
+docker run -d \
+  -p 8080:8080 \
+  -e MARCHAT_ADMIN_KEY=your-secret-key \
+  -e MARCHAT_USERS=admin1,admin2 \
+  codecodesxyz/marchat:v0.2.0-beta.3
+```
 
 ---
 
@@ -248,7 +267,7 @@ Or with a config file:
 
 ## Docker Configuration
 
-marchat includes Docker support with environment-based configuration and enhanced security features:
+marchat includes Docker support with environment-based configuration and enhanced security features. The latest release includes Alpine 3.21 compatibility improvements:
 
 ### Security Features
 
