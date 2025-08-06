@@ -232,12 +232,12 @@ Create `config.json` for client configuration:
 
 ### Critical Security Warnings
 
-> **⚠️ CRITICAL: Change default admin key immediately**
-> 
-> The default admin key `changeme` is insecure. Generate a secure key:
-> ```bash
-> openssl rand -hex 32
-> ```
+> [!WARNING]
+> Change default admin key immediately
+>  The default admin key `changeme` is insecure. Generate a secure key:
+```bash
+openssl rand -hex 32
+```
 
 ### Security Best Practices
 
