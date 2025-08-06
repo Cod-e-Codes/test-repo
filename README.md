@@ -1,4 +1,6 @@
-# marchat 🧃
+# marchat
+
+![marchat logo](marchat-transparent.svg "marchat - terminal chat application")
 
 [![Go CI](https://github.com/Cod-e-Codes/marchat/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/Cod-e-Codes/marchat/actions/workflows/go.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
