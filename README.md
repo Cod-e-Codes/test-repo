@@ -86,7 +86,7 @@ Built for father-son coding sessions, marchat is about sharing the joy of hackin
 
 ### Docker Hub
 
-Pre-built Docker images are available on Docker Hub:
+Pre-built Docker images are available on [Docker Hub](https://hub.docker.com/r/codecodesxyz/marchat):
 
 ```bash
 # Pull the latest release
