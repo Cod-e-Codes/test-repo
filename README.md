@@ -22,8 +22,8 @@
 - [Usage](#usage)
 - [Configuration System](#configuration-system)
 - [Project Structure](#project-structure)
-- [Admin Mode: Privileged Commands & Security](#admin-mode-privileged-commands--security)
-- [Security](#security)
+- [Admin Mode & Privileged Commands](#admin-mode--privileged-commands)
+- [Security Best Practices](#security-best-practices)
 - [Tech Stack](#tech-stack)
 - [Troubleshooting](#troubleshooting)
 - [Contributing & Feedback](#contributing--feedback)
@@ -601,7 +601,7 @@ MARCHAT_JWT_SECRET=your-jwt-secret-change-in-production
 
 ---
 
-## Admin Mode: Privileged Commands & Security
+## Admin Mode & Privileged Commands
 
 > [!IMPORTANT]
 > Admin commands require the `--admin` flag and a matching `--admin-key`. Only users listed as admins on the server can authenticate.
@@ -692,7 +692,7 @@ MARCHAT_USERS=Cody,Crystal
 
 ---
 
-## Security
+## Security Best Practices
 
 > [!WARNING]
 > For production deployments:
