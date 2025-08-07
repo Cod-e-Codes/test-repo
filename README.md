@@ -366,12 +366,12 @@ chmod +x cloudflared
 
 ## Featured In
 
-marchat has been recognized and featured by the following community sites and newsletters:
+marchat has been recognized and featured by the following community sites and newsletters. Many thanks to each for the support and exposure:
 
-- [MTKBlogs: marchat – A Go-powered Terminal Chat App for the Modern User](https://mtkblogs.com/2025/07/23/marchat-a-go-powered-terminal-chat-app-for-the-modern-user/)
-- [Ecosyste.ms: Self-Hosted GitHub Topics](https://repos.ecosyste.ms/hosts/GitHub/topics/self-hosted)
-- [HN Paper Labs: Diana E](https://hnpaper-labs.gaidot.net/u/diana-e)
-- [Selfh.st Weekly Newsletter (2025-07-25)](https://selfh.st/weekly/2025-07-25/)
+- [MTKBlogs: marchat – A Go-powered Terminal Chat App for the Modern User](https://mtkblogs.com/2025/07/23/marchat-a-go-powered-terminal-chat-app-for-the-modern-user/) — Thanks to MTKBlogs for the detailed write-up.
+- [Ecosyste.ms: Self-Hosted GitHub Topics](https://repos.ecosyste.ms/hosts/GitHub/topics/self-hosted) — Grateful to Ecosyste.ms for listing marchat among top self-hosted projects.
+- [HN Paper Labs: Diana E](https://hnpaper-labs.gaidot.net/u/diana-e) — Appreciate the mention on HN Paper Labs.
+- [Selfh.st Weekly Newsletter (2025-07-25)](https://selfh.st/weekly/2025-07-25/) — Special thanks to Ethan Sholly and Self-Host Weekly for featuring marchat.
 
 ## Getting Help
 
