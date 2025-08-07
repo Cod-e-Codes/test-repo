@@ -32,7 +32,7 @@ A minimalist terminal-based group chat application with real-time messaging, opt
 
 ## Overview
 
-marchat is a self-hosted terminal chat application that runs entirely on a local SQLite database. It features real-time WebSocket communication, optional end-to-end encryption, and an extensible plugin system.
+marchat began as a fun weekend project for father-son coding sessions, and grew into a self-hosted terminal chat application designed for developers who love the command line. It runs entirely on a local SQLite database and supports real-time communication over WebSockets.
 
 **Key Benefits:**
 - **Self-hosted**: No external services required
