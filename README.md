@@ -58,16 +58,16 @@ marchat is a self-hosted terminal chat application that runs entirely on a local
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.2.0-beta.3:**
+**Download pre-built binaries for v0.2.0-beta.4:**
 
 ```bash
 # Linux
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.2.0-beta.3/marchat-v0.2.0-beta.3-linux-amd64.zip
-unzip marchat-v0.2.0-beta.3-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.2.0-beta.4/marchat-v0.2.0-beta.4-linux-amd64.zip
+unzip marchat-v0.2.0-beta.4-linux-amd64.zip
 
 # macOS
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.2.0-beta.3/marchat-v0.2.0-beta.3-darwin-amd64.zip
-unzip marchat-v0.2.0-beta.3-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.2.0-beta.4/marchat-v0.2.0-beta.4-darwin-amd64.zip
+unzip marchat-v0.2.0-beta.4-darwin-amd64.zip
 
 # Windows
 # Download from GitHub releases page
@@ -79,14 +79,14 @@ unzip marchat-v0.2.0-beta.3-darwin-amd64.zip
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.2.0-beta.3
+docker pull codecodesxyz/marchat:v0.2.0-beta.4
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.2.0-beta.3
+  codecodesxyz/marchat:v0.2.0-beta.4
 ```
 
 **Using Docker Compose:**
@@ -96,7 +96,7 @@ docker run -d \
 version: '3.8'
 services:
   marchat:
-    image: codecodesxyz/marchat:v0.2.0-beta.3
+    image: codecodesxyz/marchat:v0.2.0-beta.4
     ports:
       - "8080:8080"
     environment:
