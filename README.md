@@ -23,6 +23,7 @@ A minimalist terminal-based group chat application with real-time messaging, opt
   - [Source Installation](#source-installation)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+- [TLS Support](#tls-support)
 - [Usage](#usage)
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
@@ -164,6 +165,8 @@ export MARCHAT_USERS="admin1,admin2"
 | `MARCHAT_DB_PATH` | No | `./config/marchat.db` | Database file path |
 | `MARCHAT_LOG_LEVEL` | No | `info` | Log level (debug, info, warn, error) |
 | `MARCHAT_CONFIG_DIR` | No | Auto-detected | Custom config directory |
+| `MARCHAT_TLS_CERT_FILE` | No | - | Path to TLS certificate file |
+| `MARCHAT_TLS_KEY_FILE` | No | - | Path to TLS private key file |
 
 ### Configuration File
 
@@ -177,6 +180,65 @@ Create `config.json` for client configuration:
   "twenty_four_hour": true
 }
 ```
+
+## TLS Support
+
+TLS (Transport Layer Security) enables secure WebSocket connections using `wss://` instead of `ws://`. This is essential for production deployments and when exposing the server over the internet.
+
+### When to Use TLS
+
+- **Public deployments**: When the server is accessible from the internet
+- **Production environments**: For enhanced security and privacy
+- **Corporate networks**: When required by security policies
+- **HTTPS reverse proxies**: When behind nginx, traefik, or similar
+
+### Enabling TLS
+
+TLS is optional but recommended for secure deployments. To enable TLS:
+
+1. **Obtain SSL/TLS certificates** (self-signed for testing, CA-signed for production)
+2. **Set environment variables**:
+   ```bash
+   export MARCHAT_TLS_CERT_FILE="/path/to/cert.pem"
+   export MARCHAT_TLS_KEY_FILE="/path/to/key.pem"
+   ```
+3. **Start the server** - it will automatically detect TLS configuration
+
+### Example Configuration
+
+**With TLS (recommended for production):**
+```bash
+# Generate self-signed certificate for testing
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
+
+# Set environment variables
+export MARCHAT_ADMIN_KEY="your-secure-key"
+export MARCHAT_USERS="admin1,admin2"
+export MARCHAT_TLS_CERT_FILE="./cert.pem"
+export MARCHAT_TLS_KEY_FILE="./key.pem"
+
+# Start server (will show wss:// in banner)
+./marchat-server
+```
+
+**Without TLS (development/testing):**
+```bash
+# No TLS certificates set
+export MARCHAT_ADMIN_KEY="your-secure-key"
+export MARCHAT_USERS="admin1,admin2"
+
+# Start server (will show ws:// in banner)
+./marchat-server
+```
+
+### Client Connection
+
+The client connection URL automatically reflects the server's TLS status:
+
+- **TLS enabled**: Connect to `wss://host:port/ws`
+- **TLS disabled**: Connect to `ws://host:port/ws`
+
+The server banner displays the correct WebSocket URL scheme based on TLS configuration.
 
 ## Usage
 
@@ -276,6 +338,7 @@ When enabled, E2E encryption provides:
 | Issue | Solution |
 |-------|----------|
 | **Connection failed** | Verify server URL uses `ws://` or `wss://` |
+| **TLS certificate errors** | Ensure certificate and key files are readable and valid |
 | **Admin commands not working** | Ensure `--admin` flag and correct `--admin-key` |
 | **Clipboard not working (Linux)** | Install `xclip`: `sudo apt install xclip` |
 | **Permission denied (Docker)** | Rebuild with correct UID/GID: `docker-compose build --build-arg USER_ID=$(id -u)` |

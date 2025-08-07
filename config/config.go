@@ -17,6 +17,10 @@ type Config struct {
 	AdminKey string   `json:"admin_key"`
 	Admins   []string `json:"admins"`
 
+	// TLS settings
+	TLSCertFile string `json:"tls_cert_file"`
+	TLSKeyFile  string `json:"tls_key_file"`
+
 	// Database settings
 	DBPath string `json:"db_path"`
 
@@ -111,6 +115,14 @@ func (c *Config) loadFromEnv() error {
 		c.JWTSecret = jwtSecret
 	} else {
 		c.JWTSecret = "marchat-default-secret-change-in-production"
+	}
+
+	// TLS configuration
+	if tlsCertFile := os.Getenv("MARCHAT_TLS_CERT_FILE"); tlsCertFile != "" {
+		c.TLSCertFile = tlsCertFile
+	}
+	if tlsKeyFile := os.Getenv("MARCHAT_TLS_KEY_FILE"); tlsKeyFile != "" {
+		c.TLSKeyFile = tlsKeyFile
 	}
 
 	return nil
@@ -214,4 +226,17 @@ func GetEnvIntWithDefault(key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
+}
+
+// IsTLSEnabled returns true if both TLS certificate and key files are configured
+func (c *Config) IsTLSEnabled() bool {
+	return c.TLSCertFile != "" && c.TLSKeyFile != ""
+}
+
+// GetWebSocketScheme returns the appropriate WebSocket scheme based on TLS configuration
+func (c *Config) GetWebSocketScheme() string {
+	if c.IsTLSEnabled() {
+		return "wss"
+	}
+	return "ws"
 }

@@ -32,7 +32,7 @@ var port = flag.Int("port", 0, "Port to listen on (deprecated, use MARCHAT_PORT)
 var configPath = flag.String("config", "", "Path to server config file (JSON, deprecated)")
 var configDir = flag.String("config-dir", "", "Configuration directory (default: ./config in dev, $XDG_CONFIG_HOME/marchat in prod)")
 
-func printBanner(addr string, admins []string) {
+func printBanner(addr string, admins []string, scheme string) {
 	fmt.Println(`
 ⢀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣶⣶⣶⣶⣶⣶⣶⣶⣶⣦⡀⠀⠀⠀⠀⠀⠀⣀⣀⣀⣀⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀  
 ⣿⣷⠀⠀⣀⣤⣴⣾⣿⡿⣿⣧⣿⣶⣿⣿⣿⣽⣿⣽⣿⣷⣤⣤⣴⣶⣾⣿⣿⡿⠿⠛⠛⠿⣷⡀⢀⣀⣀⣀⣀⡀⠀⠀⠀⠀  
@@ -61,7 +61,7 @@ func printBanner(addr string, admins []string) {
 ░██       ░██ ░██   ░██  ░██      ░██    ░██ ░██    ░██ ░██   ░██     ░██    
 ░██       ░██  ░█████░██ ░██       ░███████  ░██    ░██  ░█████░██     ░████ `)
 	fmt.Println()
-	fmt.Printf("\U0001F310 WebSocket: wss://%s/ws\n", addr)
+	fmt.Printf("\U0001F310 WebSocket: %s://%s/ws\n", scheme, addr)
 	fmt.Printf("\U0001F511 Admins: %s\n", strings.Join(admins, ", "))
 	fmt.Println("\U0001F4A1 Tip: Use --username <admin> --admin --admin-key <key> to connect as admin")
 }
@@ -82,6 +82,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    MARCHAT_DB_PATH=/path/to/db (default: $CONFIG_DIR/marchat.db)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_LOG_LEVEL=info (default: info)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_JWT_SECRET=your-jwt-secret (default: auto-generated)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_TLS_CERT_FILE=/path/to/cert.pem (optional)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_TLS_KEY_FILE=/path/to/key.pem (optional)\n")
 		fmt.Fprintf(os.Stderr, "  .env file: Create %s/.env with the above variables\n", cfg.ConfigDir)
 		fmt.Fprintf(os.Stderr, "  Config directory: Use --config-dir to specify custom location\n")
 		os.Exit(1)
@@ -174,10 +176,17 @@ func main() {
 
 	addr := fmt.Sprintf(":%d", listenPort)
 	serverAddr := fmt.Sprintf("localhost:%d", listenPort)
+	scheme := cfg.GetWebSocketScheme()
+
 	log.Printf("marchat WebSocket server running on %s", addr)
 	log.Printf("Configuration directory: %s", cfg.ConfigDir)
 	log.Printf("Database path: %s", cfg.DBPath)
-	printBanner(serverAddr, admins)
+	if cfg.IsTLSEnabled() {
+		log.Printf("TLS enabled with cert: %s, key: %s", cfg.TLSCertFile, cfg.TLSKeyFile)
+	} else {
+		log.Printf("TLS disabled - running in HTTP mode")
+	}
+	printBanner(serverAddr, admins, scheme)
 
 	// Create a custom server instance
 	srv := &http.Server{Addr: addr}
@@ -188,7 +197,15 @@ func main() {
 
 	// Run server in a goroutine
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		var err error
+		if cfg.IsTLSEnabled() {
+			log.Printf("Starting server with TLS on %s", addr)
+			err = srv.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile)
+		} else {
+			log.Printf("Starting server without TLS on %s", addr)
+			err = srv.ListenAndServe()
+		}
+		if err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
 	}()

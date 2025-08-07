@@ -12,6 +12,8 @@ Clients connect to the server via WebSocket:
 /ws
 ```
 
+The server may run over either `ws://` (HTTP) or `wss://` (HTTPS/TLS) depending on configuration. The connection scheme is determined by whether TLS certificates are provided to the server.
+
 After a successful WebSocket upgrade, the client must immediately send a handshake message.
 
 ---
@@ -142,6 +144,8 @@ Client configuration is typically provided via a config file:
   "twenty_four_hour": true
 }
 ```
+
+**Note**: The `server_url` should use `ws://` for HTTP connections or `wss://` for HTTPS/TLS connections, depending on the server's TLS configuration.
 
 Sensitive values (like `admin_key`) are passed only during handshake and are not stored in config.
 
