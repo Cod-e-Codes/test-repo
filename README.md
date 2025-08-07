@@ -27,6 +27,7 @@ A minimalist terminal-based group chat application with real-time messaging, opt
 - [Usage](#usage)
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
+- [Featured In](#featured-in)
 - [Getting Help](#getting-help)
 - [Contributing](#contributing)
 
@@ -362,6 +363,15 @@ chmod +x cloudflared
 # Create tunnel
 ./cloudflared tunnel --url http://localhost:8080
 ```
+
+## Featured In
+
+marchat has been recognized and featured by the following community sites and newsletters:
+
+- [MTKBlogs: marchat – A Go-powered Terminal Chat App for the Modern User](https://mtkblogs.com/2025/07/23/marchat-a-go-powered-terminal-chat-app-for-the-modern-user/)
+- [Ecosyste.ms: Self-Hosted GitHub Topics](https://repos.ecosyste.ms/hosts/GitHub/topics/self-hosted)
+- [HN Paper Labs: Diana E](https://hnpaper-labs.gaidot.net/u/diana-e)
+- [Selfh.st Weekly Newsletter (2025-07-25)](https://selfh.st/weekly/2025-07-25/)
 
 ## Getting Help
 
