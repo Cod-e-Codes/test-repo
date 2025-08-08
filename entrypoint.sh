@@ -9,5 +9,7 @@ if [ -d "/marchat/config" ]; then
     fi
 fi
 
+mkdir /marchat/config/db/
+
 # Execute the main application
-exec ./marchat-server "$@" 
+exec ./marchat-server "$@"

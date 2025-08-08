@@ -111,7 +111,9 @@ services:
 > [!NOTE]
 > **SQLite Database Permissions**: Some users have reported out-of-memory errors on Docker/Unraid systems due to SQLite write permission issues. SQLite requires write permissions on both the database file and its containing directory.
 >
-> **Fix**: Create a dedicated `db` folder inside your config directory and ensure proper ownership:
+> **Automatic Fix**: The Docker image now automatically creates the required `db` directory and sets proper ownership at startup. This resolves the permission issues that previously required manual intervention.
+>
+> **Manual Fix** (if needed): Create a dedicated `db` folder inside your config directory and ensure proper ownership:
 > ```bash
 > mkdir -p ./config/db
 > chown -R 1000:1000 ./config/db
