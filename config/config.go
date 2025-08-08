@@ -38,11 +38,13 @@ type Config struct {
 func LoadConfig(configDir string) (*Config, error) {
 	cfg := &Config{}
 
-	// Set config directory
-	if configDir == "" {
-		cfg.ConfigDir = getDefaultConfigDir()
-	} else {
+	// Set config directory - check environment variable first, then parameter, then default
+	if envConfigDir := os.Getenv("MARCHAT_CONFIG_DIR"); envConfigDir != "" {
+		cfg.ConfigDir = envConfigDir
+	} else if configDir != "" {
 		cfg.ConfigDir = configDir
+	} else {
+		cfg.ConfigDir = getDefaultConfigDir()
 	}
 
 	// Ensure config directory exists

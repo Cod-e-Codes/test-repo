@@ -70,8 +70,14 @@ func main() {
 	flag.Var(&adminUsers, "admin", "[DEPRECATED] Admin username (use MARCHAT_USERS env var instead)")
 	flag.Parse()
 
+	// Check for MARCHAT_CONFIG_DIR environment variable first
+	configDir := *configDir
+	if envConfigDir := os.Getenv("MARCHAT_CONFIG_DIR"); envConfigDir != "" {
+		configDir = envConfigDir
+	}
+
 	// Load configuration from environment variables and .env files
-	cfg, err := config.LoadConfig(*configDir)
+	cfg, err := config.LoadConfig(configDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading configuration: %v\n", err)
 		fmt.Fprintf(os.Stderr, "\nConfiguration options:\n")
@@ -84,8 +90,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    MARCHAT_JWT_SECRET=your-jwt-secret (default: auto-generated)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_TLS_CERT_FILE=/path/to/cert.pem (optional)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_TLS_KEY_FILE=/path/to/key.pem (optional)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_CONFIG_DIR=/path/to/config (optional)\n")
 		fmt.Fprintf(os.Stderr, "  .env file: Create %s/.env with the above variables\n", cfg.ConfigDir)
-		fmt.Fprintf(os.Stderr, "  Config directory: Use --config-dir to specify custom location\n")
+		fmt.Fprintf(os.Stderr, "  Config directory: Use --config-dir or MARCHAT_CONFIG_DIR to specify custom location\n")
 		os.Exit(1)
 	}
 
