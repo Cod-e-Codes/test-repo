@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   marchat:
-    image: codecodesxyz/marchat:v0.2.0-beta.4
+    image: codecodesxyz/marchat:v0.2.0-beta.5
     container_name: marchat-server
     restart: unless-stopped
     
