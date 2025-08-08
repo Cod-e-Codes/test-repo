@@ -27,7 +27,6 @@ A minimalist terminal-based group chat application with real-time messaging, opt
 - [Usage](#usage)
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
-- [Featured In](#featured-in)
 - [Getting Help](#getting-help)
 - [Contributing](#contributing)
 
@@ -363,18 +362,6 @@ chmod +x cloudflared
 # Create tunnel
 ./cloudflared tunnel --url http://localhost:8080
 ```
-
-## Featured In
-
-marchat has been recognized and featured by the following community sites and newsletters. Many thanks to each for the support and exposure:
-
-- [MTKBlogs: marchat – A Go-powered Terminal Chat App for the Modern User](https://mtkblogs.com/2025/07/23/marchat-a-go-powered-terminal-chat-app-for-the-modern-user/) — Thanks to MTKBlogs for the detailed write-up.
-- [Ecosyste.ms: Self-Hosted GitHub Topics](https://repos.ecosyste.ms/hosts/GitHub/topics/self-hosted) — Grateful to Ecosyste.ms for listing marchat among top self-hosted projects.
-- [AIBase: Messaging Topic](https://www.aibase.com/repos/topic/messaging) — Listed among notable messaging applications.
-- [LibHunt: Go Real-Time Topic](https://www.libhunt.com/l/go/topic/real-time) — Featured in real-time Go applications, ranked #11.
-- [LibHunt: Bubble Tea Topic](https://www.libhunt.com/topic/bubble-tea?utm_source=chatgpt.com) — Ranked #2 in Bubble Tea projects.
-- [HN Paper Labs: Diana E](https://hnpaper-labs.gaidot.net/u/diana-e) — Appreciate the mention on HN Paper Labs.
-- [Selfh.st Weekly Newsletter (2025-07-25)](https://selfh.st/weekly/2025-07-25/) — Special thanks to Ethan Sholly and Self-Host Weekly for featuring marchat.
 
 ## Getting Help
 
