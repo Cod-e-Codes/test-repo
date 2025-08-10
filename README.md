@@ -10,7 +10,7 @@
 [![Self-Host Weekly](https://img.shields.io/badge/Self--Host_Weekly-%23000080?Color=blue)](https://selfh.st/weekly/2025-07-25/)
 [![mtkblogs.com](https://img.shields.io/badge/mtkblogs.com-%23FF6600?Color=white)](https://mtkblogs.com/2025/07/23/marchat-a-go-powered-terminal-chat-app-for-the-modern-user/)
 
-A minimalist terminal-based group chat application with real-time messaging, optional end-to-end encryption, and a plugin ecosystem. Built for developers who love the command line.
+A lightweight terminal chat with separate server and client binaries, real-time messaging over WebSockets, optional end-to-end encryption, and a flexible plugin ecosystem. Built for developers who prefer the command line and want reliable, self-hosted group chat with minimal operational overhead.
 
 ![Server Demo](assets/demo-server.gif "marchat server startup with ASCII art banner")
 ![Client Demo](assets/demo-client-1.gif "marchat client interface with chat and user list")
@@ -36,7 +36,7 @@ A minimalist terminal-based group chat application with real-time messaging, opt
 
 ## Overview
 
-marchat began as a fun weekend project for father-son coding sessions, and grew into a self-hosted terminal chat application designed for developers who love the command line. It runs entirely on a local SQLite database and supports real-time communication over WebSockets.
+marchat started as a fun weekend project for father-son coding sessions and has since evolved into a lightweight, self-hosted terminal chat application designed specifically for developers who love the command line. It currently runs with a local SQLite database and real-time messaging over WebSockets, with planned support for PostgreSQL and MySQL to enable greater scalability and flexibility.
 
 **Key Benefits:**
 - **Self-hosted**: No external services required
