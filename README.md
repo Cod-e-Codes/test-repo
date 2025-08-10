@@ -29,7 +29,7 @@ A minimalist terminal-based group chat application with real-time messaging, opt
 - [Usage](#usage)
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
-- [Roadmap](#roadmap)
+- [Project Roadmap](#roadmap)
 - [Getting Help](#getting-help)
 - [Contributing](#contributing)
 - [Appreciation](#appreciation)
@@ -384,7 +384,7 @@ chmod +x cloudflared
 
 ## Roadmap  
 
-See [ROADMAP.md](ROADMAP.md) for planned features, performance enhancements, and future development goals.
+See the [project roadmap](ROADMAP.md) for planned features, performance enhancements, and future development goals.
 
 ## Getting Help
 
