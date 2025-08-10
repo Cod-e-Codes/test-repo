@@ -29,7 +29,7 @@ A minimalist terminal-based group chat application with real-time messaging, opt
 - [Usage](#usage)
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
-- [Project Roadmap](#roadmap)
+- [Roadmap](#roadmap)
 - [Getting Help](#getting-help)
 - [Contributing](#contributing)
 - [Appreciation](#appreciation)
@@ -395,7 +395,7 @@ See the [project roadmap](ROADMAP.md) for planned features, performance enhancem
 
 ## Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+We welcome contributions! See the [contribution guidelines](CONTRIBUTING.md) for:
 - Development setup
 - Code style guidelines
 - Pull request process
