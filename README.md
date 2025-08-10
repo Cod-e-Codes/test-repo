@@ -144,10 +144,11 @@ chmod +x marchat-server marchat-client
 
 ## Quick Start
 
-### 1. Generate Secure Admin Key
+### 1. (Recommended) Generate Secure Admin Key
+
+For security, generate a strong random key to use as your admin key. This step is recommended but you can set any non-empty string as the admin key.
 
 ```bash
-# Generate a secure admin key
 openssl rand -hex 32
 ```
 
