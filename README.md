@@ -58,7 +58,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 | **Themes** | Choose from patriot, retro, or modern themes |
 | **Docker Support** | Containerized deployment with security features |
 
-| Cross-Platform File Sharing | Theme Customization |
+| Cross-Platform File Sharing | Theme Switching |
 |----------------------------|---------------------|
 | ![File Transfer Demo](assets/mobile-file-transfer.jpg) | ![Theme Demo](assets/theme-switching.jpg) |
 
