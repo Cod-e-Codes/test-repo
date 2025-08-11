@@ -61,12 +61,10 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 ### Real-World Usage
 
 **Cross-Platform File Sharing**
-
-![File Transfer Demo](assets/mobile-file-transfer.jpg "File transfer from Android Termux to desktop via reverse proxy")
+<img src="assets/mobile-file-transfer.jpg" alt="File Transfer Demo" title="File transfer from Android Termux to desktop via reverse proxy" width="400">
 
 **Theme Customization**
-
-![Theme Demo](assets/theme-switching.jpg "Dynamic theme switching between patriot and retro themes")
+<img src="assets/theme-switching.jpg" alt="Theme Demo" title="Dynamic theme switching between patriot and retro themes" width="400">
 
 *marchat running on Android via Termux, demonstrating file transfer through reverse proxy and real-time theme switching*
 
