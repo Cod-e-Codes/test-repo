@@ -45,18 +45,6 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 - **Extensible**: Plugin ecosystem for custom functionality
 - **Lightweight**: Minimal resource usage, perfect for servers
 
-### Real-World Usage
-
-**Cross-Platform File Sharing**
-
-![File Transfer Demo](assets/mobile-file-transfer.jpg "File transfer from Android Termux to desktop via reverse proxy")
-
-**Theme Customization**
-
-![Theme Demo](assets/theme-switching.jpg "Dynamic theme switching between patriot and retro themes")
-
-*marchat running on Android via Termux, demonstrating file transfer through reverse proxy and real-time theme switching*
-
 ## Features
 
 | Feature | Description |
@@ -69,6 +57,18 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 | **Admin Controls** | User management, bans, and database operations |
 | **Themes** | Choose from patriot, retro, or modern themes |
 | **Docker Support** | Containerized deployment with security features |
+
+### Real-World Usage
+
+**Cross-Platform File Sharing**
+
+![File Transfer Demo](assets/mobile-file-transfer.jpg "File transfer from Android Termux to desktop via reverse proxy")
+
+**Theme Customization**
+
+![Theme Demo](assets/theme-switching.jpg "Dynamic theme switching between patriot and retro themes")
+
+*marchat running on Android via Termux, demonstrating file transfer through reverse proxy and real-time theme switching*
 
 ## Installation & Setup
 
