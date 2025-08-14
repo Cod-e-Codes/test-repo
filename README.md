@@ -51,7 +51,7 @@ The development version introduces **per-user message state tracking** to fix th
 
 ### Who Is Affected
 
-- **✅ NOT AFFECTED**: Users of published releases (v0.2.0-beta.5 and earlier)
+- **✅ NOT AFFECTED**: Users of published releases (v0.3.0-beta.1 and earlier)
 - **⚠️ AFFECTED**: Users building from current source code
 - **⚠️ AFFECTED**: Users running development builds
 
@@ -126,16 +126,16 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.2.0-beta.5:**
+**Download pre-built binaries for v0.3.0-beta.1:**
 
 ```bash
 # Linux
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.2.0-beta.5/marchat-v0.2.0-beta.5-linux-amd64.zip
-unzip marchat-v0.2.0-beta.5-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.1/marchat-v0.3.0-beta.1-linux-amd64.zip
+unzip marchat-v0.3.0-beta.1-linux-amd64.zip
 
 # macOS
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.2.0-beta.5/marchat-v0.2.0-beta.5-darwin-amd64.zip
-unzip marchat-v0.2.0-beta.5-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.1/marchat-v0.3.0-beta.1-darwin-amd64.zip
+unzip marchat-v0.3.0-beta.1-darwin-amd64.zip
 
 # Windows
 # Download from GitHub releases page
@@ -147,14 +147,14 @@ unzip marchat-v0.2.0-beta.5-darwin-amd64.zip
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.2.0-beta.5
+docker pull codecodesxyz/marchat:v0.3.0-beta.1
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.2.0-beta.5
+  codecodesxyz/marchat:v0.3.0-beta.1
 ```
 
 **Using Docker Compose:**
@@ -164,7 +164,7 @@ docker run -d \
 version: '3.8'
 services:
   marchat:
-    image: codecodesxyz/marchat:v0.2.0-beta.5
+    image: codecodesxyz/marchat:v0.3.0-beta.1
     ports:
       - "8080:8080"
     environment:
@@ -263,7 +263,7 @@ If migration fails or you encounter issues:
 # Restore from backup
 cp ./config/marchat.db.backup ./config/marchat.db
 # Rebuild with previous version
-git checkout v0.2.0-beta.5
+git checkout v0.3.0-beta.1
 go build -o marchat-server ./cmd/server
 ```
 
@@ -323,12 +323,12 @@ marchat uses database schema versioning to ensure compatibility between differen
 
 | Version | Schema Version | Compatible With | Migration Required |
 |---------|----------------|-----------------|-------------------|
-| v0.2.0-beta.5 | 1 | v0.2.0-beta.5 and earlier | No |
+| v0.3.0-beta.1 | 2 | v0.3.0-beta.1 and earlier | No |
 | Development | 2 | Development builds only | Yes (automatic) |
 
 #### Downgrade Implications
 
-**⚠️ Important**: Downgrading from development version to v0.2.0-beta.5 will break the database schema. The development version's new tables and columns are not recognized by older versions.
+**⚠️ Important**: Downgrading from development version to v0.3.0-beta.1 will break the database schema. The development version's new tables and columns are not recognized by older versions.
 
 **To downgrade safely:**
 1. Restore from backup created before migration
