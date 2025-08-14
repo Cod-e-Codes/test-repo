@@ -18,17 +18,15 @@ A lightweight terminal chat with separate server and client binaries, real-time 
 
 ## Table of Contents  
 
-- [Breaking Changes](#breaking-changes)
 - [Overview](#overview)
-- [Features](#features)  
+- [Features](#features)
+- [Breaking Changes](#breaking-changes)
 - [Installation & Setup](#installation--setup)
   - [Binary Installation](#binary-installation)
   - [Docker Installation](#docker-installation)
   - [Source Installation](#source-installation)
-  - [Database Migration for Development Version](#database-migration-for-development-version)
 - [Quick Start](#quick-start)  
 - [Configuration](#configuration)
-  - [Version Compatibility](#version-compatibility)
 - [TLS Support](#tls-support)
 - [Usage](#usage)  
 - [Security](#security)  
@@ -38,22 +36,47 @@ A lightweight terminal chat with separate server and client binaries, real-time 
 - [Contributing](#contributing)
 - [Appreciation](#appreciation)
 
+## Overview
+
+marchat started as a fun weekend project for father-son coding sessions and has since evolved into a lightweight, self-hosted terminal chat application designed specifically for developers who love the command line. It currently runs with a local SQLite database and real-time messaging over WebSockets, with planned support for PostgreSQL and MySQL to enable greater scalability and flexibility.
+
+**Key Benefits:**
+- **Self-hosted**: No external services required
+- **Cross-platform**: Runs on Linux, macOS, and Windows
+- **Secure**: Optional E2E encryption with X25519/ChaCha20-Poly1305
+- **Extensible**: Plugin ecosystem for custom functionality
+- **Lightweight**: Minimal resource usage, perfect for servers
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Terminal UI** | Beautiful TUI built with Bubble Tea |
+| **Real-time Chat** | Fast WebSocket-based messaging with a lightweight SQLite backend |
+| **Plugin System** | Install and manage plugins via `:store` and `:plugin` commands |
+| **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305 |
+| **File Sharing** | Send files up to 1MB with `:sendfile` |
+| **Admin Controls** | User management, bans, and database operations with improved ban/unban experience |
+| **Themes** | Choose from patriot, retro, or modern themes |
+| **Docker Support** | Containerized deployment with security features |
+| **Enhanced User Experience** | Improved message history persistence after moderation actions |
+
+| Cross-Platform File Sharing          | Theme Switching                         |
+|------------------------------------|---------------------------------------|
+| <img src="assets/mobile-file-transfer.jpg" width="300"/> | <img src="assets/theme-switching.jpg" width="300"/> |
+
+*marchat running on Android via Termux, demonstrating file transfer through reverse proxy and real-time theme switching*
+
 ## Breaking Changes
 
 > [!IMPORTANT]
-> **Database Schema Migration Required** - Development Version Only
+> **Database Schema Migration Required**
 > 
-> The current development version includes breaking changes that require database migration. These changes are not yet included in any release version.
+> v0.3.0-beta.1 includes breaking changes that require database migration.
 
 ### What's Changed
 
-The development version introduces **per-user message state tracking** to fix the "frozen message history" bug where banned/unbanned users could only see messages from before their ban. This enhancement requires database schema changes that will affect existing installations.
-
-### Who Is Affected
-
-- **✅ NOT AFFECTED**: Users of published releases (v0.3.0-beta.1 and earlier)
-- **⚠️ AFFECTED**: Users building from current source code
-- **⚠️ AFFECTED**: Users running development builds
+v0.3.0-beta.1 introduces **per-user message state tracking** to fix the "frozen message history" bug where banned/unbanned users could only see messages from before their ban. This enhancement requires database schema changes that will affect existing installations.
 
 ### Required Actions
 
@@ -91,37 +114,6 @@ cp ./config/marchat.db.backup ./config/marchat.db
 - **Enhanced performance**: Optimized queries with new indexes
 - **Future-proof**: Foundation for advanced message tracking features
 
-## Overview
-
-marchat started as a fun weekend project for father-son coding sessions and has since evolved into a lightweight, self-hosted terminal chat application designed specifically for developers who love the command line. It currently runs with a local SQLite database and real-time messaging over WebSockets, with planned support for PostgreSQL and MySQL to enable greater scalability and flexibility.
-
-**Key Benefits:**
-- **Self-hosted**: No external services required
-- **Cross-platform**: Runs on Linux, macOS, and Windows
-- **Secure**: Optional E2E encryption with X25519/ChaCha20-Poly1305
-- **Extensible**: Plugin ecosystem for custom functionality
-- **Lightweight**: Minimal resource usage, perfect for servers
-
-## Features
-
-| Feature | Description |
-|---------|-------------|
-| **Terminal UI** | Beautiful TUI built with Bubble Tea |
-| **Real-time Chat** | Fast WebSocket-based messaging with a lightweight SQLite backend |
-| **Plugin System** | Install and manage plugins via `:store` and `:plugin` commands |
-| **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305 |
-| **File Sharing** | Send files up to 1MB with `:sendfile` |
-| **Admin Controls** | User management, bans, and database operations with improved ban/unban experience |
-| **Themes** | Choose from patriot, retro, or modern themes |
-| **Docker Support** | Containerized deployment with security features |
-| **Enhanced User Experience** | Improved message history persistence after moderation actions |
-
-| Cross-Platform File Sharing          | Theme Switching                         |
-|------------------------------------|---------------------------------------|
-| <img src="assets/mobile-file-transfer.jpg" width="300"/> | <img src="assets/theme-switching.jpg" width="300"/> |
-
-*marchat running on Android via Termux, demonstrating file transfer through reverse proxy and real-time theme switching*
-
 ## Installation & Setup
 
 ### Binary Installation
@@ -129,16 +121,31 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 **Download pre-built binaries for v0.3.0-beta.1:**
 
 ```bash
-# Linux
+# Linux (amd64)
 wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.1/marchat-v0.3.0-beta.1-linux-amd64.zip
 unzip marchat-v0.3.0-beta.1-linux-amd64.zip
+chmod +x marchat-server marchat-client
 
-# macOS
+# macOS (amd64)
 wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.1/marchat-v0.3.0-beta.1-darwin-amd64.zip
 unzip marchat-v0.3.0-beta.1-darwin-amd64.zip
+chmod +x marchat-server marchat-client
 
 # Windows
-# Download from GitHub releases page
+# Download from GitHub releases page, extract the ZIP,
+# and run marchat-server.exe and marchat-client.exe from PowerShell or CMD.
+
+# Android/Termux (arm64)
+pkg install wget unzip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.1/marchat-v0.3.0-beta.1-linux-arm64.zip
+unzip marchat-v0.3.0-beta.1-linux-arm64.zip
+chmod +x marchat-server marchat-client
+
+# Android/Termux (armv7)
+pkg install wget unzip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.1/marchat-v0.3.0-beta.1-linux-armv7.zip
+unzip marchat-v0.3.0-beta.1-linux-armv7.zip
+chmod +x marchat-server marchat-client
 ```
 
 ### Docker Installation
@@ -189,9 +196,6 @@ services:
 > ```
 > The container user (UID 1000) must match the ownership of these folders/files.
 
-> [!WARNING]
-> **Development Version Database Changes**: If building from source or using development builds, the database schema changes require proper volume mounting for persistence. Ensure your Docker setup includes volume mounts for the database directory to preserve data across container restarts.
-
 ### Source Installation
 
 **Prerequisites:**
@@ -200,14 +204,6 @@ services:
 
 **Build from source:**
 
-> [!WARNING]
-> **Development Version Database Changes**
-> 
-> Building from the current source includes database schema changes that require migration. Back up your database before building:
-> ```bash
-> cp ./config/marchat.db ./config/marchat.db.backup
-> ```
-
 ```bash
 git clone https://github.com/Cod-e-Codes/marchat.git
 cd marchat
@@ -215,56 +211,6 @@ go mod tidy
 go build -o marchat-server ./cmd/server
 go build -o marchat-client ./client
 chmod +x marchat-server marchat-client
-```
-
-### Database Migration for Development Version
-
-When building from the current source code, the server automatically performs database schema migration during startup. This migration is required to support the new per-user message state tracking feature.
-
-#### When Migration Occurs
-
-- **First startup** after building from source with the new code
-- **Automatic detection** of existing database schema
-- **Safe migration** that preserves all existing message data
-
-#### What Happens During Migration
-
-1. **Schema Creation**: New `user_message_state` table is created
-2. **Column Addition**: `message_id` column added to `messages` table
-3. **Data Migration**: Existing messages get `message_id = id`
-4. **Index Creation**: Performance indexes added for efficient queries
-5. **Verification**: Server logs migration completion
-
-#### Expected Server Output
-
-```
-2025/01/XX XX:XX:XX Warning: failed to migrate existing messages: <nil>
-2025/01/XX XX:XX:XX marchat WebSocket server running on :8080
-```
-
-The warning message is normal and indicates successful migration.
-
-#### Manual Verification
-
-After migration, verify the new schema:
-```bash
-# Check if new table exists
-sqlite3 ./config/marchat.db ".schema user_message_state"
-
-# Verify message_id column
-sqlite3 ./config/marchat.db "SELECT COUNT(*) FROM messages WHERE message_id > 0;"
-```
-
-#### Rollback if Migration Fails
-
-If migration fails or you encounter issues:
-```bash
-# Stop the server
-# Restore from backup
-cp ./config/marchat.db.backup ./config/marchat.db
-# Rebuild with previous version
-git checkout v0.3.0-beta.1
-go build -o marchat-server ./cmd/server
 ```
 
 ## Quick Start
@@ -312,36 +258,6 @@ export MARCHAT_USERS="admin1,admin2"
 | `MARCHAT_CONFIG_DIR` | No | Auto-detected | Custom config directory |
 | `MARCHAT_TLS_CERT_FILE` | No | - | Path to TLS certificate file |
 | `MARCHAT_TLS_KEY_FILE` | No | - | Path to TLS private key file |
-
-### Version Compatibility
-
-#### Database Schema Versioning
-
-marchat uses database schema versioning to ensure compatibility between different versions. The current development version introduces schema version 2, which includes per-user message state tracking.
-
-#### Compatibility Matrix
-
-| Version | Schema Version | Compatible With | Migration Required |
-|---------|----------------|-----------------|-------------------|
-| v0.3.0-beta.1 | 2 | v0.3.0-beta.1 and earlier | No |
-| Development | 2 | Development builds only | Yes (automatic) |
-
-#### Downgrade Implications
-
-**⚠️ Important**: Downgrading from development version to v0.3.0-beta.1 will break the database schema. The development version's new tables and columns are not recognized by older versions.
-
-**To downgrade safely:**
-1. Restore from backup created before migration
-2. Or create a fresh database with the older version
-
-#### Multiple Environment Management
-
-When maintaining multiple environments (development, staging, production):
-
-- **Use separate databases** for each environment
-- **Backup before schema changes** in each environment
-- **Test migrations** in development before applying to production
-- **Coordinate deployments** to avoid schema version mismatches
 
 ### Configuration File
 
@@ -450,9 +366,6 @@ The server banner displays the correct WebSocket URL scheme based on TLS configu
 ./marchat-client --username admin1 --admin --admin-key your-key --server ws://localhost:8080/ws
 ```
 
-> [!NOTE]
-> **Enhanced Ban/Unban Experience**: The development version automatically manages user message states during ban/unban operations, ensuring users see complete message history when they reconnect after being unbanned.
-
 ### E2E Encryption Commands
 
 | Command | Description | Example |
@@ -532,16 +445,6 @@ When enabled, E2E encryption provides:
 # Ensure server binds to all interfaces
 export MARCHAT_PORT=8080
 ./marchat-server
-```
-
-**Remote Access with Cloudflare Tunnel:**
-```bash
-# Install cloudflared
-curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
-chmod +x cloudflared
-
-# Create tunnel
-./cloudflared tunnel --url http://localhost:8080
 ```
 
 ## Roadmap  
