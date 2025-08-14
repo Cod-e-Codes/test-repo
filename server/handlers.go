@@ -195,6 +195,9 @@ func GetRecentMessages(db *sql.DB) []shared.Message {
 			messages = append(messages, msg)
 		}
 	}
+
+	// CRITICAL FIX: Always sort messages by timestamp for consistent ordering
+	sortMessagesByTimestamp(messages)
 	return messages
 }
 
@@ -207,7 +210,9 @@ func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int) ([]
 	if err != nil && err != sql.ErrNoRows {
 		log.Printf("Error getting last message ID for user %s: %v", username, err)
 		// Fall back to recent messages for new users or on error
-		return GetRecentMessages(db), 0
+		messages := GetRecentMessages(db)
+		sortMessagesByTimestamp(messages) // Ensure consistent ordering
+		return messages, 0
 	}
 
 	var messages []shared.Message
@@ -237,6 +242,9 @@ func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int) ([]
 			}
 		}
 	}
+
+	// CRITICAL FIX: Always sort messages by timestamp for consistent ordering
+	sortMessagesByTimestamp(messages)
 
 	// Update user's last seen message ID
 	if len(messages) > 0 {
@@ -269,6 +277,9 @@ func GetMessagesAfter(db *sql.DB, lastMessageID int64, limit int) []shared.Messa
 			messages = append(messages, msg)
 		}
 	}
+
+	// CRITICAL FIX: Always sort messages by timestamp for consistent ordering
+	sortMessagesByTimestamp(messages)
 	return messages
 }
 
@@ -300,6 +311,23 @@ func getLatestMessageID(db *sql.DB) int64 {
 func clearUserMessageState(db *sql.DB, username string) error {
 	_, err := db.Exec(`DELETE FROM user_message_state WHERE username = ?`, username)
 	return err
+}
+
+// sortMessagesByTimestamp ensures messages are displayed in chronological order
+// This provides server-side protection against ordering issues
+func sortMessagesByTimestamp(messages []shared.Message) {
+	sort.Slice(messages, func(i, j int) bool {
+		// Primary sort: by timestamp
+		if !messages[i].CreatedAt.Equal(messages[j].CreatedAt) {
+			return messages[i].CreatedAt.Before(messages[j].CreatedAt)
+		}
+		// Secondary sort: by sender for deterministic ordering when timestamps are identical
+		if messages[i].Sender != messages[j].Sender {
+			return messages[i].Sender < messages[j].Sender
+		}
+		// Tertiary sort: by content for full deterministic ordering
+		return messages[i].Content < messages[j].Content
+	})
 }
 
 func ClearMessages(db *sql.DB) error {

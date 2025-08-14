@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -40,6 +41,23 @@ const pingPeriod = 50 * time.Second        // moved from magic number
 const reconnectMaxDelay = 30 * time.Second // for exponential backoff
 
 var mentionRegex *regexp.Regexp
+
+// sortMessagesByTimestamp ensures messages are displayed in chronological order
+// This provides client-side protection against server ordering issues
+func sortMessagesByTimestamp(messages []shared.Message) {
+	sort.Slice(messages, func(i, j int) bool {
+		// Primary sort: by timestamp
+		if !messages[i].CreatedAt.Equal(messages[j].CreatedAt) {
+			return messages[i].CreatedAt.Before(messages[j].CreatedAt)
+		}
+		// Secondary sort: by sender for deterministic ordering when timestamps are identical
+		if messages[i].Sender != messages[j].Sender {
+			return messages[i].Sender < messages[j].Sender
+		}
+		// Tertiary sort: by content for full deterministic ordering
+		return messages[i].Content < messages[j].Content
+	})
+}
 
 // Remove debugLog variable and logger setup
 
@@ -188,6 +206,11 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 	if len(msgs) > max {
 		msgs = msgs[len(msgs)-max:]
 	}
+
+	// CRITICAL FIX: Sort messages client-side to ensure consistent ordering
+	// This handles cases where server-side ordering may be inconsistent
+	sortMessagesByTimestamp(msgs)
+
 	var b strings.Builder
 	var prevDate string
 	for _, msg := range msgs {
@@ -420,6 +443,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.messages = m.messages[len(m.messages)-maxMessages+1:]
 		}
 		m.messages = append(m.messages, v)
+
+		// CRITICAL FIX: Sort messages after adding new ones to maintain order
+		sortMessagesByTimestamp(m.messages)
+
 		if v.Type == shared.FileMessageType && v.File != nil {
 			if m.receivedFiles == nil {
 				m.receivedFiles = make(map[string]*shared.FileMeta)
