@@ -72,11 +72,11 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 > [!IMPORTANT]
 > **Database Schema Migration Required**
 > 
-> v0.3.0-beta.1 includes breaking changes that require database migration.
+> v0.3.0-beta.2 includes breaking changes that require database migration.
 
 ### What's Changed
 
-v0.3.0-beta.1 introduces **per-user message state tracking** to fix the "frozen message history" bug where banned/unbanned users could only see messages from before their ban. This enhancement requires database schema changes that will affect existing installations.
+v0.3.0-beta.2 introduces **per-user message state tracking** to fix the "frozen message history" bug where banned/unbanned users could only see messages from before their ban. This enhancement requires database schema changes that will affect existing installations.
 
 ### Required Actions
 
@@ -118,17 +118,17 @@ cp ./config/marchat.db.backup ./config/marchat.db
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.3.0-beta.1:**
+**Download pre-built binaries for v0.3.0-beta.2:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.1/marchat-v0.3.0-beta.1-linux-amd64.zip
-unzip marchat-v0.3.0-beta.1-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.2/marchat-v0.3.0-beta.2-linux-amd64.zip
+unzip marchat-v0.3.0-beta.2-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.1/marchat-v0.3.0-beta.1-darwin-amd64.zip
-unzip marchat-v0.3.0-beta.1-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.2/marchat-v0.3.0-beta.2-darwin-amd64.zip
+unzip marchat-v0.3.0-beta.2-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -137,15 +137,10 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.1/marchat-v0.3.0-beta.1-linux-arm64.zip
-unzip marchat-v0.3.0-beta.1-linux-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.2/marchat-v0.3.0-beta.2-android-arm64.zip
+unzip marchat-v0.3.0-beta.2-android-arm64.zip
 chmod +x marchat-server marchat-client
 
-# Android/Termux (armv7)
-pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.1/marchat-v0.3.0-beta.1-linux-armv7.zip
-unzip marchat-v0.3.0-beta.1-linux-armv7.zip
-chmod +x marchat-server marchat-client
 ```
 
 ### Docker Installation
@@ -154,14 +149,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.3.0-beta.1
+docker pull codecodesxyz/marchat:v0.3.0-beta.2
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.3.0-beta.1
+  codecodesxyz/marchat:v0.3.0-beta.2
 ```
 
 **Using Docker Compose:**
@@ -171,7 +166,7 @@ docker run -d \
 version: '3.8'
 services:
   marchat:
-    image: codecodesxyz/marchat:v0.3.0-beta.1
+    image: codecodesxyz/marchat:v0.3.0-beta.2
     ports:
       - "8080:8080"
     environment:
