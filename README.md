@@ -16,24 +16,80 @@ A lightweight terminal chat with separate server and client binaries, real-time 
 ![Server Demo](assets/demo-server.gif "marchat server startup with ASCII art banner")
 ![Client Demo](assets/demo-client-1.gif "marchat client interface with chat and user list")
 
-## Table of Contents
+## Table of Contents  
 
+- [Breaking Changes](#breaking-changes)
 - [Overview](#overview)
-- [Features](#features)
+- [Features](#features)  
 - [Installation & Setup](#installation--setup)
   - [Binary Installation](#binary-installation)
   - [Docker Installation](#docker-installation)
   - [Source Installation](#source-installation)
-- [Quick Start](#quick-start)
+  - [Database Migration for Development Version](#database-migration-for-development-version)
+- [Quick Start](#quick-start)  
 - [Configuration](#configuration)
+  - [Version Compatibility](#version-compatibility)
 - [TLS Support](#tls-support)
-- [Usage](#usage)
-- [Security](#security)
-- [Troubleshooting](#troubleshooting)
+- [Usage](#usage)  
+- [Security](#security)  
+- [Troubleshooting](#troubleshooting)  
 - [Roadmap](#roadmap)
 - [Getting Help](#getting-help)
 - [Contributing](#contributing)
 - [Appreciation](#appreciation)
+
+## Breaking Changes
+
+> [!IMPORTANT]
+> **Database Schema Migration Required** - Development Version Only
+> 
+> The current development version includes breaking changes that require database migration. These changes are not yet included in any release version.
+
+### What's Changed
+
+The development version introduces **per-user message state tracking** to fix the "frozen message history" bug where banned/unbanned users could only see messages from before their ban. This enhancement requires database schema changes that will affect existing installations.
+
+### Who Is Affected
+
+- **✅ NOT AFFECTED**: Users of published releases (v0.2.0-beta.5 and earlier)
+- **⚠️ AFFECTED**: Users building from current source code
+- **⚠️ AFFECTED**: Users running development builds
+
+### Required Actions
+
+**Before building from source:**
+1. **Backup your database:**
+   ```bash
+   cp ./config/marchat.db ./config/marchat.db.backup
+   ```
+
+2. **Build and run** - migration happens automatically during server startup
+3. **Verify migration** - check server logs for migration messages
+
+### Migration Details
+
+- **New table**: `user_message_state` for tracking per-user message history
+- **Schema update**: `messages` table gets `message_id` column
+- **Automatic migration**: Existing messages get `message_id = id`
+- **Performance**: New indexes added for efficient queries
+- **Duration**: Typically under 30 seconds for most installations
+
+### Rollback Procedure
+
+If migration fails or you need to downgrade:
+```bash
+# Stop the server
+# Restore from backup
+cp ./config/marchat.db.backup ./config/marchat.db
+# Restart with previous version
+```
+
+### Benefits After Migration
+
+- **Improved user experience**: Banned/unbanned users see complete message history
+- **Better moderation**: Clean slate for users after ban/unban cycles
+- **Enhanced performance**: Optimized queries with new indexes
+- **Future-proof**: Foundation for advanced message tracking features
 
 ## Overview
 
@@ -55,9 +111,10 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 | **Plugin System** | Install and manage plugins via `:store` and `:plugin` commands |
 | **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305 |
 | **File Sharing** | Send files up to 1MB with `:sendfile` |
-| **Admin Controls** | User management, bans, and database operations |
+| **Admin Controls** | User management, bans, and database operations with improved ban/unban experience |
 | **Themes** | Choose from patriot, retro, or modern themes |
 | **Docker Support** | Containerized deployment with security features |
+| **Enhanced User Experience** | Improved message history persistence after moderation actions |
 
 | Cross-Platform File Sharing          | Theme Switching                         |
 |------------------------------------|---------------------------------------|
@@ -132,6 +189,9 @@ services:
 > ```
 > The container user (UID 1000) must match the ownership of these folders/files.
 
+> [!WARNING]
+> **Development Version Database Changes**: If building from source or using development builds, the database schema changes require proper volume mounting for persistence. Ensure your Docker setup includes volume mounts for the database directory to preserve data across container restarts.
+
 ### Source Installation
 
 **Prerequisites:**
@@ -140,6 +200,14 @@ services:
 
 **Build from source:**
 
+> [!WARNING]
+> **Development Version Database Changes**
+> 
+> Building from the current source includes database schema changes that require migration. Back up your database before building:
+> ```bash
+> cp ./config/marchat.db ./config/marchat.db.backup
+> ```
+
 ```bash
 git clone https://github.com/Cod-e-Codes/marchat.git
 cd marchat
@@ -147,6 +215,56 @@ go mod tidy
 go build -o marchat-server ./cmd/server
 go build -o marchat-client ./client
 chmod +x marchat-server marchat-client
+```
+
+### Database Migration for Development Version
+
+When building from the current source code, the server automatically performs database schema migration during startup. This migration is required to support the new per-user message state tracking feature.
+
+#### When Migration Occurs
+
+- **First startup** after building from source with the new code
+- **Automatic detection** of existing database schema
+- **Safe migration** that preserves all existing message data
+
+#### What Happens During Migration
+
+1. **Schema Creation**: New `user_message_state` table is created
+2. **Column Addition**: `message_id` column added to `messages` table
+3. **Data Migration**: Existing messages get `message_id = id`
+4. **Index Creation**: Performance indexes added for efficient queries
+5. **Verification**: Server logs migration completion
+
+#### Expected Server Output
+
+```
+2025/01/XX XX:XX:XX Warning: failed to migrate existing messages: <nil>
+2025/01/XX XX:XX:XX marchat WebSocket server running on :8080
+```
+
+The warning message is normal and indicates successful migration.
+
+#### Manual Verification
+
+After migration, verify the new schema:
+```bash
+# Check if new table exists
+sqlite3 ./config/marchat.db ".schema user_message_state"
+
+# Verify message_id column
+sqlite3 ./config/marchat.db "SELECT COUNT(*) FROM messages WHERE message_id > 0;"
+```
+
+#### Rollback if Migration Fails
+
+If migration fails or you encounter issues:
+```bash
+# Stop the server
+# Restore from backup
+cp ./config/marchat.db.backup ./config/marchat.db
+# Rebuild with previous version
+git checkout v0.2.0-beta.5
+go build -o marchat-server ./cmd/server
 ```
 
 ## Quick Start
@@ -194,6 +312,36 @@ export MARCHAT_USERS="admin1,admin2"
 | `MARCHAT_CONFIG_DIR` | No | Auto-detected | Custom config directory |
 | `MARCHAT_TLS_CERT_FILE` | No | - | Path to TLS certificate file |
 | `MARCHAT_TLS_KEY_FILE` | No | - | Path to TLS private key file |
+
+### Version Compatibility
+
+#### Database Schema Versioning
+
+marchat uses database schema versioning to ensure compatibility between different versions. The current development version introduces schema version 2, which includes per-user message state tracking.
+
+#### Compatibility Matrix
+
+| Version | Schema Version | Compatible With | Migration Required |
+|---------|----------------|-----------------|-------------------|
+| v0.2.0-beta.5 | 1 | v0.2.0-beta.5 and earlier | No |
+| Development | 2 | Development builds only | Yes (automatic) |
+
+#### Downgrade Implications
+
+**⚠️ Important**: Downgrading from development version to v0.2.0-beta.5 will break the database schema. The development version's new tables and columns are not recognized by older versions.
+
+**To downgrade safely:**
+1. Restore from backup created before migration
+2. Or create a fresh database with the older version
+
+#### Multiple Environment Management
+
+When maintaining multiple environments (development, staging, production):
+
+- **Use separate databases** for each environment
+- **Backup before schema changes** in each environment
+- **Test migrations** in development before applying to production
+- **Coordinate deployments** to avoid schema version mismatches
 
 ### Configuration File
 
@@ -294,13 +442,16 @@ The server banner displays the correct WebSocket URL scheme based on TLS configu
 |---------|-------------|---------|
 | `:cleardb` | Wipe server database | `:cleardb` |
 | `:kick <username>` | Disconnect user | `:kick user1` |
-| `:ban <username>` | Ban user for 24h | `:ban user1` |
-| `:unban <username>` | Remove user ban | `:unban user1` |
+| `:ban <username>` | Ban user for 24h with improved user experience after unban | `:ban user1` |
+| `:unban <username>` | Remove user ban with clean message history restoration | `:unban user1` |
 
 **Connect as admin:**
 ```bash
 ./marchat-client --username admin1 --admin --admin-key your-key --server ws://localhost:8080/ws
 ```
+
+> [!NOTE]
+> **Enhanced Ban/Unban Experience**: The development version automatically manages user message states during ban/unban operations, ensuring users see complete message history when they reconnect after being unbanned.
 
 ### E2E Encryption Commands
 
@@ -370,6 +521,9 @@ When enabled, E2E encryption provides:
 | **Clipboard not working (Linux)** | Install `xclip`: `sudo apt install xclip` |
 | **Permission denied (Docker)** | Rebuild with correct UID/GID: `docker-compose build --build-arg USER_ID=$(id -u)` |
 | **Port already in use** | Change port: `export MARCHAT_PORT=8081` |
+| **Database migration fails** | Ensure proper database file permissions and backup before building from source |
+| **Message history missing after update** | Expected behavior - user message states reset for improved ban/unban experience |
+| **Server fails to start after source build** | Check database permissions and consider manual schema migration |
 
 ### Network Connectivity
 

@@ -176,7 +176,7 @@ func main() {
 		log.Printf("Warning: Failed to create data directory %s: %v", dataDir, err)
 	}
 
-	hub := server.NewHub(pluginDir, dataDir, registryURL)
+	hub := server.NewHub(pluginDir, dataDir, registryURL, db)
 	go hub.Run()
 
 	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, key))

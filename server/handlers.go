@@ -54,7 +54,8 @@ func getClientIP(r *http.Request) string {
 }
 
 func CreateSchema(db *sql.DB) {
-	schema := `
+	// First, create the basic messages table if it doesn't exist
+	basicSchema := `
 	CREATE TABLE IF NOT EXISTS messages (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		sender TEXT,
@@ -65,18 +66,84 @@ func CreateSchema(db *sql.DB) {
 		nonce BLOB,
 		recipient TEXT
 	);`
-	_, err := db.Exec(schema)
+
+	_, err := db.Exec(basicSchema)
 	if err != nil {
-		log.Fatal("failed to create schema:", err)
+		log.Fatal("failed to create basic schema:", err)
+	}
+
+	// Check if message_id column exists, if not add it
+	var columnExists int
+	err = db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('messages') WHERE name='message_id'`).Scan(&columnExists)
+	if err != nil {
+		log.Printf("Warning: failed to check for message_id column: %v", err)
+	}
+
+	if columnExists == 0 {
+		// Add message_id column to existing table
+		_, err = db.Exec(`ALTER TABLE messages ADD COLUMN message_id INTEGER DEFAULT 0`)
+		if err != nil {
+			log.Printf("Warning: failed to add message_id column: %v", err)
+		} else {
+			log.Printf("Added message_id column to messages table")
+		}
+	}
+
+	// Create user_message_state table
+	userStateSchema := `
+	CREATE TABLE IF NOT EXISTS user_message_state (
+		username TEXT PRIMARY KEY,
+		last_message_id INTEGER NOT NULL DEFAULT 0,
+		last_seen DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);`
+
+	_, err = db.Exec(userStateSchema)
+	if err != nil {
+		log.Fatal("failed to create user_message_state table:", err)
+	}
+
+	// Create indexes for performance
+	indexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_messages_message_id ON messages(message_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_user_message_state_username ON user_message_state(username)`,
+	}
+
+	for _, index := range indexes {
+		_, err = db.Exec(index)
+		if err != nil {
+			log.Printf("Warning: failed to create index: %v", err)
+		}
+	}
+
+	// Migration: Update existing messages to have message_id = id
+	_, err = db.Exec(`UPDATE messages SET message_id = id WHERE message_id = 0 OR message_id IS NULL`)
+	if err != nil {
+		log.Printf("Warning: failed to migrate existing messages: %v", err)
+	} else {
+		log.Printf("Successfully migrated existing messages")
 	}
 }
 
 func InsertMessage(db *sql.DB, msg shared.Message) {
-	_, err := db.Exec(`INSERT INTO messages (sender, content, created_at) VALUES (?, ?, ?)`,
+	result, err := db.Exec(`INSERT INTO messages (sender, content, created_at) VALUES (?, ?, ?)`,
 		msg.Sender, msg.Content, msg.CreatedAt)
 	if err != nil {
 		log.Println("Insert error:", err)
+		return
 	}
+
+	// Get the inserted ID and update message_id
+	id, err := result.LastInsertId()
+	if err != nil {
+		log.Println("Error getting last insert ID:", err)
+	} else {
+		_, err = db.Exec(`UPDATE messages SET message_id = ? WHERE id = ?`, id, id)
+		if err != nil {
+			log.Println("Error updating message_id:", err)
+		}
+	}
+
 	// Enforce message cap: keep only the most recent 1000 messages
 	_, err = db.Exec(`DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT 1000)`)
 	if err != nil {
@@ -86,12 +153,25 @@ func InsertMessage(db *sql.DB, msg shared.Message) {
 
 // InsertEncryptedMessage stores an encrypted message in the database
 func InsertEncryptedMessage(db *sql.DB, encryptedMsg *shared.EncryptedMessage) {
-	_, err := db.Exec(`INSERT INTO messages (sender, content, created_at, is_encrypted, encrypted_data, nonce, recipient) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+	result, err := db.Exec(`INSERT INTO messages (sender, content, created_at, is_encrypted, encrypted_data, nonce, recipient) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		encryptedMsg.Sender, encryptedMsg.Content, encryptedMsg.CreatedAt,
 		encryptedMsg.IsEncrypted, encryptedMsg.Encrypted, encryptedMsg.Nonce, encryptedMsg.Recipient)
 	if err != nil {
 		log.Println("Insert encrypted message error:", err)
+		return
 	}
+
+	// Get the inserted ID and update message_id
+	id, err := result.LastInsertId()
+	if err != nil {
+		log.Println("Error getting last insert ID for encrypted message:", err)
+	} else {
+		_, err = db.Exec(`UPDATE messages SET message_id = ? WHERE id = ?`, id, id)
+		if err != nil {
+			log.Println("Error updating message_id for encrypted message:", err)
+		}
+	}
+
 	// Enforce message cap: keep only the most recent 1000 messages
 	_, err = db.Exec(`DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT 1000)`)
 	if err != nil {
@@ -116,6 +196,110 @@ func GetRecentMessages(db *sql.DB) []shared.Message {
 		}
 	}
 	return messages
+}
+
+// GetRecentMessagesForUser returns personalized message history for a specific user
+func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int) ([]shared.Message, int64) {
+	lowerUsername := strings.ToLower(username)
+
+	// Get user's last seen message ID
+	lastMessageID, err := getUserLastMessageID(db, lowerUsername)
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("Error getting last message ID for user %s: %v", username, err)
+		// Fall back to recent messages for new users or on error
+		return GetRecentMessages(db), 0
+	}
+
+	var messages []shared.Message
+
+	if lastMessageID == 0 {
+		// New user or no history - get recent messages
+		messages = GetRecentMessages(db)
+	} else {
+		// Returning user - get messages after their last seen ID
+		messages = GetMessagesAfter(db, lastMessageID, defaultLimit)
+
+		// If they have few new messages, combine with recent history
+		if len(messages) < defaultLimit/2 {
+			recentMessages := GetRecentMessages(db)
+			// Combine recent messages with new messages, avoiding duplicates
+			existingIDs := make(map[string]bool)
+			for _, msg := range messages {
+				key := msg.Sender + ":" + msg.Content + ":" + msg.CreatedAt.Format("2006-01-02 15:04:05")
+				existingIDs[key] = true
+			}
+
+			for _, msg := range recentMessages {
+				key := msg.Sender + ":" + msg.Content + ":" + msg.CreatedAt.Format("2006-01-02 15:04:05")
+				if !existingIDs[key] && len(messages) < defaultLimit {
+					messages = append(messages, msg)
+				}
+			}
+		}
+	}
+
+	// Update user's last seen message ID
+	if len(messages) > 0 {
+		latestID := getLatestMessageID(db)
+		if latestID > 0 {
+			err = setUserLastMessageID(db, lowerUsername, latestID)
+			if err != nil {
+				log.Printf("Warning: failed to update last message ID for user %s: %v", username, err)
+			}
+		}
+	}
+
+	return messages, lastMessageID
+}
+
+// GetMessagesAfter retrieves messages with ID > lastMessageID
+func GetMessagesAfter(db *sql.DB, lastMessageID int64, limit int) []shared.Message {
+	rows, err := db.Query(`SELECT sender, content, created_at FROM messages WHERE message_id > ? ORDER BY created_at ASC LIMIT ?`, lastMessageID, limit)
+	if err != nil {
+		log.Println("Query error in GetMessagesAfter:", err)
+		return nil
+	}
+	defer rows.Close()
+
+	var messages []shared.Message
+	for rows.Next() {
+		var msg shared.Message
+		err := rows.Scan(&msg.Sender, &msg.Content, &msg.CreatedAt)
+		if err == nil {
+			messages = append(messages, msg)
+		}
+	}
+	return messages
+}
+
+// getUserLastMessageID queries user_message_state table
+func getUserLastMessageID(db *sql.DB, username string) (int64, error) {
+	var lastMessageID int64
+	err := db.QueryRow(`SELECT last_message_id FROM user_message_state WHERE username = ?`, username).Scan(&lastMessageID)
+	return lastMessageID, err
+}
+
+// setUserLastMessageID INSERT OR REPLACE into user_message_state
+func setUserLastMessageID(db *sql.DB, username string, messageID int64) error {
+	_, err := db.Exec(`INSERT OR REPLACE INTO user_message_state (username, last_message_id, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP)`, username, messageID)
+	return err
+}
+
+// getLatestMessageID returns MAX(id) from messages table
+func getLatestMessageID(db *sql.DB) int64 {
+	var latestID int64
+	err := db.QueryRow(`SELECT MAX(id) FROM messages`).Scan(&latestID)
+	if err != nil {
+		// Handle empty table case
+		return 0
+	}
+	return latestID
+}
+
+// clearUserMessageState deletes user's record from user_message_state
+func clearUserMessageState(db *sql.DB, username string) error {
+	_, err := db.Exec(`DELETE FROM user_message_state WHERE username = ?`, username)
+	return err
 }
 
 func ClearMessages(db *sql.DB) error {
@@ -230,8 +414,8 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string) http.Han
 		log.Printf("Client %s connected (admin=%v, IP: %s)", username, isAdmin, ipAddr)
 		hub.register <- client
 
-		// Send recent messages to new client
-		msgs := GetRecentMessages(db)
+		// Send personalized recent messages to new client
+		msgs, _ := GetRecentMessagesForUser(db, username, 50)
 		for _, msg := range msgs {
 			client.send <- msg
 		}

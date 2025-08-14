@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"log"
 	"strings"
 	"sync"
@@ -23,9 +24,12 @@ type Hub struct {
 	// Plugin management
 	pluginManager        *manager.PluginManager
 	pluginCommandHandler *PluginCommandHandler
+
+	// Database reference for message state management
+	db *sql.DB
 }
 
-func NewHub(pluginDir, dataDir, registryURL string) *Hub {
+func NewHub(pluginDir, dataDir, registryURL string, db *sql.DB) *Hub {
 	pluginManager := manager.NewPluginManager(pluginDir, dataDir, registryURL)
 	pluginCommandHandler := NewPluginCommandHandler(pluginManager)
 
@@ -37,6 +41,7 @@ func NewHub(pluginDir, dataDir, registryURL string) *Hub {
 		bans:                 make(map[string]time.Time),
 		pluginManager:        pluginManager,
 		pluginCommandHandler: pluginCommandHandler,
+		db:                   db,
 	}
 }
 
@@ -48,6 +53,14 @@ func (h *Hub) BanUser(username string, adminUsername string) {
 	// Ban for 24 hours by default
 	h.bans[strings.ToLower(username)] = time.Now().Add(24 * time.Hour)
 	log.Printf("[ADMIN] User '%s' banned by '%s' until %s", username, adminUsername, time.Now().Add(24*time.Hour).Format("2006-01-02 15:04:05"))
+
+	// Clear user's message state to ensure fresh history on unban
+	if h.getDB() != nil {
+		err := clearUserMessageState(h.getDB(), strings.ToLower(username))
+		if err != nil {
+			log.Printf("Warning: failed to clear message state for banned user %s: %v", username, err)
+		}
+	}
 
 	// Kick the user if they're currently connected
 	h.kickUser(username, "You have been banned by an administrator")
@@ -62,6 +75,15 @@ func (h *Hub) UnbanUser(username string, adminUsername string) bool {
 	if _, exists := h.bans[lowerUsername]; exists {
 		delete(h.bans, lowerUsername)
 		log.Printf("[ADMIN] User '%s' unbanned by '%s'", username, adminUsername)
+
+		// Clear user's message state to ensure clean slate on reconnection
+		if h.getDB() != nil {
+			err := clearUserMessageState(h.getDB(), lowerUsername)
+			if err != nil {
+				log.Printf("Warning: failed to clear message state for unbanned user %s: %v", username, err)
+			}
+		}
+
 		return true
 	}
 	log.Printf("[ADMIN] Unban attempt for '%s' by '%s' - user not found in ban list", username, adminUsername)
@@ -186,4 +208,9 @@ func (h *Hub) Run() {
 			}
 		}
 	}
+}
+
+// getDB returns the database reference
+func (h *Hub) getDB() *sql.DB {
+	return h.db
 }
