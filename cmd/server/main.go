@@ -91,6 +91,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    MARCHAT_TLS_CERT_FILE=/path/to/cert.pem (optional)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_TLS_KEY_FILE=/path/to/key.pem (optional)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_CONFIG_DIR=/path/to/config (optional)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_BAN_GAPS_HISTORY=true (optional, default: false)\n")
 		fmt.Fprintf(os.Stderr, "  .env file: Create %s/.env with the above variables\n", cfg.ConfigDir)
 		fmt.Fprintf(os.Stderr, "  Config directory: Use --config-dir or MARCHAT_CONFIG_DIR to specify custom location\n")
 		os.Exit(1)
@@ -179,7 +180,7 @@ func main() {
 	hub := server.NewHub(pluginDir, dataDir, registryURL, db)
 	go hub.Run()
 
-	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, key))
+	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, key, cfg.BanGapsHistory))
 
 	addr := fmt.Sprintf(":%d", listenPort)
 	serverAddr := fmt.Sprintf("localhost:%d", listenPort)

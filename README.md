@@ -28,6 +28,7 @@ A lightweight terminal chat with separate server and client binaries, real-time 
 - [Quick Start](#quick-start)  
 - [Configuration](#configuration)
 - [TLS Support](#tls-support)
+- [Ban History Gaps](#ban-history-gaps)
 - [Usage](#usage)  
 - [Security](#security)  
 - [Troubleshooting](#troubleshooting)  
@@ -253,6 +254,7 @@ export MARCHAT_USERS="admin1,admin2"
 | `MARCHAT_CONFIG_DIR` | No | Auto-detected | Custom config directory |
 | `MARCHAT_TLS_CERT_FILE` | No | - | Path to TLS certificate file |
 | `MARCHAT_TLS_KEY_FILE` | No | - | Path to TLS private key file |
+| `MARCHAT_BAN_GAPS_HISTORY` | No | `false` | Enable ban history gaps (prevents banned users from seeing messages during ban periods) |
 
 ### Configuration File
 
@@ -326,6 +328,62 @@ The client connection URL automatically reflects the server's TLS status:
 
 The server banner displays the correct WebSocket URL scheme based on TLS configuration.
 
+## Ban History Gaps
+
+The ban history gaps feature prevents banned users from seeing messages that were sent during their ban periods. This creates a more effective moderation experience by ensuring users cannot access conversation history from when they were excluded from the chat.
+
+### How It Works
+
+When enabled, the system:
+1. **Tracks ban events** in a dedicated `ban_history` table
+2. **Records ban/unban timestamps** with admin attribution
+3. **Filters message history** for users with ban records
+4. **Maintains performance** by only filtering for users who have been banned
+
+### Enabling Ban History Gaps
+
+Set the environment variable to enable this feature:
+
+```bash
+# Enable ban history gaps
+export MARCHAT_BAN_GAPS_HISTORY=true
+
+# Start server with feature enabled
+./marchat-server
+```
+
+### Behavior Examples
+
+**With Ban History Gaps Enabled:**
+- User gets banned → cannot see new messages
+- User gets unbanned → reconnects and sees only messages sent after their unban
+- Messages sent during ban period are permanently hidden from that user
+
+**With Ban History Gaps Disabled (default):**
+- User gets banned → cannot see new messages
+- User gets unbanned → reconnects and sees all messages (including those sent during ban)
+- Standard behavior maintained for backward compatibility
+
+### Performance Considerations
+
+- **Minimal impact** on users who have never been banned
+- **Database queries** only run for users with ban history
+- **Automatic cleanup** of expired ban records
+- **Indexed queries** for efficient ban period lookups
+
+### Database Schema
+
+The feature adds a new `ban_history` table:
+```sql
+CREATE TABLE ban_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    banned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    unbanned_at DATETIME,
+    banned_by TEXT NOT NULL
+);
+```
+
 ## Usage
 
 ### Basic Commands
@@ -355,6 +413,9 @@ The server banner displays the correct WebSocket URL scheme based on TLS configu
 | `:kick <username>` | Disconnect user | `:kick user1` |
 | `:ban <username>` | Ban user for 24h with improved user experience after unban | `:ban user1` |
 | `:unban <username>` | Remove user ban with clean message history restoration | `:unban user1` |
+
+> [!NOTE]
+> **Ban History Gaps**: When `MARCHAT_BAN_GAPS_HISTORY=true` is enabled, banned users cannot see messages sent during their ban periods. This creates a more effective moderation experience.
 
 **Connect as admin:**
 ```bash
@@ -432,6 +493,7 @@ When enabled, E2E encryption provides:
 | **Database migration fails** | Ensure proper database file permissions and backup before building from source |
 | **Message history missing after update** | Expected behavior - user message states reset for improved ban/unban experience |
 | **Server fails to start after source build** | Check database permissions and consider manual schema migration |
+| **Ban history gaps not working** | Ensure `MARCHAT_BAN_GAPS_HISTORY=true` is set and database has `ban_history` table |
 
 ### Network Connectivity
 

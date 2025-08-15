@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Cod-e-Codes/marchat/shared"
 
@@ -102,11 +103,29 @@ func CreateSchema(db *sql.DB) {
 		log.Fatal("failed to create user_message_state table:", err)
 	}
 
+	// Create ban_history table
+	banHistorySchema := `
+	CREATE TABLE IF NOT EXISTS ban_history (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		username TEXT NOT NULL,
+		banned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		unbanned_at DATETIME,
+		banned_by TEXT NOT NULL
+	);`
+
+	_, err = db.Exec(banHistorySchema)
+	if err != nil {
+		log.Printf("Warning: failed to create ban_history table: %v", err)
+	}
+
 	// Create indexes for performance
 	indexes := []string{
 		`CREATE INDEX IF NOT EXISTS idx_messages_message_id ON messages(message_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_user_message_state_username ON user_message_state(username)`,
+		`CREATE INDEX IF NOT EXISTS idx_ban_history_username ON ban_history(username)`,
+		`CREATE INDEX IF NOT EXISTS idx_ban_history_banned_at ON ban_history(banned_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_ban_history_unbanned_at ON ban_history(unbanned_at)`,
 	}
 
 	for _, index := range indexes {
@@ -202,7 +221,7 @@ func GetRecentMessages(db *sql.DB) []shared.Message {
 }
 
 // GetRecentMessagesForUser returns personalized message history for a specific user
-func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int) ([]shared.Message, int64) {
+func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int, banGapsHistory bool) ([]shared.Message, int64) {
 	lowerUsername := strings.ToLower(username)
 
 	// Get user's last seen message ID
@@ -245,6 +264,24 @@ func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int) ([]
 
 	// CRITICAL FIX: Always sort messages by timestamp for consistent ordering
 	sortMessagesByTimestamp(messages)
+
+	// Filter messages during ban periods if feature is enabled
+	if banGapsHistory {
+		banPeriods, err := getUserBanPeriods(db, lowerUsername)
+		if err != nil {
+			log.Printf("Warning: failed to get ban periods for user %s: %v", username, err)
+		} else if len(banPeriods) > 0 {
+			// Filter out messages sent during ban periods
+			filteredMessages := make([]shared.Message, 0, len(messages))
+			for _, msg := range messages {
+				if !isMessageInBanPeriod(msg.CreatedAt, banPeriods) {
+					filteredMessages = append(filteredMessages, msg)
+				}
+			}
+			messages = filteredMessages
+			log.Printf("Filtered %d messages for user %s due to ban history gaps", len(messages), username)
+		}
+	}
 
 	// Update user's last seen message ID
 	if len(messages) > 0 {
@@ -313,6 +350,78 @@ func clearUserMessageState(db *sql.DB, username string) error {
 	return err
 }
 
+// recordBanEvent records a ban event in the ban_history table
+func recordBanEvent(db *sql.DB, username, bannedBy string) error {
+	_, err := db.Exec(`INSERT INTO ban_history (username, banned_by) VALUES (?, ?)`, username, bannedBy)
+	if err != nil {
+		log.Printf("Warning: failed to record ban event for user %s: %v", username, err)
+	}
+	return err
+}
+
+// recordUnbanEvent records an unban event in the ban_history table
+func recordUnbanEvent(db *sql.DB, username string) error {
+	_, err := db.Exec(`UPDATE ban_history SET unbanned_at = CURRENT_TIMESTAMP WHERE username = ? AND unbanned_at IS NULL`, username)
+	if err != nil {
+		log.Printf("Warning: failed to record unban event for user %s: %v", username, err)
+	}
+	return err
+}
+
+// getUserBanPeriods retrieves all ban periods for a user
+func getUserBanPeriods(db *sql.DB, username string) ([]struct {
+	BannedAt   time.Time
+	UnbannedAt *time.Time
+}, error) {
+	rows, err := db.Query(`SELECT banned_at, unbanned_at FROM ban_history WHERE username = ? ORDER BY banned_at ASC`, username)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var periods []struct {
+		BannedAt   time.Time
+		UnbannedAt *time.Time
+	}
+
+	for rows.Next() {
+		var bannedAt time.Time
+		var unbannedAt *time.Time
+		err := rows.Scan(&bannedAt, &unbannedAt)
+		if err != nil {
+			log.Printf("Warning: failed to scan ban period for user %s: %v", username, err)
+			continue
+		}
+		periods = append(periods, struct {
+			BannedAt   time.Time
+			UnbannedAt *time.Time
+		}{bannedAt, unbannedAt})
+	}
+
+	return periods, nil
+}
+
+// isMessageInBanPeriod checks if a message was sent during a user's ban period
+func isMessageInBanPeriod(messageTime time.Time, banPeriods []struct {
+	BannedAt   time.Time
+	UnbannedAt *time.Time
+}) bool {
+	for _, period := range banPeriods {
+		// If unbanned_at is nil, the user is still banned
+		if period.UnbannedAt == nil {
+			if messageTime.After(period.BannedAt) {
+				return true
+			}
+		} else {
+			// Check if message was sent during the ban period
+			if messageTime.After(period.BannedAt) && messageTime.Before(*period.UnbannedAt) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // sortMessagesByTimestamp ensures messages are displayed in chronological order
 // This provides server-side protection against ordering issues
 func sortMessagesByTimestamp(messages []shared.Message) {
@@ -356,7 +465,7 @@ type adminAuth struct {
 	adminKey string
 }
 
-func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string) http.HandlerFunc {
+func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string, banGapsHistory bool) http.HandlerFunc {
 	auth := adminAuth{admins: make(map[string]struct{}), adminKey: adminKey}
 	for _, u := range adminList {
 		auth.admins[strings.ToLower(u)] = struct{}{}
@@ -443,7 +552,7 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string) http.Han
 		hub.register <- client
 
 		// Send personalized recent messages to new client
-		msgs, _ := GetRecentMessagesForUser(db, username, 50)
+		msgs, _ := GetRecentMessagesForUser(db, username, 50, banGapsHistory)
 		for _, msg := range msgs {
 			client.send <- msg
 		}

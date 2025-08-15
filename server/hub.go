@@ -54,6 +54,14 @@ func (h *Hub) BanUser(username string, adminUsername string) {
 	h.bans[strings.ToLower(username)] = time.Now().Add(24 * time.Hour)
 	log.Printf("[ADMIN] User '%s' banned by '%s' until %s", username, adminUsername, time.Now().Add(24*time.Hour).Format("2006-01-02 15:04:05"))
 
+	// Record ban event in database
+	if h.getDB() != nil {
+		err := recordBanEvent(h.getDB(), strings.ToLower(username), adminUsername)
+		if err != nil {
+			log.Printf("Warning: failed to record ban event for user %s: %v", username, err)
+		}
+	}
+
 	// Clear user's message state to ensure fresh history on unban
 	if h.getDB() != nil {
 		err := clearUserMessageState(h.getDB(), strings.ToLower(username))
@@ -75,6 +83,14 @@ func (h *Hub) UnbanUser(username string, adminUsername string) bool {
 	if _, exists := h.bans[lowerUsername]; exists {
 		delete(h.bans, lowerUsername)
 		log.Printf("[ADMIN] User '%s' unbanned by '%s'", username, adminUsername)
+
+		// Record unban event in database
+		if h.getDB() != nil {
+			err := recordUnbanEvent(h.getDB(), lowerUsername)
+			if err != nil {
+				log.Printf("Warning: failed to record unban event for user %s: %v", username, err)
+			}
+		}
 
 		// Clear user's message state to ensure clean slate on reconnection
 		if h.getDB() != nil {

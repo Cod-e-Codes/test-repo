@@ -32,6 +32,9 @@ type Config struct {
 
 	// Config directory
 	ConfigDir string `json:"config_dir"`
+
+	// Ban history gaps feature
+	BanGapsHistory bool `json:"ban_gaps_history"`
 }
 
 // LoadConfig loads configuration from environment variables, .env files, and config files
@@ -125,6 +128,13 @@ func (c *Config) loadFromEnv() error {
 	}
 	if tlsKeyFile := os.Getenv("MARCHAT_TLS_KEY_FILE"); tlsKeyFile != "" {
 		c.TLSKeyFile = tlsKeyFile
+	}
+
+	// Ban history gaps configuration
+	if banGapsStr := os.Getenv("MARCHAT_BAN_GAPS_HISTORY"); banGapsStr != "" {
+		c.BanGapsHistory = strings.ToLower(banGapsStr) == "true"
+	} else {
+		c.BanGapsHistory = false // Default to false for backward compatibility
 	}
 
 	return nil
