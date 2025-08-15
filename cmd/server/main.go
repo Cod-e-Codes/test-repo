@@ -13,6 +13,7 @@ import (
 
 	"github.com/Cod-e-Codes/marchat/config"
 	"github.com/Cod-e-Codes/marchat/server"
+	"github.com/Cod-e-Codes/marchat/shared"
 )
 
 // Multi-admin support
@@ -62,6 +63,7 @@ func printBanner(addr string, admins []string, scheme string) {
 	fmt.Println()
 	fmt.Printf("\U0001F310 WebSocket: %s://%s/ws\n", scheme, addr)
 	fmt.Printf("\U0001F511 Admins: %s\n", strings.Join(admins, ", "))
+	fmt.Printf("\U0001F4E6 Version: %s\n", shared.GetServerVersionInfo())
 	fmt.Println("\U0001F4A1 Tip: Use --username <admin> --admin --admin-key <key> to connect as admin")
 }
 

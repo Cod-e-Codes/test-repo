@@ -1,9 +1,17 @@
 # === Build Stage ===
 FROM golang:1.24-alpine AS builder
+
+# Build arguments for version information
+ARG VERSION=dev
+ARG BUILD_TIME=unknown
+ARG GIT_COMMIT=unknown
+
 WORKDIR /marchat
 COPY . .
 RUN go mod tidy
-RUN CGO_ENABLED=0 GOOS=linux go build -o marchat-server ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags "-X github.com/Cod-e-Codes/marchat/shared.ClientVersion=${VERSION} -X github.com/Cod-e-Codes/marchat/shared.ServerVersion=${VERSION} -X github.com/Cod-e-Codes/marchat/shared.BuildTime='${BUILD_TIME}' -X github.com/Cod-e-Codes/marchat/shared.GitCommit=${GIT_COMMIT}" \
+    -o marchat-server ./cmd/server
 
 # === Runtime Stage ===
 FROM alpine:3.21

@@ -1094,8 +1094,9 @@ func (m *model) listenWebSocket() tea.Cmd {
 }
 
 func (m *model) View() string {
-	// Header
-	header := m.styles.Header.Width(m.viewport.Width + userListWidth + 4).Render(" marchat ")
+	// Header with version
+	headerText := fmt.Sprintf(" marchat %s ", shared.ClientVersion)
+	header := m.styles.Header.Width(m.viewport.Width + userListWidth + 4).Render(headerText)
 	footer := m.styles.Footer.Width(m.viewport.Width + userListWidth + 4).Render(
 		"[Enter] Send  [Up/Down] Scroll  [Esc] Quit  Commands: :sendfile <path> :savefile <filename> :clear :theme NAME :time" +
 			func() string {
