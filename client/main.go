@@ -762,8 +762,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if text != "" {
 				m.sending = true
 				if m.conn != nil {
-					var err error
-
 					if m.useE2E {
 						// Use E2E encryption for messages
 						// For now, use a simple conversation ID (can be enhanced later)
@@ -777,17 +775,19 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							return m, nil
 						}
 
-						err = m.conn.WriteJSON(encryptedMsg)
+						if err := m.conn.WriteJSON(encryptedMsg); err != nil {
+							m.banner = "❌ Failed to send (connection lost)"
+							m.sending = false
+							return m, m.listenWebSocket()
+						}
 					} else {
 						// Send plain text message
 						msg := shared.Message{Sender: m.cfg.Username, Content: text}
-						err = m.conn.WriteJSON(msg)
-					}
-
-					if err != nil {
-						m.banner = "❌ Failed to send (connection lost)"
-						m.sending = false
-						return m, m.listenWebSocket()
+						if err := m.conn.WriteJSON(msg); err != nil {
+							m.banner = "❌ Failed to send (connection lost)"
+							m.sending = false
+							return m, m.listenWebSocket()
+						}
 					}
 					m.banner = ""
 				}

@@ -19,7 +19,7 @@ A lightweight terminal chat with separate server and client binaries, real-time 
 ## Table of Contents  
 
 - [Overview](#overview)
-- [Features](#features)
+- [Features](#features)  
 - [Database Schema](#database-schema)
 - [Installation & Setup](#installation--setup)
   - [Binary Installation](#binary-installation)
