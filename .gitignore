@@ -53,3 +53,7 @@ plugin/examples/*/*.exe
 plugin/examples/*/*.so
 plugin/examples/*/*.dylib
 *.zip
+
+# Build release
+build-release.sh
+build-release.ps1
