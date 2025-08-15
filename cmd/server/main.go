@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -91,7 +90,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    MARCHAT_TLS_CERT_FILE=/path/to/cert.pem (optional)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_TLS_KEY_FILE=/path/to/key.pem (optional)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_CONFIG_DIR=/path/to/config (optional)\n")
-		fmt.Fprintf(os.Stderr, "    MARCHAT_BAN_GAPS_HISTORY=true (optional, default: false)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_BAN_HISTORY_GAPS=true (optional, default: true)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_PLUGIN_REGISTRY_URL=url (optional, default: GitHub registry)\n")
 		fmt.Fprintf(os.Stderr, "  .env file: Create %s/.env with the above variables\n", cfg.ConfigDir)
 		fmt.Fprintf(os.Stderr, "  Config directory: Use --config-dir or MARCHAT_CONFIG_DIR to specify custom location\n")
 		os.Exit(1)
@@ -160,14 +160,8 @@ func main() {
 	pluginDir := cfg.ConfigDir + "/plugins"
 	dataDir := cfg.ConfigDir + "/data"
 
-	// Get the current working directory to build the registry path
-	currentDir, err := os.Getwd()
-	if err != nil {
-		log.Printf("Warning: Could not get current directory: %v", err)
-		currentDir = "."
-	}
-	registryPath := filepath.Join(currentDir, "plugin", "registry", "registry.json")
-	registryURL := "file:///" + filepath.ToSlash(registryPath)
+	// Get registry URL from configuration
+	registryURL := cfg.PluginRegistryURL
 
 	// Create plugin directories if they don't exist
 	if err := os.MkdirAll(pluginDir, 0755); err != nil {

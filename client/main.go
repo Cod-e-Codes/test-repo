@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net/url"
@@ -83,6 +84,7 @@ var isAdmin = flag.Bool("admin", false, "Connect as admin (requires --admin-key)
 var adminKey = flag.String("admin-key", "", "Admin key for privileged commands like :cleardb, :kick, :ban, :unban")
 var useE2E = flag.Bool("e2e", false, "Enable end-to-end encryption")
 var keystorePassphrase = flag.String("keystore-passphrase", "", "Passphrase for keystore (required for E2E)")
+var skipTLSVerify = flag.Bool("skip-tls-verify", false, "Skip TLS certificate verification (for development)")
 
 type model struct {
 	cfg       config.Config
@@ -295,7 +297,13 @@ func (m *model) connectWebSocket(serverURL string) error {
 		log.Printf("Admin key: %s", *adminKey)
 	}
 
-	conn, resp, err := websocket.DefaultDialer.Dial(fullURL, nil)
+	// Create custom dialer with TLS configuration
+	dialer := websocket.DefaultDialer
+	if *skipTLSVerify {
+		dialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
+	conn, resp, err := dialer.Dial(fullURL, nil)
 	if err != nil {
 		if resp != nil {
 			log.Printf("WebSocket connection failed with status %d: %v", resp.StatusCode, err)
@@ -364,7 +372,26 @@ func (m *model) connectWebSocket(serverURL string) error {
 
 				log.Printf("Received message: %s", string(raw))
 
-				// Try to unmarshal as shared.Message first
+				// Try to unmarshal as encrypted message first (if E2E is enabled)
+				if m.useE2E {
+					var encryptedMsg shared.EncryptedMessage
+					if err := json.Unmarshal(raw, &encryptedMsg); err == nil && encryptedMsg.IsEncrypted {
+						// Try to decrypt the message
+						conversationID := "global" // Same as sending
+						decryptedMsg, err := m.keystore.DecryptMessage(&encryptedMsg, conversationID)
+						if err != nil {
+							log.Printf("Failed to decrypt message: %v", err)
+							// Send as encrypted message with error
+							encryptedMsg.Content = "[ENCRYPTED - DECRYPTION FAILED]"
+							m.msgChan <- encryptedMsg
+							continue
+						}
+						m.msgChan <- *decryptedMsg
+						continue
+					}
+				}
+
+				// Try to unmarshal as shared.Message
 				var msg shared.Message
 				if err := json.Unmarshal(raw, &msg); err == nil {
 					if msg.Sender != "" {
@@ -735,8 +762,28 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if text != "" {
 				m.sending = true
 				if m.conn != nil {
-					msg := shared.Message{Sender: m.cfg.Username, Content: text}
-					err := m.conn.WriteJSON(msg)
+					var err error
+
+					if m.useE2E {
+						// Use E2E encryption for messages
+						// For now, use a simple conversation ID (can be enhanced later)
+						conversationID := "global"
+
+						encryptedMsg, err := m.keystore.EncryptMessage(m.cfg.Username, text, conversationID)
+						if err != nil {
+							m.banner = fmt.Sprintf("❌ E2E encryption failed: %v", err)
+							m.sending = false
+							m.textarea.SetValue("")
+							return m, nil
+						}
+
+						err = m.conn.WriteJSON(encryptedMsg)
+					} else {
+						// Send plain text message
+						msg := shared.Message{Sender: m.cfg.Username, Content: text}
+						err = m.conn.WriteJSON(msg)
+					}
+
 					if err != nil {
 						m.banner = "❌ Failed to send (connection lost)"
 						m.sending = false

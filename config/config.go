@@ -35,6 +35,9 @@ type Config struct {
 
 	// Ban history gaps feature
 	BanGapsHistory bool `json:"ban_gaps_history"`
+
+	// Plugin settings
+	PluginRegistryURL string `json:"plugin_registry_url"`
 }
 
 // LoadConfig loads configuration from environment variables, .env files, and config files
@@ -135,6 +138,13 @@ func (c *Config) loadFromEnv() error {
 		c.BanGapsHistory = strings.ToLower(banGapsStr) == "true"
 	} else {
 		c.BanGapsHistory = false // Default to false for backward compatibility
+	}
+
+	// Plugin registry URL configuration
+	if pluginRegistryURL := os.Getenv("MARCHAT_PLUGIN_REGISTRY_URL"); pluginRegistryURL != "" {
+		c.PluginRegistryURL = pluginRegistryURL
+	} else {
+		c.PluginRegistryURL = "https://raw.githubusercontent.com/Cod-e-Codes/marchat-plugins/main/registry.json"
 	}
 
 	return nil
