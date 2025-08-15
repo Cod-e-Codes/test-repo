@@ -79,6 +79,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 - **v0.3.0-beta.1**: Introduced `user_message_state` table and `message_id` column for per-user message tracking
 - **v0.3.0-beta.3**: Added `ban_history` table for ban history gaps feature
 - **v0.3.0-beta.4**: Enhanced plugin system with remote registry support and improved E2E encryption integration
+- **v0.3.0-beta.5**: Complete E2E encryption overhaul and stabilization - fixed blank message issue, improved error handling, and enhanced debugging
 
 ### Current Schema
 
@@ -91,17 +92,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.3.0-beta.4:**
+**Download pre-built binaries for v0.3.0-beta.5:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.4/marchat-v0.3.0-beta.4-linux-amd64.zip
-unzip marchat-v0.3.0-beta.4-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.5/marchat-v0.3.0-beta.5-linux-amd64.zip
+unzip marchat-v0.3.0-beta.5-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.4/marchat-v0.3.0-beta.4-darwin-amd64.zip
-unzip marchat-v0.3.0-beta.4-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.5/marchat-v0.3.0-beta.5-darwin-amd64.zip
+unzip marchat-v0.3.0-beta.5-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -110,8 +111,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.4/marchat-v0.3.0-beta.4-android-arm64.zip
-unzip marchat-v0.3.0-beta.4-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.5/marchat-v0.3.0-beta.5-android-arm64.zip
+unzip marchat-v0.3.0-beta.5-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -122,14 +123,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.3.0-beta.4
+docker pull codecodesxyz/marchat:v0.3.0-beta.5
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.3.0-beta.4
+  codecodesxyz/marchat:v0.3.0-beta.5
 ```
 
 ### Docker/Unraid Deployment Notes
@@ -431,11 +432,14 @@ CREATE TABLE ban_history (
 ./marchat-client --e2e --keystore-passphrase your-passphrase --username alice --server ws://localhost:8080/ws
 ```
 
-**E2E encryption is now fully integrated into the message flow:**
+**E2E encryption is now fully integrated and stabilized (v0.3.0-beta.5):**
 - **Automatic encryption**: All outgoing messages are encrypted when `--e2e` is enabled
 - **Automatic decryption**: Incoming encrypted messages are automatically decrypted
 - **Session keys**: Each conversation uses unique session keys for isolation
-- **Graceful fallback**: Failed decryption attempts show error messages without breaking the client
+- **Graceful fallback**: Failed decryption attempts show clear error messages instead of blank messages
+- **Enhanced debugging**: Comprehensive logging for troubleshooting encryption issues
+- **Mixed mode support**: E2E and non-E2E clients can coexist seamlessly
+- **Improved error handling**: Clear error messages for missing keys, encryption failures, and keystore issues
 
 ## Security
 
@@ -481,6 +485,16 @@ When enabled, E2E encryption provides:
 - **Server Privacy**: Server cannot read encrypted messages
 - **Key Management**: Local encrypted keystore with passphrase protection
 
+#### v0.3.0-beta.5 Improvements
+
+The latest release includes major E2E encryption improvements:
+- **Fixed blank message issue**: Outgoing encrypted messages now display properly
+- **Enhanced error handling**: Clear error messages for encryption failures
+- **Improved debugging**: Comprehensive logging for troubleshooting
+- **Better key management**: Improved session key derivation and storage
+- **Mixed mode support**: Seamless coexistence of E2E and non-E2E clients
+- **Graceful fallbacks**: Messages still send even if encryption fails
+
 ## Troubleshooting
 
 ### Common Issues
@@ -499,7 +513,8 @@ When enabled, E2E encryption provides:
 | **Ban history gaps not working** | Ensure `MARCHAT_BAN_HISTORY_GAPS=true` is set (default) and database has `ban_history` table |
 | **TLS certificate errors** | Use `--skip-tls-verify` flag for development with self-signed certificates |
 | **Plugin installation fails** | Check `MARCHAT_PLUGIN_REGISTRY_URL` is accessible and registry format is valid |
-| **E2E encryption not working** | Ensure `--e2e` flag is used and keystore passphrase is provided |
+| **E2E encryption not working** | Ensure `--e2e` flag is used and keystore passphrase is provided. Check debug logs for detailed error messages |
+| **Blank encrypted messages** | Fixed in v0.3.0-beta.5 - ensure you're using the latest version and have added recipient public keys with `:addkey` |
 
 ### Network Connectivity
 
