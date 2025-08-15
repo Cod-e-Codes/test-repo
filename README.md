@@ -28,6 +28,7 @@ A lightweight terminal chat with separate server and client binaries, real-time 
 - [Quick Start](#quick-start)  
 - [Configuration](#configuration)
 - [TLS Support](#tls-support)
+- [Plugin System](#plugin-system)
 - [Ban History Gaps](#ban-history-gaps)
 - [Usage](#usage)  
 - [Security](#security)  
@@ -54,8 +55,8 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 |---------|-------------|
 | **Terminal UI** | Beautiful TUI built with Bubble Tea |
 | **Real-time Chat** | Fast WebSocket-based messaging with a lightweight SQLite backend |
-| **Plugin System** | Install and manage plugins via `:store` and `:plugin` commands |
-| **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305 |
+| **Plugin System** | Install and manage plugins via remote registry with `:store` and `:plugin` commands |
+| **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305, fully integrated message flow |
 | **File Sharing** | Send files up to 1MB with `:sendfile` |
 | **Admin Controls** | User management, bans, and database operations with improved ban/unban experience |
 | **Themes** | Choose from patriot, retro, or modern themes |
@@ -77,6 +78,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 - **v0.3.0-beta.1**: Introduced `user_message_state` table and `message_id` column for per-user message tracking
 - **v0.3.0-beta.3**: Added `ban_history` table for ban history gaps feature
+- **v0.3.0-beta.4**: Enhanced plugin system with remote registry support and improved E2E encryption integration
 
 ### Current Schema
 
@@ -89,17 +91,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.3.0-beta.3:**
+**Download pre-built binaries for v0.3.0-beta.4:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.3/marchat-v0.3.0-beta.3-linux-amd64.zip
-unzip marchat-v0.3.0-beta.3-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.4/marchat-v0.3.0-beta.4-linux-amd64.zip
+unzip marchat-v0.3.0-beta.4-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.3/marchat-v0.3.0-beta.3-darwin-amd64.zip
-unzip marchat-v0.3.0-beta.3-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.4/marchat-v0.3.0-beta.4-darwin-amd64.zip
+unzip marchat-v0.3.0-beta.4-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -108,8 +110,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.3/marchat-v0.3.0-beta.3-android-arm64.zip
-unzip marchat-v0.3.0-beta.3-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.4/marchat-v0.3.0-beta.4-android-arm64.zip
+unzip marchat-v0.3.0-beta.4-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -120,14 +122,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.3.0-beta.3
+docker pull codecodesxyz/marchat:v0.3.0-beta.4
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.3.0-beta.3
+  codecodesxyz/marchat:v0.3.0-beta.4
 ```
 
 **Using Docker Compose:**
@@ -137,7 +139,7 @@ docker run -d \
 version: '3.8'
 services:
   marchat:
-    image: codecodesxyz/marchat:v0.3.0-beta.3
+    image: codecodesxyz/marchat:v0.3.0-beta.4
     ports:
       - "8080:8080"
     environment:
@@ -225,6 +227,7 @@ export MARCHAT_USERS="admin1,admin2"
 | `MARCHAT_TLS_CERT_FILE` | No | - | Path to TLS certificate file |
 | `MARCHAT_TLS_KEY_FILE` | No | - | Path to TLS private key file |
 | `MARCHAT_BAN_HISTORY_GAPS` | No | `true` | Enable ban history gaps (prevents banned users from seeing messages during ban periods) |
+| `MARCHAT_PLUGIN_REGISTRY_URL` | No | GitHub registry | URL for plugin registry (default: https://raw.githubusercontent.com/Cod-e-Codes/marchat-plugins/main/registry.json) |
 
 ### Configuration File
 
@@ -297,6 +300,50 @@ The client connection URL automatically reflects the server's TLS status:
 - **TLS disabled**: Connect to `ws://host:port/ws`
 
 The server banner displays the correct WebSocket URL scheme based on TLS configuration.
+
+### TLS Verification Bypass
+
+For development and testing with self-signed certificates, you can bypass TLS verification:
+
+```bash
+# Connect with TLS verification bypass
+./marchat-client --skip-tls-verify --server wss://localhost:8080/ws
+
+# Regular connection (with verification)
+./marchat-client --server wss://localhost:8080/ws
+```
+
+> [!WARNING]
+> **Security Warning**: Use `--skip-tls-verify` only for development and testing. Production deployments should use valid TLS certificates.
+
+## Plugin System
+
+The plugin system allows you to extend marchat's functionality with custom commands and features. Plugins are automatically downloaded from the configured registry.
+
+### Plugin Registry
+
+By default, marchat uses the GitHub plugin registry. You can configure a custom registry:
+
+```bash
+# Use default GitHub registry
+export MARCHAT_PLUGIN_REGISTRY_URL="https://raw.githubusercontent.com/Cod-e-Codes/marchat-plugins/main/registry.json"
+
+# Use custom registry
+export MARCHAT_PLUGIN_REGISTRY_URL="https://my-registry.com/plugins.json"
+```
+
+### Plugin Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `:store` | Browse available plugins | `:store` |
+| `:plugin install <name>` | Install a plugin | `:plugin install echo` |
+| `:plugin uninstall <name>` | Remove a plugin | `:plugin uninstall echo` |
+| `:plugin list` | List installed plugins | `:plugin list` |
+
+### Available Plugins
+
+- **Echo**: Simple echo plugin for testing
 
 ## Ban History Gaps
 
@@ -398,8 +445,14 @@ CREATE TABLE ban_history (
 
 **Enable E2E encryption:**
 ```bash
-./marchat-client --e2e --keystore-passphrase your-passphrase --username alice
+./marchat-client --e2e --keystore-passphrase your-passphrase --username alice --server ws://localhost:8080/ws
 ```
+
+**E2E encryption is now fully integrated into the message flow:**
+- **Automatic encryption**: All outgoing messages are encrypted when `--e2e` is enabled
+- **Automatic decryption**: Incoming encrypted messages are automatically decrypted
+- **Session keys**: Each conversation uses unique session keys for isolation
+- **Graceful fallback**: Failed decryption attempts show error messages without breaking the client
 
 ## Security
 
@@ -461,6 +514,9 @@ When enabled, E2E encryption provides:
 | **Message history missing after update** | Expected behavior - user message states reset for improved ban/unban experience |
 | **Server fails to start after source build** | Check database permissions - migrations are automatic |
 | **Ban history gaps not working** | Ensure `MARCHAT_BAN_HISTORY_GAPS=true` is set (default) and database has `ban_history` table |
+| **TLS certificate errors** | Use `--skip-tls-verify` flag for development with self-signed certificates |
+| **Plugin installation fails** | Check `MARCHAT_PLUGIN_REGISTRY_URL` is accessible and registry format is valid |
+| **E2E encryption not working** | Ensure `--e2e` flag is used and keystore passphrase is provided |
 
 ### Network Connectivity
 
