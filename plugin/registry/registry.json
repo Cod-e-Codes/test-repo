@@ -1,23 +1,18 @@
-[
-  {
-    "name": "echo",
-    "version": "1.0.0",
-    "description": "Simple echo plugin for testing the marchat plugin system",
-    "author": "Cod-e-Codes",
-    "license": "MIT",
-    "repository": "https://github.com/Cod-e-Codes/marchat-plugins",
-    "homepage": "https://github.com/Cod-e-Codes/marchat-plugins",
-    "download_url": "https://github.com/Cod-e-Codes/marchat-plugins/releases/latest/download/echo-plugin.zip",
-    "checksum": "sha256:da155e0f96704957de9fff9e815020855590c1146ad2a376de9570f9a91e202b",
-    "category": "utility",
-    "tags": ["chat", "utility", "echo", "test"],
-    "commands": [
-      {
-        "name": "echo",
-        "description": "Echo a message",
-        "usage": ":echo <message>",
-        "admin_only": false
-      }
-    ]
-  }
-] 
+{
+  "version": "1.0.0",
+  "last_updated": "2024-01-01T00:00:00Z",
+  "plugins": [
+    {
+      "name": "echo",
+      "version": "1.0.0",
+      "description": "Simple echo plugin for testing the plugin system",
+      "author": "Cod-e-Codes",
+      "homepage": "https://github.com/Cod-e-Codes/marchat",
+      "download_url": "https://github.com/Cod-e-Codes/marchat-plugins/releases/download/v1.0.0/echo-plugin-v1.0.0.zip",
+      "checksum": "sha256:ecfa1ba034a52b963d643770b24c4fc41359e8101a9152744eabb1daed93f354",
+      "category": "utility",
+      "tags": ["chat", "utility", "echo", "test"],
+      "min_version": "0.2.0-beta.1"
+    }
+  ]
+}
