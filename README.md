@@ -20,7 +20,7 @@ A lightweight terminal chat with separate server and client binaries, real-time 
 
 - [Overview](#overview)
 - [Features](#features)
-- [Breaking Changes](#breaking-changes)
+- [Database Schema](#database-schema)
 - [Installation & Setup](#installation--setup)
   - [Binary Installation](#binary-installation)
   - [Docker Installation](#docker-installation)
@@ -68,68 +68,38 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 *marchat running on Android via Termux, demonstrating file transfer through reverse proxy and real-time theme switching*
 
-## Breaking Changes
+## Database Schema
 
-> [!IMPORTANT]
-> **Database Schema Migration Required**
-> 
-> v0.3.0-beta.2 includes breaking changes that require database migration.
+> [!NOTE]
+> **Automatic Migration**: Starting with v0.3.0-beta.1, all database schema changes are applied automatically during server startup. No manual migration steps are required.
 
-### What's Changed
+### Schema History
 
-v0.3.0-beta.2 introduces **per-user message state tracking** to fix the "frozen message history" bug where banned/unbanned users could only see messages from before their ban. This enhancement requires database schema changes that will affect existing installations.
+- **v0.3.0-beta.1**: Introduced `user_message_state` table and `message_id` column for per-user message tracking
+- **v0.3.0-beta.3**: Added `ban_history` table for ban history gaps feature
 
-### Required Actions
+### Current Schema
 
-**Before building from source:**
-1. **Backup your database:**
-   ```bash
-   cp ./config/marchat.db ./config/marchat.db.backup
-   ```
-
-2. **Build and run** - migration happens automatically during server startup
-3. **Verify migration** - check server logs for migration messages
-
-### Migration Details
-
-- **New table**: `user_message_state` for tracking per-user message history
-- **Schema update**: `messages` table gets `message_id` column
-- **Automatic migration**: Existing messages get `message_id = id`
-- **Performance**: New indexes added for efficient queries
-- **Duration**: Typically under 30 seconds for most installations
-
-### Rollback Procedure
-
-If migration fails or you need to downgrade:
-```bash
-# Stop the server
-# Restore from backup
-cp ./config/marchat.db.backup ./config/marchat.db
-# Restart with previous version
-```
-
-### Benefits After Migration
-
-- **Improved user experience**: Banned/unbanned users see complete message history
-- **Better moderation**: Clean slate for users after ban/unban cycles
-- **Enhanced performance**: Optimized queries with new indexes
-- **Future-proof**: Foundation for advanced message tracking features
+The database includes these key tables:
+- **messages**: Core message storage with `message_id` for tracking
+- **user_message_state**: Per-user message history state
+- **ban_history**: Ban/unban event tracking for history gaps feature
 
 ## Installation & Setup
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.3.0-beta.2:**
+**Download pre-built binaries for v0.3.0-beta.3:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.2/marchat-v0.3.0-beta.2-linux-amd64.zip
-unzip marchat-v0.3.0-beta.2-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.3/marchat-v0.3.0-beta.3-linux-amd64.zip
+unzip marchat-v0.3.0-beta.3-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.2/marchat-v0.3.0-beta.2-darwin-amd64.zip
-unzip marchat-v0.3.0-beta.2-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.3/marchat-v0.3.0-beta.3-darwin-amd64.zip
+unzip marchat-v0.3.0-beta.3-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -138,8 +108,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.2/marchat-v0.3.0-beta.2-android-arm64.zip
-unzip marchat-v0.3.0-beta.2-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.3/marchat-v0.3.0-beta.3-android-arm64.zip
+unzip marchat-v0.3.0-beta.3-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -150,14 +120,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.3.0-beta.2
+docker pull codecodesxyz/marchat:v0.3.0-beta.3
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.3.0-beta.2
+  codecodesxyz/marchat:v0.3.0-beta.3
 ```
 
 **Using Docker Compose:**
@@ -167,7 +137,7 @@ docker run -d \
 version: '3.8'
 services:
   marchat:
-    image: codecodesxyz/marchat:v0.3.0-beta.2
+    image: codecodesxyz/marchat:v0.3.0-beta.3
     ports:
       - "8080:8080"
     environment:
@@ -254,7 +224,7 @@ export MARCHAT_USERS="admin1,admin2"
 | `MARCHAT_CONFIG_DIR` | No | Auto-detected | Custom config directory |
 | `MARCHAT_TLS_CERT_FILE` | No | - | Path to TLS certificate file |
 | `MARCHAT_TLS_KEY_FILE` | No | - | Path to TLS private key file |
-| `MARCHAT_BAN_GAPS_HISTORY` | No | `false` | Enable ban history gaps (prevents banned users from seeing messages during ban periods) |
+| `MARCHAT_BAN_HISTORY_GAPS` | No | `true` | Enable ban history gaps (prevents banned users from seeing messages during ban periods) |
 
 ### Configuration File
 
@@ -345,8 +315,8 @@ When enabled, the system:
 Set the environment variable to enable this feature:
 
 ```bash
-# Enable ban history gaps
-export MARCHAT_BAN_GAPS_HISTORY=true
+# Enable ban history gaps (enabled by default)
+export MARCHAT_BAN_HISTORY_GAPS=true
 
 # Start server with feature enabled
 ./marchat-server
@@ -359,7 +329,7 @@ export MARCHAT_BAN_GAPS_HISTORY=true
 - User gets unbanned → reconnects and sees only messages sent after their unban
 - Messages sent during ban period are permanently hidden from that user
 
-**With Ban History Gaps Disabled (default):**
+**With Ban History Gaps Disabled:**
 - User gets banned → cannot see new messages
 - User gets unbanned → reconnects and sees all messages (including those sent during ban)
 - Standard behavior maintained for backward compatibility
@@ -415,7 +385,7 @@ CREATE TABLE ban_history (
 | `:unban <username>` | Remove user ban with clean message history restoration | `:unban user1` |
 
 > [!NOTE]
-> **Ban History Gaps**: When `MARCHAT_BAN_GAPS_HISTORY=true` is enabled, banned users cannot see messages sent during their ban periods. This creates a more effective moderation experience.
+> **Ban History Gaps**: When `MARCHAT_BAN_HISTORY_GAPS=true` is enabled (default), banned users cannot see messages sent during their ban periods. This creates a more effective moderation experience.
 
 **Connect as admin:**
 ```bash
@@ -492,8 +462,8 @@ When enabled, E2E encryption provides:
 | **Port already in use** | Change port: `export MARCHAT_PORT=8081` |
 | **Database migration fails** | Ensure proper database file permissions and backup before building from source |
 | **Message history missing after update** | Expected behavior - user message states reset for improved ban/unban experience |
-| **Server fails to start after source build** | Check database permissions and consider manual schema migration |
-| **Ban history gaps not working** | Ensure `MARCHAT_BAN_GAPS_HISTORY=true` is set and database has `ban_history` table |
+| **Server fails to start after source build** | Check database permissions - migrations are automatic |
+| **Ban history gaps not working** | Ensure `MARCHAT_BAN_HISTORY_GAPS=true` is set (default) and database has `ban_history` table |
 
 ### Network Connectivity
 
