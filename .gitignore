@@ -42,5 +42,10 @@ config/*
 # Release binaries
 marchat-*
 
-# Release zips
-v*.zip
+# Plugin binaries and archives
+plugin/examples/*/echo
+plugin/examples/*/*.zip
+plugin/examples/*/*.exe
+plugin/examples/*/*.so
+plugin/examples/*/*.dylib
+*.zip
