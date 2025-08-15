@@ -384,9 +384,6 @@ CREATE TABLE ban_history (
 | `:ban <username>` | Ban user for 24h with improved user experience after unban | `:ban user1` |
 | `:unban <username>` | Remove user ban with clean message history restoration | `:unban user1` |
 
-> [!NOTE]
-> **Ban History Gaps**: When `MARCHAT_BAN_HISTORY_GAPS=true` is enabled (default), banned users cannot see messages sent during their ban periods. This creates a more effective moderation experience.
-
 **Connect as admin:**
 ```bash
 ./marchat-client --username admin1 --admin --admin-key your-key --server ws://localhost:8080/ws
