@@ -132,23 +132,6 @@ docker run -d \
   codecodesxyz/marchat:v0.3.0-beta.4
 ```
 
-**Using Docker Compose:**
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  marchat:
-    image: codecodesxyz/marchat:v0.3.0-beta.4
-    ports:
-      - "8080:8080"
-    environment:
-      - MARCHAT_ADMIN_KEY=${MARCHAT_ADMIN_KEY}
-      - MARCHAT_USERS=${MARCHAT_USERS}
-    volumes:
-      - ./config:/marchat/config
-```
-
 ### Docker/Unraid Deployment Notes
 
 > [!NOTE]
