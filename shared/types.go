@@ -16,6 +16,7 @@ type Message struct {
 	Content   string      `json:"content"`
 	CreatedAt time.Time   `json:"created_at"`
 	Type      MessageType `json:"type,omitempty"`
+	Encrypted bool        `json:"encrypted,omitempty"` // Indicates if content is encrypted
 	// For file messages, Content is empty and File is set
 	File *FileMeta `json:"file,omitempty"`
 }

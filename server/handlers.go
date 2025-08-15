@@ -145,8 +145,8 @@ func CreateSchema(db *sql.DB) {
 }
 
 func InsertMessage(db *sql.DB, msg shared.Message) {
-	result, err := db.Exec(`INSERT INTO messages (sender, content, created_at) VALUES (?, ?, ?)`,
-		msg.Sender, msg.Content, msg.CreatedAt)
+	result, err := db.Exec(`INSERT INTO messages (sender, content, created_at, is_encrypted) VALUES (?, ?, ?, ?)`,
+		msg.Sender, msg.Content, msg.CreatedAt, msg.Encrypted)
 	if err != nil {
 		log.Println("Insert error:", err)
 		return
@@ -199,7 +199,7 @@ func InsertEncryptedMessage(db *sql.DB, encryptedMsg *shared.EncryptedMessage) {
 }
 
 func GetRecentMessages(db *sql.DB) []shared.Message {
-	rows, err := db.Query(`SELECT sender, content, created_at FROM messages ORDER BY created_at ASC LIMIT 50`)
+	rows, err := db.Query(`SELECT sender, content, created_at, is_encrypted FROM messages ORDER BY created_at ASC LIMIT 50`)
 	if err != nil {
 		log.Println("Query error:", err)
 		return nil
@@ -209,8 +209,10 @@ func GetRecentMessages(db *sql.DB) []shared.Message {
 	var messages []shared.Message
 	for rows.Next() {
 		var msg shared.Message
-		err := rows.Scan(&msg.Sender, &msg.Content, &msg.CreatedAt)
+		var isEncrypted bool
+		err := rows.Scan(&msg.Sender, &msg.Content, &msg.CreatedAt, &isEncrypted)
 		if err == nil {
+			msg.Encrypted = isEncrypted
 			messages = append(messages, msg)
 		}
 	}
@@ -299,7 +301,7 @@ func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int, ban
 
 // GetMessagesAfter retrieves messages with ID > lastMessageID
 func GetMessagesAfter(db *sql.DB, lastMessageID int64, limit int) []shared.Message {
-	rows, err := db.Query(`SELECT sender, content, created_at FROM messages WHERE message_id > ? ORDER BY created_at ASC LIMIT ?`, lastMessageID, limit)
+	rows, err := db.Query(`SELECT sender, content, created_at, is_encrypted FROM messages WHERE message_id > ? ORDER BY created_at ASC LIMIT ?`, lastMessageID, limit)
 	if err != nil {
 		log.Println("Query error in GetMessagesAfter:", err)
 		return nil
@@ -309,8 +311,10 @@ func GetMessagesAfter(db *sql.DB, lastMessageID int64, limit int) []shared.Messa
 	var messages []shared.Message
 	for rows.Next() {
 		var msg shared.Message
-		err := rows.Scan(&msg.Sender, &msg.Content, &msg.CreatedAt)
+		var isEncrypted bool
+		err := rows.Scan(&msg.Sender, &msg.Content, &msg.CreatedAt, &isEncrypted)
 		if err == nil {
+			msg.Encrypted = isEncrypted
 			messages = append(messages, msg)
 		}
 	}

@@ -13,6 +13,10 @@
 chat.db
 marchat.db
 
+# Keystore files (contain private keys)
+keystore.dat
+*.keystore
+
 # Logs
 *.log
 

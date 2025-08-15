@@ -86,6 +86,211 @@ var useE2E = flag.Bool("e2e", false, "Enable end-to-end encryption")
 var keystorePassphrase = flag.String("keystore-passphrase", "", "Passphrase for keystore (required for E2E)")
 var skipTLSVerify = flag.Bool("skip-tls-verify", false, "Skip TLS certificate verification (for development)")
 
+// Add these helper functions after the existing imports and before the model struct
+
+// debugEncryptAndSend provides comprehensive logging around encryption
+func debugEncryptAndSend(recipients []string, plaintext string, ws *websocket.Conn, keystore *crypto.KeyStore, username string) error {
+	log.Printf("DEBUG: Starting encryption for %d recipients", len(recipients))
+	log.Printf("DEBUG: Plaintext length: %d", len(plaintext))
+
+	// Check keystore status AND private key access
+	if keystore == nil {
+		log.Printf("ERROR: Keystore is nil")
+		return fmt.Errorf("keystore not initialized")
+	}
+	log.Printf("DEBUG: Keystore loaded: %t", keystore != nil)
+
+	// CRITICAL: Verify private key is accessible (not just public keys)
+	keypair := keystore.GetKeyPair()
+	if keypair == nil {
+		log.Printf("ERROR: Cannot access keypair from keystore")
+		return fmt.Errorf("keypair not accessible - keystore may not be unlocked")
+	}
+	if keypair.PrivateKey == nil {
+		log.Printf("ERROR: Private key is nil - keystore may not be unlocked")
+		return fmt.Errorf("private key is nil - keystore unlock failed")
+	}
+	log.Printf("DEBUG: Private key accessible: %t", keypair.PrivateKey != nil)
+
+	// Log recipient key lookup
+	for _, recipient := range recipients {
+		if pubKey := keystore.GetPublicKey(recipient); pubKey != nil {
+			log.Printf("DEBUG: Found key for %s (length: %d)", recipient, len(pubKey.PublicKey))
+		} else {
+			log.Printf("WARNING: No key found for recipient: %s", recipient)
+			return fmt.Errorf("missing public key for recipient: %s", recipient)
+		}
+	}
+
+	// Perform encryption with error catching
+	conversationID := "global" // For now, use global conversation
+	encryptedMsg, err := keystore.EncryptMessage(username, plaintext, conversationID)
+	if err != nil {
+		log.Printf("ERROR: Encryption failed: %v", err)
+		return fmt.Errorf("encryption failed: %v", err)
+	}
+
+	log.Printf("DEBUG: Raw encryption result - encrypted length: %d", len(encryptedMsg.Encrypted))
+
+	// Guard against empty ciphertext
+	if len(encryptedMsg.Encrypted) == 0 {
+		log.Printf("ERROR: Encryption returned empty ciphertext")
+		return fmt.Errorf("encryption returned empty ciphertext; aborting send")
+	}
+
+	// CRITICAL: Combine nonce + encrypted data and base64 encode for safe JSON transport
+	// Format: nonce + encrypted_data (concatenated, then base64 encoded)
+	combinedData := make([]byte, 0, len(encryptedMsg.Nonce)+len(encryptedMsg.Encrypted))
+	combinedData = append(combinedData, encryptedMsg.Nonce...)
+	combinedData = append(combinedData, encryptedMsg.Encrypted...)
+
+	finalContent := base64.StdEncoding.EncodeToString(combinedData)
+	log.Printf("DEBUG: Base64 encoded nonce+ciphertext - length: %d", len(finalContent))
+
+	// Verify final content is not empty
+	if len(finalContent) == 0 {
+		log.Printf("ERROR: Final content is empty after encoding")
+		return fmt.Errorf("final content is empty after encoding")
+	}
+
+	// Create a regular Message struct for the server (not EncryptedMessage)
+	msg := shared.Message{
+		Content:   finalContent,
+		Sender:    username,
+		CreatedAt: time.Now(),
+		Type:      shared.TextMessage,
+		Encrypted: true, // Mark as encrypted
+	}
+
+	log.Printf("DEBUG: Final message - Content length: %d, Type: %s",
+		len(msg.Content), msg.Type)
+
+	// Send message
+	if err := ws.WriteJSON(msg); err != nil {
+		log.Printf("ERROR: WebSocket write failed: %v", err)
+		return err
+	}
+
+	log.Printf("DEBUG: Message sent successfully")
+	return nil
+}
+
+// validateEncryptionRoundtrip tests encryption primitives
+func validateEncryptionRoundtrip(keystore *crypto.KeyStore, username string) error {
+	testPlaintext := "Hello, encryption test!"
+
+	log.Printf("DEBUG: Testing encryption roundtrip")
+
+	// Create a test public key for validation
+	testKeypair, err := shared.GenerateKeyPair()
+	if err != nil {
+		return fmt.Errorf("failed to generate test keypair: %v", err)
+	}
+
+	// Store test public key
+	testPubKeyInfo := &shared.PublicKeyInfo{
+		Username:  "testuser",
+		PublicKey: testKeypair.PublicKey,
+		CreatedAt: time.Now(),
+		KeyID:     shared.GetKeyID(testKeypair.PublicKey),
+	}
+
+	if err := keystore.StorePublicKey(testPubKeyInfo); err != nil {
+		return fmt.Errorf("failed to store test public key: %v", err)
+	}
+
+	// Encrypt
+	conversationID := "test"
+	encryptedMsg, err := keystore.EncryptMessage(username, testPlaintext, conversationID)
+	if err != nil {
+		return fmt.Errorf("encryption test failed: %v", err)
+	}
+
+	if len(encryptedMsg.Encrypted) == 0 {
+		return fmt.Errorf("encryption test produced empty ciphertext")
+	}
+
+	log.Printf("DEBUG: Encryption test successful - ciphertext length: %d", len(encryptedMsg.Encrypted))
+
+	// Test decryption roundtrip
+	decryptedMsg, err := keystore.DecryptMessage(encryptedMsg, conversationID)
+	if err != nil {
+		return fmt.Errorf("decryption test failed: %v", err)
+	}
+
+	if decryptedMsg.Content != testPlaintext {
+		return fmt.Errorf("decryption roundtrip failed: expected '%s', got '%s'", testPlaintext, decryptedMsg.Content)
+	}
+
+	log.Printf("DEBUG: Encryption roundtrip test successful")
+	return nil
+}
+
+// verifyKeystoreUnlocked verifies keystore is properly unlocked
+func verifyKeystoreUnlocked(keystore *crypto.KeyStore) error {
+	if keystore == nil {
+		return fmt.Errorf("keystore is nil")
+	}
+
+	// Try to access private key material
+	keypair := keystore.GetKeyPair()
+	if keypair == nil {
+		return fmt.Errorf("cannot access keypair")
+	}
+
+	if keypair.PrivateKey == nil {
+		return fmt.Errorf("private key is nil")
+	}
+
+	log.Printf("DEBUG: Keystore properly unlocked")
+	return nil
+}
+
+// validateRecipientsHaveKeys ensures all recipients have public keys
+func validateRecipientsHaveKeys(keystore *crypto.KeyStore, recipients []string) error {
+	missingKeys := []string{}
+
+	for _, recipient := range recipients {
+		if keystore.GetPublicKey(recipient) == nil {
+			missingKeys = append(missingKeys, recipient)
+		}
+	}
+
+	if len(missingKeys) > 0 {
+		return fmt.Errorf("missing keys for recipients: %s", strings.Join(missingKeys, ", "))
+	}
+
+	return nil
+}
+
+// debugWebSocketWrite logs what's being sent over the wire
+func debugWebSocketWrite(ws *websocket.Conn, msg interface{}) error {
+	// Marshal to JSON to see what's being sent
+	jsonData, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("ERROR: JSON marshal failed: %v", err)
+		return err
+	}
+
+	// Log without exposing sensitive content
+	log.Printf("DEBUG: Sending WebSocket message - length: %d bytes", len(jsonData))
+
+	// Check if content field is present and non-empty
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(jsonData, &parsed); err == nil {
+		if content, exists := parsed["content"]; exists {
+			if contentStr, ok := content.(string); ok {
+				log.Printf("DEBUG: Message content length: %d", len(contentStr))
+				if len(contentStr) == 0 {
+					log.Printf("WARNING: Sending message with empty content!")
+				}
+			}
+		}
+	}
+
+	return ws.WriteJSON(msg)
+}
+
 type model struct {
 	cfg       config.Config
 	textarea  textarea.Model
@@ -372,29 +577,48 @@ func (m *model) connectWebSocket(serverURL string) error {
 
 				log.Printf("Received message: %s", string(raw))
 
-				// Try to unmarshal as encrypted message first (if E2E is enabled)
-				if m.useE2E {
-					var encryptedMsg shared.EncryptedMessage
-					if err := json.Unmarshal(raw, &encryptedMsg); err == nil && encryptedMsg.IsEncrypted {
-						// Try to decrypt the message
-						conversationID := "global" // Same as sending
-						decryptedMsg, err := m.keystore.DecryptMessage(&encryptedMsg, conversationID)
-						if err != nil {
-							log.Printf("Failed to decrypt message: %v", err)
-							// Send as encrypted message with error
-							encryptedMsg.Content = "[ENCRYPTED - DECRYPTION FAILED]"
-							m.msgChan <- encryptedMsg
-							continue
-						}
-						m.msgChan <- *decryptedMsg
-						continue
-					}
-				}
-
-				// Try to unmarshal as shared.Message
+				// Try to unmarshal as shared.Message first
 				var msg shared.Message
 				if err := json.Unmarshal(raw, &msg); err == nil {
 					if msg.Sender != "" {
+						// Check if this is an encrypted message
+						if m.useE2E && msg.Encrypted && msg.Content != "" {
+							// Try to decode base64 encrypted content (nonce + encrypted_data)
+							if decoded, err := base64.StdEncoding.DecodeString(msg.Content); err == nil && len(decoded) > 12 {
+								// This might be encrypted content, try to decrypt it
+								log.Printf("DEBUG: Detected potential encrypted content, attempting decryption")
+
+								// Extract nonce (first 12 bytes) and encrypted data (rest)
+								nonce := decoded[:12]
+								encryptedData := decoded[12:]
+
+								// Create an EncryptedMessage struct for decryption
+								encryptedMsg := shared.EncryptedMessage{
+									Sender:      msg.Sender,
+									CreatedAt:   msg.CreatedAt,
+									Encrypted:   encryptedData,
+									Nonce:       nonce,
+									IsEncrypted: true,
+									Type:        msg.Type,
+								}
+
+								conversationID := "global" // Same as sending
+								decryptedMsg, err := m.keystore.DecryptMessage(&encryptedMsg, conversationID)
+								if err != nil {
+									log.Printf("DEBUG: Failed to decrypt message: %v", err)
+									// Keep original message but mark as failed decryption
+									msg.Content = "[ENCRYPTED - DECRYPTION FAILED]"
+									m.msgChan <- msg
+									continue
+								}
+
+								log.Printf("DEBUG: Successfully decrypted message")
+								m.msgChan <- *decryptedMsg
+								continue
+							}
+						}
+
+						// Regular message (not encrypted or decryption not needed)
 						m.msgChan <- msg
 						continue
 					}
@@ -763,27 +987,44 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.sending = true
 				if m.conn != nil {
 					if m.useE2E {
-						// Use E2E encryption for messages
-						// For now, use a simple conversation ID (can be enhanced later)
-						conversationID := "global"
+						// Use E2E encryption for messages with comprehensive debugging
+						log.Printf("DEBUG: Attempting to send encrypted message: '%s'", text)
 
-						encryptedMsg, err := m.keystore.EncryptMessage(m.cfg.Username, text, conversationID)
-						if err != nil {
-							m.banner = fmt.Sprintf("❌ E2E encryption failed: %v", err)
+						// Validate keystore is unlocked
+						if err := verifyKeystoreUnlocked(m.keystore); err != nil {
+							m.banner = fmt.Sprintf("❌ Keystore not unlocked: %v", err)
 							m.sending = false
 							m.textarea.SetValue("")
 							return m, nil
 						}
 
-						if err := m.conn.WriteJSON(encryptedMsg); err != nil {
-							m.banner = "❌ Failed to send (connection lost)"
-							m.sending = false
-							return m, m.listenWebSocket()
+						// For now, use global conversation and all users as recipients
+						recipients := m.users
+						if len(recipients) == 0 {
+							recipients = []string{m.cfg.Username} // Fallback to self
 						}
+
+						// Validate all recipients have keys
+						if err := validateRecipientsHaveKeys(m.keystore, recipients); err != nil {
+							m.banner = fmt.Sprintf("❌ Missing keys: %v", err)
+							m.sending = false
+							m.textarea.SetValue("")
+							return m, nil
+						}
+
+						// Use the debug encryption function
+						if err := debugEncryptAndSend(recipients, text, m.conn, m.keystore, m.cfg.Username); err != nil {
+							m.banner = fmt.Sprintf("❌ Encryption failed: %v", err)
+							m.sending = false
+							m.textarea.SetValue("")
+							return m, nil
+						}
+
+						log.Printf("DEBUG: Encrypted message sent successfully")
 					} else {
 						// Send plain text message
 						msg := shared.Message{Sender: m.cfg.Username, Content: text}
-						if err := m.conn.WriteJSON(msg); err != nil {
+						if err := debugWebSocketWrite(m.conn, msg); err != nil {
 							m.banner = "❌ Failed to send (connection lost)"
 							m.sending = false
 							return m, m.listenWebSocket()
@@ -996,7 +1237,21 @@ func main() {
 			fmt.Printf("❌ Error initializing keystore: %v\n", err)
 			os.Exit(1)
 		}
+
+		// Verify keystore is properly unlocked
+		if err := verifyKeystoreUnlocked(keystore); err != nil {
+			fmt.Printf("❌ Keystore unlock verification failed: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Test encryption roundtrip
+		if err := validateEncryptionRoundtrip(keystore, cfg.Username); err != nil {
+			fmt.Printf("❌ Encryption validation failed: %v\n", err)
+			os.Exit(1)
+		}
+
 		fmt.Printf("🔐 E2E encryption enabled with keystore: %s\n", keystorePath)
+		fmt.Printf("✅ Encryption validation passed\n")
 	}
 
 	m := &model{
