@@ -71,19 +71,6 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 ## Database Schema
 
-> [!NOTE]
-> **Automatic Migration**: Starting with v0.3.0-beta.1, all database schema changes are applied automatically during server startup. No manual migration steps are required.
-
-### Schema History
-
-- **v0.3.0-beta.1**: Introduced `user_message_state` table and `message_id` column for per-user message tracking
-- **v0.3.0-beta.3**: Added `ban_history` table for ban history gaps feature
-- **v0.3.0-beta.4**: Enhanced plugin system with remote registry support and improved E2E encryption integration
-- **v0.3.0-beta.6**: Fixed E2E encryption 'conversation: test' session key issue - prevents startup failures
-- **v0.3.0-beta.5**: Complete E2E encryption overhaul and stabilization - fixed blank message issue, improved error handling, and enhanced debugging
-
-### Current Schema
-
 The database includes these key tables:
 - **messages**: Core message storage with `message_id` for tracking
 - **user_message_state**: Per-user message history state
@@ -133,21 +120,6 @@ docker run -d \
   -e MARCHAT_USERS=admin1,admin2 \
   codecodesxyz/marchat:v0.3.0-beta.6
 ```
-
-### Docker/Unraid Deployment Notes
-
-> [!NOTE]
-> **SQLite Database Permissions**: SQLite requires write permissions on both the database file and its directory. Incorrect permissions may cause runtime errors on Docker/Unraid setups.
->
-> **Automatic Fix**: The Docker image now automatically creates the complete directory structure (`/marchat/server/`) with all necessary subdirectories (config, db, data, plugins) and sets proper ownership at startup. This resolves permission issues that previously required manual intervention.
->
-> **Manual Fix** (if needed): Create the required directories and ensure proper ownership:
-> ```bash
-> mkdir -p ./config/db
-> chown -R 1000:1000 ./config/db
-> chmod 775 ./config/db
-> ```
-> The container user (UID 1000) must match the ownership of these folders/files.
 
 ### Source Installation
 
@@ -364,27 +336,6 @@ export MARCHAT_BAN_HISTORY_GAPS=true
 **With Ban History Gaps Disabled:**
 - User gets banned → cannot see new messages
 - User gets unbanned → reconnects and sees all messages (including those sent during ban)
-- Standard behavior maintained for backward compatibility
-
-### Performance Considerations
-
-- **Minimal impact** on users who have never been banned
-- **Database queries** only run for users with ban history
-- **Automatic cleanup** of expired ban records
-- **Indexed queries** for efficient ban period lookups
-
-### Database Schema
-
-The feature adds a new `ban_history` table:
-```sql
-CREATE TABLE ban_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL,
-    banned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    unbanned_at DATETIME,
-    banned_by TEXT NOT NULL
-);
-```
 
 ## Usage
 
@@ -433,15 +384,6 @@ CREATE TABLE ban_history (
 ./marchat-client --e2e --keystore-passphrase your-passphrase --username alice --server ws://localhost:8080/ws
 ```
 
-**E2E encryption is now fully integrated and stabilized (v0.3.0-beta.6):**
-- **Automatic encryption**: All outgoing messages are encrypted when `--e2e` is enabled
-- **Automatic decryption**: Incoming encrypted messages are automatically decrypted
-- **Session keys**: Each conversation uses unique session keys for isolation
-- **Graceful fallback**: Failed decryption attempts show clear error messages instead of blank messages
-- **Enhanced debugging**: Comprehensive logging for troubleshooting encryption issues
-- **Mixed mode support**: E2E and non-E2E clients can coexist seamlessly
-- **Improved error handling**: Clear error messages for missing keys, encryption failures, and keystore issues
-
 ## Security
 
 ### Critical Security Warnings
@@ -485,21 +427,6 @@ When enabled, E2E encryption provides:
 - **Forward Secrecy**: Unique session keys per conversation
 - **Server Privacy**: Server cannot read encrypted messages
 - **Key Management**: Local encrypted keystore with passphrase protection
-
-#### v0.3.0-beta.6 Improvements
-- **Fixed session key issue**: Resolved "conversation: test" error that prevented E2E startup
-- **Non-blocking validation**: Encryption validation no longer blocks client startup
-- **Improved error handling**: Better error messages for E2E encryption issues
-
-#### v0.3.0-beta.5 Improvements
-
-The latest release includes major E2E encryption improvements:
-- **Fixed blank message issue**: Outgoing encrypted messages now display properly
-- **Enhanced error handling**: Clear error messages for encryption failures
-- **Improved debugging**: Comprehensive logging for troubleshooting
-- **Better key management**: Improved session key derivation and storage
-- **Mixed mode support**: Seamless coexistence of E2E and non-E2E clients
-- **Graceful fallbacks**: Messages still send even if encryption fails
 
 ## Troubleshooting
 
