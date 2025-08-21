@@ -80,17 +80,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.3.0-beta.6:**
+**Download pre-built binaries for v0.4.0-beta.1:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.6/marchat-v0.3.0-beta.6-linux-amd64.zip
-unzip marchat-v0.3.0-beta.6-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.4.0-beta.1/marchat-v0.4.0-beta.1-linux-amd64.zip
+unzip marchat-v0.4.0-beta.1-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.6/marchat-v0.3.0-beta.6-darwin-amd64.zip
-unzip marchat-v0.3.0-beta.6-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.4.0-beta.1/marchat-v0.4.0-beta.1-darwin-amd64.zip
+unzip marchat-v0.4.0-beta.1-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -99,8 +99,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.3.0-beta.6/marchat-v0.3.0-beta.6-android-arm64.zip
-unzip marchat-v0.3.0-beta.6-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.4.0-beta.1/marchat-v0.4.0-beta.1-android-arm64.zip
+unzip marchat-v0.4.0-beta.1-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -111,14 +111,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.3.0-beta.6
+docker pull codecodesxyz/marchat:v0.4.0-beta.1
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.3.0-beta.6
+  codecodesxyz/marchat:v0.4.0-beta.1
 ```
 
 ### Source Installation
