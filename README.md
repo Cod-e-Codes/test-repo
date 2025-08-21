@@ -492,7 +492,9 @@ go test ./...
 Special thanks to these wonderful communities and bloggers for featuring and supporting **marchat**:
 
 - [Self-Host Weekly](https://selfh.st/weekly/2025-07-25/) by Ethan Sholly  
-- [mtkblogs.com](https://mtkblogs.com/2025/07/23/marchat-a-go-powered-terminal-chat-app-for-the-modern-user/) by Reggie
+- [mtkblogs.com](https://mtkblogs.com/2025/07/23/marchat-a-go-powered-terminal-chat-app-for-the-modern-user/) by Reggie  
+
+For a full list of contributors, see [CONTRIBUTORS.md](CONTRIBUTORS.md).
 
 ---
 
