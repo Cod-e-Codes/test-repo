@@ -41,10 +41,16 @@ func NewPluginManager(pluginDir, dataDir, registryURL string) *PluginManager {
 	}
 }
 
-// InstallPlugin installs a plugin from the store
+// InstallPlugin installs a plugin from the store using the current platform
 func (pm *PluginManager) InstallPlugin(name string) error {
+	return pm.InstallPluginWithPlatform(name, "", "")
+}
+
+// InstallPluginWithPlatform installs a plugin selecting a specific os/arch if provided.
+// When osName or arch are empty, the current runtime platform is used for selection.
+func (pm *PluginManager) InstallPluginWithPlatform(name, osName, arch string) error {
 	// Get plugin from store
-	plugin := pm.store.GetPlugin(name)
+	plugin := pm.store.ResolvePlugin(name, osName, arch)
 	if plugin == nil {
 		return fmt.Errorf("plugin %s not found in store", name)
 	}

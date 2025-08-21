@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -170,6 +172,14 @@ func (h *PluginHost) StartPlugin(name string) error {
 
 	// Start the process
 	if err := cmd.Start(); err != nil {
+		// Provide clearer error on platform mismatch
+		errMsg := strings.ToLower(err.Error())
+		expected := fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
+		if strings.Contains(errMsg, "exec format error") ||
+			strings.Contains(errMsg, "not a valid win32 application") ||
+			strings.Contains(errMsg, "wrong architecture") {
+			return fmt.Errorf("plugin %s binary is not compatible with this host (%s). Install the matching build for your platform or use :install %s --os %s --arch %s. underlying error: %v", name, expected, name, runtime.GOOS, runtime.GOARCH, err)
+		}
 		return fmt.Errorf("failed to start plugin %s: %w", name, err)
 	}
 

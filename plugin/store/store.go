@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -20,20 +21,24 @@ import (
 
 // StorePlugin represents a plugin in the store
 type StorePlugin struct {
-	Name        string              `json:"name"`
-	Version     string              `json:"version"`
-	Description string              `json:"description"`
-	Author      string              `json:"author"`
-	License     string              `json:"license"`
-	Repository  string              `json:"repository,omitempty"`
-	Homepage    string              `json:"homepage,omitempty"`
-	DownloadURL string              `json:"download_url"`
-	Checksum    string              `json:"checksum,omitempty"`
-	Category    string              `json:"category"`
-	Tags        []string            `json:"tags"`
-	Installed   bool                `json:"-"`
-	Enabled     bool                `json:"-"`
-	Commands    []sdk.PluginCommand `json:"commands"`
+	Name        string   `json:"name"`
+	Version     string   `json:"version"`
+	Description string   `json:"description"`
+	Author      string   `json:"author"`
+	License     string   `json:"license"`
+	Repository  string   `json:"repository,omitempty"`
+	Homepage    string   `json:"homepage,omitempty"`
+	DownloadURL string   `json:"download_url"`
+	Checksum    string   `json:"checksum,omitempty"`
+	Category    string   `json:"category"`
+	Tags        []string `json:"tags"`
+	// Platform-specific distribution metadata (optional for backward compatibility)
+	GoOS       string              `json:"goos,omitempty"`
+	GoArch     string              `json:"goarch,omitempty"`
+	MinVersion string              `json:"min_version,omitempty"`
+	Installed  bool                `json:"-"`
+	Enabled    bool                `json:"-"`
+	Commands   []sdk.PluginCommand `json:"commands"`
 }
 
 // Store represents the plugin store
@@ -131,6 +136,69 @@ func (s *Store) LoadFromCache() error {
 // GetPlugins returns all plugins
 func (s *Store) GetPlugins() []StorePlugin {
 	return s.plugins
+}
+
+// ResolvePlugin selects the best matching plugin variant by name and platform.
+// If osName or arch are empty, the current runtime platform is used.
+// Preference order:
+// 1) Exact goos+goarch match
+// 2) Exact goos match (any arch)
+// 3) First entry with matching name
+func (s *Store) ResolvePlugin(name, osName, arch string) *StorePlugin {
+	// If registry provides a single entry per name (old format), return that.
+	var candidates []StorePlugin
+	for _, p := range s.plugins {
+		if p.Name == name {
+			candidates = append(candidates, p)
+		}
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	if osName == "" || arch == "" {
+		// Use runtime defaults when not specified
+		osName = runtime.GOOS
+		arch = runtime.GOARCH
+	}
+
+	// 1) exact goos+goarch
+	for _, p := range candidates {
+		if p.GoOS != "" && p.GoArch != "" && strings.EqualFold(p.GoOS, osName) && strings.EqualFold(p.GoArch, arch) {
+			return &p
+		}
+	}
+	// 2) exact goos only
+	for _, p := range candidates {
+		if p.GoOS != "" && strings.EqualFold(p.GoOS, osName) {
+			return &p
+		}
+	}
+	// 3) fallback to first
+	return &candidates[0]
+}
+
+// GetPluginsPreferredForPlatform returns one preferred variant per plugin name,
+// defaulting to the current runtime platform when multiple variants exist.
+func (s *Store) GetPluginsPreferredForPlatform(osName, arch string) []StorePlugin {
+	if osName == "" || arch == "" {
+		osName = runtime.GOOS
+		arch = runtime.GOARCH
+	}
+
+	seen := make(map[string]bool)
+	var result []StorePlugin
+	for _, p := range s.plugins {
+		if seen[p.Name] {
+			continue
+		}
+		resolved := s.ResolvePlugin(p.Name, osName, arch)
+		if resolved != nil {
+			result = append(result, *resolved)
+			seen[p.Name] = true
+		}
+	}
+	return result
 }
 
 // GetPlugin returns a specific plugin
@@ -263,7 +331,7 @@ type StoreUI struct {
 func NewStoreUI(store *Store) *StoreUI {
 	// Create list items from plugins
 	var items []list.Item
-	for _, plugin := range store.GetPlugins() {
+	for _, plugin := range store.GetPluginsPreferredForPlatform("", "") {
 		items = append(items, pluginItem{plugin})
 	}
 
@@ -306,7 +374,15 @@ func (i pluginItem) Title() string {
 }
 
 func (i pluginItem) Description() string {
-	return i.plugin.Description
+	platform := i.plugin.GoOS
+	if platform == "" {
+		platform = "any"
+	}
+	arch := i.plugin.GoArch
+	if arch == "" {
+		arch = "any"
+	}
+	return fmt.Sprintf("%s [%s/%s]", i.plugin.Description, platform, arch)
 }
 
 func (i pluginItem) FilterValue() string {
@@ -454,7 +530,7 @@ func (s *StoreUI) installPlugin(plugin StorePlugin) tea.Cmd {
 // updateList updates the list with current plugins
 func (s *StoreUI) updateList() {
 	var items []list.Item
-	for _, plugin := range s.store.GetPlugins() {
+	for _, plugin := range s.store.GetPluginsPreferredForPlatform("", "") {
 		items = append(items, pluginItem{plugin})
 	}
 	s.list.SetItems(items)
@@ -466,8 +542,18 @@ func (s *StoreUI) filterList() {
 	filtered := s.store.FilterPlugins("", searchTerm, nil)
 
 	var items []list.Item
-	for _, plugin := range filtered {
-		items = append(items, pluginItem{plugin})
+	// De-duplicate by name, preferring the current platform
+	preferred := make(map[string]StorePlugin)
+	for _, p := range filtered {
+		if _, ok := preferred[p.Name]; ok {
+			continue
+		}
+		if resolved := s.store.ResolvePlugin(p.Name, "", ""); resolved != nil {
+			preferred[p.Name] = *resolved
+		}
+	}
+	for _, p := range preferred {
+		items = append(items, pluginItem{p})
 	}
 	s.list.SetItems(items)
 }

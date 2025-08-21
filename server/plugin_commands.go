@@ -78,12 +78,29 @@ func (h *PluginCommandHandler) handlePluginSubcommand(args []string, isAdmin boo
 // handleInstall handles plugin installation
 func (h *PluginCommandHandler) handleInstall(args []string) (string, error) {
 	if len(args) == 0 {
-		return "Usage: :install <plugin-name>", nil
+		return "Usage: :install <plugin-name> [--os <goos>] [--arch <goarch>]", nil
 	}
 
 	pluginName := args[0]
+	var osName, arch string
 
-	if err := h.manager.InstallPlugin(pluginName); err != nil {
+	// Simple flag parsing for --os and --arch
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "--os":
+			if i+1 < len(args) {
+				osName = args[i+1]
+				i++
+			}
+		case "--arch":
+			if i+1 < len(args) {
+				arch = args[i+1]
+				i++
+			}
+		}
+	}
+
+	if err := h.manager.InstallPluginWithPlatform(pluginName, osName, arch); err != nil {
 		return fmt.Sprintf("Failed to install plugin %s: %v", pluginName, err), nil
 	}
 
