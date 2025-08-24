@@ -61,7 +61,6 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 | **Admin Controls** | User management, bans, and database operations with improved ban/unban experience |
 | **Themes** | Choose from patriot, retro, or modern themes |
 | **Docker Support** | Containerized deployment with security features |
-| **Enhanced User Experience** | Improved message history persistence after moderation actions |
 
 | Cross-Platform File Sharing          | Theme Switching                         |
 |------------------------------------|---------------------------------------|
