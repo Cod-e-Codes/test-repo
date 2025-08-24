@@ -90,47 +90,33 @@ var skipTLSVerify = flag.Bool("skip-tls-verify", false, "Skip TLS certificate ve
 
 // debugEncryptAndSend provides comprehensive logging around encryption
 func debugEncryptAndSend(recipients []string, plaintext string, ws *websocket.Conn, keystore *crypto.KeyStore, username string) error {
-	log.Printf("DEBUG: Starting encryption for %d recipients", len(recipients))
+	log.Printf("DEBUG: Starting global encryption for %d recipients", len(recipients))
 	log.Printf("DEBUG: Plaintext length: %d", len(plaintext))
 
-	// Check keystore status AND private key access
+	// Check keystore status
 	if keystore == nil {
 		log.Printf("ERROR: Keystore is nil")
 		return fmt.Errorf("keystore not initialized")
 	}
 	log.Printf("DEBUG: Keystore loaded: %t", keystore != nil)
 
-	// CRITICAL: Verify private key is accessible (not just public keys)
-	keypair := keystore.GetKeyPair()
-	if keypair == nil {
-		log.Printf("ERROR: Cannot access keypair from keystore")
-		return fmt.Errorf("keypair not accessible - keystore may not be unlocked")
+	// Verify global key is available
+	globalKey := keystore.GetSessionKey("global")
+	if globalKey == nil {
+		log.Printf("ERROR: Global key not found")
+		return fmt.Errorf("global key not available - global E2E encryption not initialized")
 	}
-	if keypair.PrivateKey == nil {
-		log.Printf("ERROR: Private key is nil - keystore may not be unlocked")
-		return fmt.Errorf("private key is nil - keystore unlock failed")
-	}
-	log.Printf("DEBUG: Private key accessible: %t", keypair.PrivateKey != nil)
+	log.Printf("DEBUG: Global key available (ID: %s)", globalKey.KeyID)
 
-	// Log recipient key lookup
-	for _, recipient := range recipients {
-		if pubKey := keystore.GetPublicKey(recipient); pubKey != nil {
-			log.Printf("DEBUG: Found key for %s (length: %d)", recipient, len(pubKey.PublicKey))
-		} else {
-			log.Printf("WARNING: No key found for recipient: %s", recipient)
-			return fmt.Errorf("missing public key for recipient: %s", recipient)
-		}
-	}
-
-	// Perform encryption with error catching
-	conversationID := "global" // For now, use global conversation
+	// Perform encryption using global key
+	conversationID := "global"
 	encryptedMsg, err := keystore.EncryptMessage(username, plaintext, conversationID)
 	if err != nil {
-		log.Printf("ERROR: Encryption failed: %v", err)
-		return fmt.Errorf("encryption failed: %v", err)
+		log.Printf("ERROR: Global encryption failed: %v", err)
+		return fmt.Errorf("global encryption failed: %v", err)
 	}
 
-	log.Printf("DEBUG: Raw encryption result - encrypted length: %d", len(encryptedMsg.Encrypted))
+	log.Printf("DEBUG: Global encryption successful - encrypted length: %d", len(encryptedMsg.Encrypted))
 
 	// Guard against empty ciphertext
 	if len(encryptedMsg.Encrypted) == 0 {
@@ -138,8 +124,7 @@ func debugEncryptAndSend(recipients []string, plaintext string, ws *websocket.Co
 		return fmt.Errorf("encryption returned empty ciphertext; aborting send")
 	}
 
-	// CRITICAL: Combine nonce + encrypted data and base64 encode for safe JSON transport
-	// Format: nonce + encrypted_data (concatenated, then base64 encoded)
+	// Combine nonce + encrypted data and base64 encode for safe JSON transport
 	combinedData := make([]byte, 0, len(encryptedMsg.Nonce)+len(encryptedMsg.Encrypted))
 	combinedData = append(combinedData, encryptedMsg.Nonce...)
 	combinedData = append(combinedData, encryptedMsg.Encrypted...)
@@ -153,7 +138,7 @@ func debugEncryptAndSend(recipients []string, plaintext string, ws *websocket.Co
 		return fmt.Errorf("final content is empty after encoding")
 	}
 
-	// Create a regular Message struct for the server (not EncryptedMessage)
+	// Create a regular Message struct for the server
 	msg := shared.Message{
 		Content:   finalContent,
 		Sender:    username,
@@ -171,74 +156,50 @@ func debugEncryptAndSend(recipients []string, plaintext string, ws *websocket.Co
 		return err
 	}
 
-	log.Printf("DEBUG: Message sent successfully")
+	log.Printf("DEBUG: Global encrypted message sent successfully")
 	return nil
 }
 
-// validateEncryptionRoundtrip tests encryption primitives
-// FIXED: This function now properly creates and stores the test session key
-// to prevent "no session key for conversation: test" errors during E2E startup
+// validateEncryptionRoundtrip tests encryption primitives using global key
 func validateEncryptionRoundtrip(keystore *crypto.KeyStore, username string) error {
-	testPlaintext := "Hello, encryption test!"
+	testPlaintext := "Hello, global encryption test!"
 
-	log.Printf("DEBUG: Testing encryption roundtrip")
+	log.Printf("DEBUG: Testing global encryption roundtrip")
 
-	// Create a test public key for validation
-	testKeypair, err := shared.GenerateKeyPair()
-	if err != nil {
-		return fmt.Errorf("failed to generate test keypair: %v", err)
+	// Test global conversation encryption
+	conversationID := "global"
+
+	// Verify global key exists
+	globalKey := keystore.GetSessionKey(conversationID)
+	if globalKey == nil {
+		return fmt.Errorf("global key not found - global E2E encryption not available")
 	}
 
-	// Store test public key
-	testPubKeyInfo := &shared.PublicKeyInfo{
-		Username:  "testuser",
-		PublicKey: testKeypair.PublicKey,
-		CreatedAt: time.Now(),
-		KeyID:     shared.GetKeyID(testKeypair.PublicKey),
-	}
+	log.Printf("DEBUG: Global key found (ID: %s)", globalKey.KeyID)
 
-	if err := keystore.StorePublicKey(testPubKeyInfo); err != nil {
-		return fmt.Errorf("failed to store test public key: %v", err)
-	}
-
-	// FIXED: Create the session key for "test" conversation before attempting encryption
-	// This prevents the "no session key for conversation: test" error
-	conversationID := "test"
-	_, err = keystore.DeriveSessionKey("testuser", conversationID)
-	if err != nil {
-		return fmt.Errorf("failed to derive test session key: %v", err)
-	}
-
-	// Verify session key was stored
-	if keystore.GetSessionKey(conversationID) == nil {
-		return fmt.Errorf("test session key was not properly stored")
-	}
-
-	log.Printf("DEBUG: Test session key created and stored for conversation: %s", conversationID)
-
-	// Now encrypt using the properly stored session key
+	// Test encryption using global key
 	encryptedMsg, err := keystore.EncryptMessage(username, testPlaintext, conversationID)
 	if err != nil {
-		return fmt.Errorf("encryption test failed: %v", err)
+		return fmt.Errorf("global encryption test failed: %v", err)
 	}
 
 	if len(encryptedMsg.Encrypted) == 0 {
-		return fmt.Errorf("encryption test produced empty ciphertext")
+		return fmt.Errorf("global encryption test produced empty ciphertext")
 	}
 
-	log.Printf("DEBUG: Encryption test successful - ciphertext length: %d", len(encryptedMsg.Encrypted))
+	log.Printf("DEBUG: Global encryption test successful - ciphertext length: %d", len(encryptedMsg.Encrypted))
 
 	// Test decryption roundtrip
 	decryptedMsg, err := keystore.DecryptMessage(encryptedMsg, conversationID)
 	if err != nil {
-		return fmt.Errorf("decryption test failed: %v", err)
+		return fmt.Errorf("global decryption test failed: %v", err)
 	}
 
 	if decryptedMsg.Content != testPlaintext {
-		return fmt.Errorf("decryption roundtrip failed: expected '%s', got '%s'", testPlaintext, decryptedMsg.Content)
+		return fmt.Errorf("global decryption roundtrip failed: expected '%s', got '%s'", testPlaintext, decryptedMsg.Content)
 	}
 
-	log.Printf("DEBUG: Encryption roundtrip test successful")
+	log.Printf("DEBUG: Global encryption roundtrip test successful")
 	return nil
 }
 
@@ -259,23 +220,6 @@ func verifyKeystoreUnlocked(keystore *crypto.KeyStore) error {
 	}
 
 	log.Printf("DEBUG: Keystore properly unlocked")
-	return nil
-}
-
-// validateRecipientsHaveKeys ensures all recipients have public keys
-func validateRecipientsHaveKeys(keystore *crypto.KeyStore, recipients []string) error {
-	missingKeys := []string{}
-
-	for _, recipient := range recipients {
-		if keystore.GetPublicKey(recipient) == nil {
-			missingKeys = append(missingKeys, recipient)
-		}
-	}
-
-	if len(missingKeys) > 0 {
-		return fmt.Errorf("missing keys for recipients: %s", strings.Join(missingKeys, ", "))
-	}
-
 	return nil
 }
 
@@ -1003,8 +947,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.sending = true
 				if m.conn != nil {
 					if m.useE2E {
-						// Use E2E encryption for messages with comprehensive debugging
-						log.Printf("DEBUG: Attempting to send encrypted message: '%s'", text)
+						// Use E2E encryption for global chat
+						log.Printf("DEBUG: Attempting to send global encrypted message: '%s'", text)
 
 						// Validate keystore is unlocked
 						if err := verifyKeystoreUnlocked(m.keystore); err != nil {
@@ -1014,29 +958,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							return m, nil
 						}
 
-						// For now, use global conversation and all users as recipients
+						// For global chat, we don't need individual recipient keys
+						// All users in the chat will receive the message encrypted with the global key
 						recipients := m.users
 						if len(recipients) == 0 {
 							recipients = []string{m.cfg.Username} // Fallback to self
 						}
 
-						// Validate all recipients have keys
-						if err := validateRecipientsHaveKeys(m.keystore, recipients); err != nil {
-							m.banner = fmt.Sprintf("❌ Missing keys: %v", err)
-							m.sending = false
-							m.textarea.SetValue("")
-							return m, nil
-						}
-
-						// Use the debug encryption function
+						// Use the debug encryption function for global chat
 						if err := debugEncryptAndSend(recipients, text, m.conn, m.keystore, m.cfg.Username); err != nil {
-							m.banner = fmt.Sprintf("❌ Encryption failed: %v", err)
+							m.banner = fmt.Sprintf("❌ Global encryption failed: %v", err)
 							m.sending = false
 							m.textarea.SetValue("")
 							return m, nil
 						}
 
-						log.Printf("DEBUG: Encrypted message sent successfully")
+						log.Printf("DEBUG: Global encrypted message sent successfully")
 					} else {
 						// Send plain text message
 						msg := shared.Message{Sender: m.cfg.Username, Content: text}
@@ -1249,6 +1186,13 @@ func main() {
 		keystorePath := filepath.Join(filepath.Dir(*configPath), "keystore.dat")
 		keystore = crypto.NewKeyStore(keystorePath)
 
+		// Check environment variable status
+		if envKey := os.Getenv("MARCHAT_GLOBAL_E2E_KEY"); envKey != "" {
+			fmt.Printf("🔐 Using global E2E key from environment variable\n")
+		} else {
+			fmt.Printf("💡 No MARCHAT_GLOBAL_E2E_KEY environment variable found\n")
+		}
+
 		// Initialize or load keystore
 		if err := keystore.Initialize(*keystorePassphrase); err != nil {
 			fmt.Printf("❌ Error initializing keystore: %v\n", err)
@@ -1258,6 +1202,14 @@ func main() {
 		// Verify keystore is properly unlocked
 		if err := verifyKeystoreUnlocked(keystore); err != nil {
 			fmt.Printf("❌ Keystore unlock verification failed: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Display global key info
+		if globalKey := keystore.GetGlobalKey(); globalKey != nil {
+			fmt.Printf("🌐 Global chat encryption: ENABLED (Key ID: %s)\n", globalKey.KeyID)
+		} else {
+			fmt.Printf("❌ Global key not available\n")
 			os.Exit(1)
 		}
 
