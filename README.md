@@ -45,7 +45,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 **Key Benefits:**
 - **Self-hosted**: No external services required
 - **Cross-platform**: Runs on Linux, macOS, and Windows
-- **Secure**: Optional E2E encryption with X25519/ChaCha20-Poly1305
+- **Secure**: Optional E2E encryption with X25519/ChaCha20-Poly1305, including global encryption for public channels
 - **Extensible**: Plugin ecosystem for custom functionality
 - **Lightweight**: Minimal resource usage, perfect for servers
 
@@ -56,7 +56,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 | **Terminal UI** | Beautiful TUI built with Bubble Tea |
 | **Real-time Chat** | Fast WebSocket-based messaging with a lightweight SQLite backend |
 | **Plugin System** | Install and manage plugins via remote registry with `:store` and `:plugin` commands |
-| **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305, fully integrated message flow |
+| **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305, global encryption for public channels, individual encryption for direct messages |
 | **File Sharing** | Send files up to 1MB with `:sendfile` |
 | **Admin Controls** | User management, bans, and database operations with improved ban/unban experience |
 | **Themes** | Choose from patriot, retro, or modern themes |
@@ -185,6 +185,7 @@ export MARCHAT_USERS="admin1,admin2"
 | `MARCHAT_TLS_KEY_FILE` | No | - | Path to TLS private key file |
 | `MARCHAT_BAN_HISTORY_GAPS` | No | `true` | Enable ban history gaps (prevents banned users from seeing messages during ban periods) |
 | `MARCHAT_PLUGIN_REGISTRY_URL` | No | GitHub registry | URL for plugin registry (default: https://raw.githubusercontent.com/Cod-e-Codes/marchat-plugins/main/registry.json) |
+| `MARCHAT_GLOBAL_E2E_KEY` | No | - | Base64-encoded 32-byte global encryption key for public channels |
 
 ### Configuration File
 
@@ -384,6 +385,72 @@ export MARCHAT_BAN_HISTORY_GAPS=true
 ./marchat-client --e2e --keystore-passphrase your-passphrase --username alice --server ws://localhost:8080/ws
 ```
 
+### Global E2E Encryption
+
+marchat supports global E2E encryption for public channels, allowing secure group chat without requiring individual key exchange between users. This feature uses a shared global encryption key that all clients can use to encrypt and decrypt messages in public channels.
+
+#### How Global E2E Works
+
+- **Shared Key**: All clients use the same global encryption key for public channels
+- **No Key Exchange**: No need to exchange individual public keys for group chat
+- **Environment Variable**: Set `MARCHAT_GLOBAL_E2E_KEY` to share the same key across clients
+- **Automatic Generation**: If no global key is provided, a new one is generated and displayed
+
+#### Setting Up Global E2E Encryption
+
+**Option 1: Use Environment Variable (Recommended for shared deployments)**
+```bash
+# Generate a 32-byte key and encode as base64
+openssl rand -base64 32
+
+# Set the environment variable with the generated key
+export MARCHAT_GLOBAL_E2E_KEY="your-generated-base64-key"
+
+# Run client with E2E enabled
+./marchat-client --e2e --keystore-passphrase your-passphrase --username alice --server ws://localhost:8080/ws
+```
+
+**Option 2: Let marchat Generate a Key**
+```bash
+# Run client without environment variable - marchat will generate a new key
+./marchat-client --e2e --keystore-passphrase your-passphrase --username alice --server ws://localhost:8080/ws
+
+# The client will display the generated key:
+# 🔐 Generated new global E2E key (ID: RsLi9ON0ZYvEPOmyMs1IhWL5vPTGEfamExCPuaESV7M=)
+# 💡 Set MARCHAT_GLOBAL_E2E_KEY=fF+HkmGArkPNsdb+M+qj/JgBmCTV8R0J7zEW80Izjtw= to share this key across clients
+```
+
+#### Sharing the Global Key
+
+To enable multiple clients to communicate securely, share the global key:
+
+1. **Copy the generated key** from the client output
+2. **Set the environment variable** on all client machines:
+   ```bash
+   export MARCHAT_GLOBAL_E2E_KEY="fF+HkmGArkPNsdb+M+qj/JgBmCTV8R0J7zEW80Izjtw="
+   ```
+3. **Run all clients** with the same global key
+
+#### Global vs Individual E2E
+
+| Feature | Global E2E | Individual E2E |
+|---------|------------|----------------|
+| **Setup Complexity** | Simple - one shared key | Complex - exchange keys per user |
+| **Group Chat** | ✅ Works immediately | ❌ Requires key exchange |
+| **Direct Messages** | ❌ Not supported | ✅ Full support |
+| **Key Management** | One global key | Individual key pairs |
+| **Use Case** | Public channels | Private conversations |
+
+#### Expected Output
+
+When global E2E is working correctly, you'll see:
+```
+🔐 Using global E2E key from environment variable
+🌐 Global chat encryption: ENABLED (Key ID: RsLi9ON0ZYvEPOmyMs1IhWL5vPTGEfamExCPuaESV7M=)
+✅ Encryption validation passed
+🔐 E2E encryption enabled with keystore: config/keystore.dat
+```
+
 ## Security
 
 ### Critical Security Warnings
@@ -427,6 +494,8 @@ When enabled, E2E encryption provides:
 - **Forward Secrecy**: Unique session keys per conversation
 - **Server Privacy**: Server cannot read encrypted messages
 - **Key Management**: Local encrypted keystore with passphrase protection
+- **Global Encryption**: Shared global key for public channel encryption
+- **Individual Encryption**: Per-user key pairs for direct messages
 
 ## Troubleshooting
 
@@ -447,6 +516,8 @@ When enabled, E2E encryption provides:
 | **TLS certificate errors** | Use `--skip-tls-verify` flag for development with self-signed certificates |
 | **Plugin installation fails** | Check `MARCHAT_PLUGIN_REGISTRY_URL` is accessible and registry format is valid |
 | **E2E encryption not working** | Ensure `--e2e` flag is used and keystore passphrase is provided. Check debug logs for detailed error messages |
+| **Global E2E key not working** | Verify `MARCHAT_GLOBAL_E2E_KEY` is set correctly and is a valid base64-encoded 32-byte key. Use `openssl rand -base64 32` to generate a valid key |
+| **"no session key found for global" error** | Fixed in latest version - global E2E key support automatically handles this error |
 | **Blank encrypted messages** | Fixed in v0.3.0-beta.5 - ensure you're using the latest version and have added recipient public keys with `:addkey` |
 | **E2E startup failures** | Fixed in v0.3.0-beta.6 - "conversation: test" session key issue resolved |
 
