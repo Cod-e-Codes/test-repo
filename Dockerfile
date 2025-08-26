@@ -16,6 +16,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 # === Runtime Stage ===
 FROM alpine:3.21
 
+# Update the package index and upgrade all installed packages
+RUN apk update && apk upgrade --no-cache
+
 # Build arguments for user/group ID
 ARG USER_ID=1000
 ARG GROUP_ID=1000
