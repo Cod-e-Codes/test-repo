@@ -19,10 +19,10 @@ var (
 
 // GetVersionInfo returns a formatted version string
 func GetVersionInfo() string {
-	return fmt.Sprintf("v%s (build: %s, commit: %s)", ClientVersion, BuildTime, GitCommit)
+	return fmt.Sprintf("%s (build: %s, commit: %s)", ClientVersion, BuildTime, GitCommit)
 }
 
 // GetServerVersionInfo returns a formatted server version string
 func GetServerVersionInfo() string {
-	return fmt.Sprintf("v%s (build: %s, commit: %s)", ServerVersion, BuildTime, GitCommit)
+	return fmt.Sprintf("%s (build: %s, commit: %s)", ServerVersion, BuildTime, GitCommit)
 }
