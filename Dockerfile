@@ -2,9 +2,9 @@
 FROM golang:1.24-alpine AS builder
 
 # Build arguments for version information
-ARG VERSION=dev
-ARG BUILD_TIME=unknown
-ARG GIT_COMMIT=unknown
+ARG GIT_COMMIT
+ARG BUILD_TIME
+ARG VERSION
 
 WORKDIR /marchat
 COPY . .
