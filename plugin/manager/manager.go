@@ -66,12 +66,7 @@ func (pm *PluginManager) InstallPluginWithPlatform(name, osName, arch string) er
 		return fmt.Errorf("failed to download plugin: %w", err)
 	}
 
-	// Validate checksum if provided
-	if plugin.Checksum != "" {
-		if err := pm.validateChecksum(pluginPath, plugin.Checksum); err != nil {
-			return fmt.Errorf("checksum validation failed: %w", err)
-		}
-	}
+	// Checksum validation is now done during download
 
 	// Load plugin into host
 	if err := pm.host.LoadPlugin(name); err != nil {
@@ -166,6 +161,7 @@ func (pm *PluginManager) GetStore() *store.Store {
 // downloadPlugin downloads a plugin from the given URL
 func (pm *PluginManager) downloadPlugin(plugin *store.StorePlugin, pluginPath string) error {
 	var reader io.Reader
+	var tempFile *os.File
 
 	if strings.HasPrefix(plugin.DownloadURL, "file://") {
 		// Handle local file URLs
@@ -190,18 +186,51 @@ func (pm *PluginManager) downloadPlugin(plugin *store.StorePlugin, pluginPath st
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("download failed with status %d", resp.StatusCode)
 		}
-		reader = resp.Body
+
+		// Create temporary file to store the download for checksum validation
+		tempFile, err = os.CreateTemp("", "plugin-download-*")
+		if err != nil {
+			return fmt.Errorf("failed to create temp file: %w", err)
+		}
+		defer os.Remove(tempFile.Name())
+		defer tempFile.Close()
+
+		// Copy the response to temp file and reader
+		teeReader := io.TeeReader(resp.Body, tempFile)
+		reader = teeReader
 	}
 
 	// Determine file type and extract
+	var err error
 	if strings.HasSuffix(plugin.DownloadURL, ".zip") {
-		return pm.extractZip(reader, pluginPath)
+		err = pm.extractZip(reader, pluginPath)
 	} else if strings.HasSuffix(plugin.DownloadURL, ".tar.gz") || strings.HasSuffix(plugin.DownloadURL, ".tgz") {
-		return pm.extractTarGz(reader, pluginPath)
+		err = pm.extractTarGz(reader, pluginPath)
 	} else {
 		// Assume it's a single binary
-		return pm.downloadBinary(reader, pluginPath, plugin.Name)
+		err = pm.downloadBinary(reader, pluginPath, plugin.Name)
 	}
+
+	if err != nil {
+		return err
+	}
+
+	// Validate checksum if provided and we have a temp file
+	if plugin.Checksum != "" && tempFile != nil {
+		// Close and reopen temp file for reading
+		tempFile.Close()
+		tempFile, err = os.Open(tempFile.Name())
+		if err != nil {
+			return fmt.Errorf("failed to reopen temp file for checksum: %w", err)
+		}
+		defer tempFile.Close()
+
+		if err := pm.validateDownloadChecksum(tempFile, plugin.Checksum); err != nil {
+			return fmt.Errorf("checksum validation failed: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // isPathSafe validates that a path doesn't contain directory traversal elements
@@ -385,34 +414,12 @@ func (pm *PluginManager) downloadBinary(reader io.Reader, pluginPath, pluginName
 	return nil
 }
 
-// validateChecksum validates the checksum of a downloaded plugin
-func (pm *PluginManager) validateChecksum(pluginPath, expectedChecksum string) error {
-	// Calculate SHA256 of the plugin binary
-	pluginName := filepath.Base(pluginPath)
-
-	// Try different possible binary names
-	binaryNames := []string{
-		pluginName,
-		pluginName + ".exe",
-		pluginName + ".bat",
+// validateDownloadChecksum validates the checksum of the downloaded file
+func (pm *PluginManager) validateDownloadChecksum(file *os.File, expectedChecksum string) error {
+	// Reset file position
+	if _, err := file.Seek(0, 0); err != nil {
+		return fmt.Errorf("failed to seek file: %w", err)
 	}
-
-	var binaryPath string
-	var file *os.File
-	var err error
-
-	for _, name := range binaryNames {
-		binaryPath = filepath.Join(pluginPath, name)
-		file, err = os.Open(binaryPath)
-		if err == nil {
-			break
-		}
-	}
-
-	if file == nil {
-		return fmt.Errorf("failed to open binary for checksum: %w", err)
-	}
-	defer file.Close()
 
 	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {
