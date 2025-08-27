@@ -5,7 +5,7 @@
 
 set -e  # Exit on any error
 
-VERSION="0.4.0-beta.3"
+VERSION="v0.4.0-beta.3"
 
 # Detect OS and architecture
 OS=$(uname | tr '[:upper:]' '[:lower:]')
