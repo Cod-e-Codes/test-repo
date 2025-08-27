@@ -199,7 +199,8 @@ func InsertEncryptedMessage(db *sql.DB, encryptedMsg *shared.EncryptedMessage) {
 }
 
 func GetRecentMessages(db *sql.DB) []shared.Message {
-	rows, err := db.Query(`SELECT sender, content, created_at, is_encrypted FROM messages ORDER BY created_at ASC LIMIT 50`)
+	// FIXED: Changed ORDER BY created_at ASC to DESC to fetch newest messages first
+	rows, err := db.Query(`SELECT sender, content, created_at, is_encrypted FROM messages ORDER BY created_at DESC LIMIT 50`)
 	if err != nil {
 		log.Println("Query error:", err)
 		return nil
@@ -217,7 +218,8 @@ func GetRecentMessages(db *sql.DB) []shared.Message {
 		}
 	}
 
-	// CRITICAL FIX: Always sort messages by timestamp for consistent ordering
+	// CRITICAL FIX: Always sort messages by timestamp for consistent chronological display
+	// Note: SQL query fetches newest messages first (DESC), but we sort chronologically (ASC) for display
 	sortMessagesByTimestamp(messages)
 	return messages
 }
@@ -264,7 +266,8 @@ func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int, ban
 		}
 	}
 
-	// CRITICAL FIX: Always sort messages by timestamp for consistent ordering
+	// CRITICAL FIX: Always sort messages by timestamp for consistent chronological display
+	// Note: SQL queries fetch newest messages first (DESC), but we sort chronologically (ASC) for display
 	sortMessagesByTimestamp(messages)
 
 	// Filter messages during ban periods if feature is enabled
@@ -301,7 +304,8 @@ func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int, ban
 
 // GetMessagesAfter retrieves messages with ID > lastMessageID
 func GetMessagesAfter(db *sql.DB, lastMessageID int64, limit int) []shared.Message {
-	rows, err := db.Query(`SELECT sender, content, created_at, is_encrypted FROM messages WHERE message_id > ? ORDER BY created_at ASC LIMIT ?`, lastMessageID, limit)
+	// FIXED: Changed ORDER BY created_at ASC to DESC to fetch newest messages first
+	rows, err := db.Query(`SELECT sender, content, created_at, is_encrypted FROM messages WHERE message_id > ? ORDER BY created_at DESC LIMIT ?`, lastMessageID, limit)
 	if err != nil {
 		log.Println("Query error in GetMessagesAfter:", err)
 		return nil
@@ -319,7 +323,8 @@ func GetMessagesAfter(db *sql.DB, lastMessageID int64, limit int) []shared.Messa
 		}
 	}
 
-	// CRITICAL FIX: Always sort messages by timestamp for consistent ordering
+	// CRITICAL FIX: Always sort messages by timestamp for consistent chronological display
+	// Note: SQL query fetches newest messages first (DESC), but we sort chronologically (ASC) for display
 	sortMessagesByTimestamp(messages)
 	return messages
 }
