@@ -70,7 +70,16 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 ## Changelog
 
-### v0.4.0-beta.3 (Latest)
+### v0.4.0-beta.4 (Latest)
+- **Platform-Appropriate Configuration Directories**: Client now uses platform-specific directories for config files:
+  - Windows: `%APPDATA%\marchat`
+  - macOS: `~/Library/Application Support/marchat`
+  - Linux/Android: `~/.config/marchat`
+- **Cross-Platform Install Script**: Added `install.sh` for easy installation across all platforms
+- **Improved User Experience**: Automatic config directory creation and better file organization
+- **Backward Compatibility**: Still supports custom config paths via `--config` flag
+
+### v0.4.0-beta.3
 - **Fixed SQL Query Performance**: Improved message retrieval efficiency by changing `ORDER BY created_at ASC` to `ORDER BY created_at DESC` in `GetRecentMessages` and `GetMessagesAfter` functions
 - **Enhanced Message Ordering**: SQL queries now fetch newest messages first for better performance, while maintaining chronological display order through Go sorting
 - **Database Optimization**: More efficient message history loading, especially for users with large message histories
@@ -92,17 +101,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.4.0-beta.3:**
+**Download pre-built binaries for v0.4.0-beta.4:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.4.0-beta.3/marchat-v0.4.0-beta.3-linux-amd64.zip
-unzip marchat-v0.4.0-beta.3-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.4.0-beta.4/marchat-v0.4.0-beta.4-linux-amd64.zip
+unzip marchat-v0.4.0-beta.4-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.4.0-beta.3/marchat-v0.4.0-beta.3-darwin-amd64.zip
-unzip marchat-v0.4.0-beta.3-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.4.0-beta.4/marchat-v0.4.0-beta.4-darwin-amd64.zip
+unzip marchat-v0.4.0-beta.4-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -111,8 +120,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.4.0-beta.3/marchat-v0.4.0-beta.3-android-arm64.zip
-unzip marchat-v0.4.0-beta.3-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.4.0-beta.4/marchat-v0.4.0-beta.4-android-arm64.zip
+unzip marchat-v0.4.0-beta.4-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -123,14 +132,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.4.0-beta.3
+docker pull codecodesxyz/marchat:v0.4.0-beta.4
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.4.0-beta.3
+  codecodesxyz/marchat:v0.4.0-beta.4
 ```
 
 ### Source Installation
