@@ -252,13 +252,14 @@ func debugWebSocketWrite(ws *websocket.Conn, msg interface{}) error {
 }
 
 type model struct {
-	cfg       config.Config
-	textarea  textarea.Model
-	viewport  viewport.Model
-	messages  []shared.Message
-	styles    themeStyles
-	banner    string
-	connected bool
+	cfg            config.Config
+	configFilePath string // Store the config file path for saving
+	textarea       textarea.Model
+	viewport       viewport.Model
+	messages       []shared.Message
+	styles         themeStyles
+	banner         string
+	connected      bool
 
 	users []string // NEW: user list
 
@@ -841,7 +842,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(parts) == 2 && strings.TrimSpace(parts[1]) != "" {
 					m.cfg.Theme = strings.TrimSpace(parts[1])
 					m.styles = getThemeStyles(m.cfg.Theme)
-					_ = config.SaveConfig(*configPath, m.cfg)
+					_ = config.SaveConfig(m.configFilePath, m.cfg)
 					m.banner = "Theme changed to " + m.cfg.Theme
 				} else {
 					m.banner = "Please provide a theme name."
@@ -1140,7 +1141,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	cfg, _ := config.LoadConfig(*configPath)
+	// Use platform-appropriate config path if no custom path specified
+	var configFilePath string
+	if *configPath == "config.json" {
+		// Default config path - use platform-appropriate directory
+		var err error
+		configFilePath, err = config.GetConfigPath()
+		if err != nil {
+			fmt.Printf("Error getting config path: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		// Custom config path specified
+		configFilePath = *configPath
+	}
+
+	cfg, _ := config.LoadConfig(configFilePath)
 	if *serverURL != "" {
 		cfg.ServerURL = *serverURL
 	}
@@ -1183,7 +1199,12 @@ func main() {
 	// Initialize keystore if E2E is enabled
 	var keystore *crypto.KeyStore
 	if *useE2E {
-		keystorePath := filepath.Join(filepath.Dir(*configPath), "keystore.dat")
+		// Use platform-appropriate keystore path
+		keystorePath, err := config.GetKeystorePath()
+		if err != nil {
+			fmt.Printf("Error getting keystore path: %v\n", err)
+			os.Exit(1)
+		}
 		keystore = crypto.NewKeyStore(keystorePath)
 
 		// Check environment variable status
@@ -1227,6 +1248,7 @@ func main() {
 
 	m := &model{
 		cfg:              cfg,
+		configFilePath:   configFilePath,
 		textarea:         ta,
 		viewport:         vp,
 		styles:           getThemeStyles(cfg.Theme),
