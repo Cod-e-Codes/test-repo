@@ -56,7 +56,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 | **Terminal UI** | Beautiful TUI built with Bubble Tea |
 | **Real-time Chat** | Fast WebSocket-based messaging with a lightweight SQLite backend |
 | **Plugin System** | Install and manage plugins via remote registry with `:store` and `:plugin` commands |
-| **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305, global encryption for public channels, individual encryption for direct messages |
+| **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305, global encryption for public channels |
 | **File Sharing** | Send files up to 1MB with `:sendfile` |
 | **Admin Controls** | User management, bans, and database operations with improved ban/unban experience |
 | **Themes** | Choose from patriot, retro, or modern themes |
@@ -428,12 +428,12 @@ export MARCHAT_BAN_HISTORY_GAPS=true
 
 ### Global E2E Encryption
 
-marchat supports global E2E encryption for public channels, allowing secure group chat without requiring individual key exchange between users. This feature uses a shared global encryption key that all clients can use to encrypt and decrypt messages in public channels.
+marchat supports global E2E encryption for public channels, allowing secure group chat. This feature uses a shared global encryption key that all clients can use to encrypt and decrypt messages in public channels.
 
 #### How Global E2E Works
 
 - **Shared Key**: All clients use the same global encryption key for public channels
-- **No Key Exchange**: No need to exchange individual public keys for group chat
+- **Simple Setup**: Shared key model eliminates complex key management
 - **Environment Variable**: Set `MARCHAT_GLOBAL_E2E_KEY` to share the same key across clients
 - **Automatic Generation**: If no global key is provided, a new one is generated and displayed
 
@@ -471,16 +471,6 @@ To enable multiple clients to communicate securely, share the global key:
    export MARCHAT_GLOBAL_E2E_KEY="fF+HkmGArkPNsdb+M+qj/JgBmCTV8R0J7zEW80Izjtw="
    ```
 3. **Run all clients** with the same global key
-
-#### Global vs Individual E2E
-
-| Feature | Global E2E | Individual E2E |
-|---------|------------|----------------|
-| **Setup Complexity** | Simple - one shared key | Complex - exchange keys per user |
-| **Group Chat** | ✅ Works immediately | ❌ Requires key exchange |
-| **Direct Messages** | ❌ Not supported | ✅ Full support |
-| **Key Management** | One global key | Individual key pairs |
-| **Use Case** | Public channels | Private conversations |
 
 #### Expected Output
 
@@ -536,7 +526,6 @@ When enabled, E2E encryption provides:
 - **Server Privacy**: Server cannot read encrypted messages
 - **Key Management**: Local encrypted keystore with passphrase protection
 - **Global Encryption**: Shared global key for public channel encryption
-- **Individual Encryption**: Per-user key pairs for direct messages
 
 ## Troubleshooting
 
