@@ -67,12 +67,59 @@ func GetConfigPath() (string, error) {
 }
 
 // GetKeystorePath returns the full path to the keystore file
+// Checks old location (current directory) first for backward compatibility
 func GetKeystorePath() (string, error) {
+	// Check if keystore exists in current directory (legacy location)
+	legacyPath := "keystore.dat"
+	if _, err := os.Stat(legacyPath); err == nil {
+		// Legacy keystore exists, use it
+		abs, err := filepath.Abs(legacyPath)
+		if err != nil {
+			return legacyPath, nil // fallback to relative path
+		}
+		return abs, nil
+	}
+
+	// Use new platform-appropriate location
 	configDir, err := GetConfigDir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(configDir, "keystore.dat"), nil
+}
+
+// MigrateKeystoreToNewLocation migrates keystore from legacy location to new platform-appropriate location
+func MigrateKeystoreToNewLocation() error {
+	legacyPath := "keystore.dat"
+
+	// Check if legacy keystore exists
+	if _, err := os.Stat(legacyPath); os.IsNotExist(err) {
+		return nil // No legacy keystore to migrate
+	}
+
+	// Get new keystore path
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return err
+	}
+	newPath := filepath.Join(configDir, "keystore.dat")
+
+	// Check if new keystore already exists
+	if _, err := os.Stat(newPath); err == nil {
+		return nil // New keystore already exists, don't overwrite
+	}
+
+	// Copy legacy keystore to new location
+	input, err := os.ReadFile(legacyPath)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(newPath, input, 0600); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func LoadConfig(path string) (Config, error) {
