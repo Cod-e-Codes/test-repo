@@ -28,6 +28,8 @@ import (
 	"log"
 
 	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -42,6 +44,158 @@ const pingPeriod = 50 * time.Second        // moved from magic number
 const reconnectMaxDelay = 30 * time.Second // for exponential backoff
 
 var mentionRegex *regexp.Regexp
+
+// keyMap defines all keybindings for the help system
+type keyMap struct {
+	Send       key.Binding
+	ScrollUp   key.Binding
+	ScrollDown key.Binding
+	PageUp     key.Binding
+	PageDown   key.Binding
+	Copy       key.Binding
+	Paste      key.Binding
+	Cut        key.Binding
+	SelectAll  key.Binding
+	Help       key.Binding
+	Quit       key.Binding
+	TimeFormat key.Binding
+	Clear      key.Binding
+	// Commands
+	SendFile key.Binding
+	SaveFile key.Binding
+	Theme    key.Binding
+	ShowKey  key.Binding
+	AddKey   key.Binding
+	// Admin commands (populated dynamically)
+	ClearDB key.Binding
+	Kick    key.Binding
+	Ban     key.Binding
+	Unban   key.Binding
+}
+
+// ShortHelp returns keybindings to be shown in the mini help view
+func (k keyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Help, k.Quit}
+}
+
+// FullHelp returns keybindings for the expanded help view
+func (k keyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Send, k.ScrollUp, k.ScrollDown, k.PageUp, k.PageDown},
+		{k.Copy, k.Paste, k.Cut, k.SelectAll},
+		{k.TimeFormat, k.Clear, k.Help, k.Quit},
+	}
+}
+
+// GetCommandHelp returns command-specific help based on user permissions
+func (k keyMap) GetCommandHelp(isAdmin, useE2E bool) [][]key.Binding {
+	commands := [][]key.Binding{
+		{k.SendFile, k.SaveFile, k.Theme},
+	}
+
+	if useE2E {
+		commands = append(commands, []key.Binding{k.ShowKey, k.AddKey})
+	}
+
+	if isAdmin {
+		commands = append(commands, []key.Binding{k.ClearDB, k.Kick, k.Ban, k.Unban})
+	}
+
+	return commands
+}
+
+func newKeyMap() keyMap {
+	return keyMap{
+		Send: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "send message"),
+		),
+		ScrollUp: key.NewBinding(
+			key.WithKeys("up"),
+			key.WithHelp("↑", "scroll up"),
+		),
+		ScrollDown: key.NewBinding(
+			key.WithKeys("down"),
+			key.WithHelp("↓", "scroll down"),
+		),
+		PageUp: key.NewBinding(
+			key.WithKeys("pgup"),
+			key.WithHelp("pgup", "page up"),
+		),
+		PageDown: key.NewBinding(
+			key.WithKeys("pgdown"),
+			key.WithHelp("pgdown", "page down"),
+		),
+		Copy: key.NewBinding(
+			key.WithKeys("ctrl+c"),
+			key.WithHelp("ctrl+c", "copy"),
+		),
+		Paste: key.NewBinding(
+			key.WithKeys("ctrl+v"),
+			key.WithHelp("ctrl+v", "paste"),
+		),
+		Cut: key.NewBinding(
+			key.WithKeys("ctrl+x"),
+			key.WithHelp("ctrl+x", "cut"),
+		),
+		SelectAll: key.NewBinding(
+			key.WithKeys("ctrl+a"),
+			key.WithHelp("ctrl+a", "select all"),
+		),
+		Help: key.NewBinding(
+			key.WithKeys("ctrl+h"),
+			key.WithHelp("ctrl+h", "toggle help"),
+		),
+		Quit: key.NewBinding(
+			key.WithKeys("esc"),
+			key.WithHelp("esc", "quit"),
+		),
+		TimeFormat: key.NewBinding(
+			key.WithKeys(":time"),
+			key.WithHelp(":time", "toggle 12/24h format"),
+		),
+		Clear: key.NewBinding(
+			key.WithKeys(":clear"),
+			key.WithHelp(":clear", "clear chat history"),
+		),
+		SendFile: key.NewBinding(
+			key.WithKeys(":sendfile"),
+			key.WithHelp(":sendfile <path>", "send a file"),
+		),
+		SaveFile: key.NewBinding(
+			key.WithKeys(":savefile"),
+			key.WithHelp(":savefile <name>", "save received file"),
+		),
+		Theme: key.NewBinding(
+			key.WithKeys(":theme"),
+			key.WithHelp(":theme <name>", "change theme"),
+		),
+		ShowKey: key.NewBinding(
+			key.WithKeys(":showkey"),
+			key.WithHelp(":showkey", "show your public key"),
+		),
+		AddKey: key.NewBinding(
+			key.WithKeys(":addkey"),
+			key.WithHelp(":addkey <user> <key>", "add user's public key"),
+		),
+		ClearDB: key.NewBinding(
+			key.WithKeys(":cleardb"),
+			key.WithHelp(":cleardb", "clear server database (admin)"),
+		),
+		Kick: key.NewBinding(
+			key.WithKeys(":kick"),
+			key.WithHelp(":kick <user>", "kick user (admin)"),
+		),
+		Ban: key.NewBinding(
+			key.WithKeys(":ban"),
+			key.WithHelp(":ban <user>", "ban user (admin)"),
+		),
+		Unban: key.NewBinding(
+			key.WithKeys(":unban"),
+			key.WithHelp(":unban <user>", "unban user (admin)"),
+		),
+	}
+}
 
 // sortMessagesByTimestamp ensures messages are displayed in chronological order
 // This provides client-side protection against server ordering issues
@@ -59,8 +213,6 @@ func sortMessagesByTimestamp(messages []shared.Message) {
 		return messages[i].Content < messages[j].Content
 	})
 }
-
-// Remove debugLog variable and logger setup
 
 func init() {
 	mentionRegex = regexp.MustCompile(`\B@([a-zA-Z0-9_]+)\b`)
@@ -284,6 +436,11 @@ type model struct {
 	// E2E Encryption
 	keystore *crypto.KeyStore
 	useE2E   bool // Flag to enable/disable E2E encryption
+
+	// Help system
+	keys     keyMap
+	help     help.Model
+	showHelp bool
 }
 
 type themeStyles struct {
@@ -302,6 +459,10 @@ type themeStyles struct {
 	Header     lipgloss.Style // NEW: header background
 	Footer     lipgloss.Style // NEW: footer background
 	Input      lipgloss.Style // NEW: input background
+
+	// Help styles
+	HelpOverlay lipgloss.Style
+	HelpTitle   lipgloss.Style
 }
 
 // Base theme style helper
@@ -320,6 +481,16 @@ func baseThemeStyles() themeStyles {
 		Header:     lipgloss.NewStyle(),
 		Footer:     lipgloss.NewStyle(),
 		Input:      lipgloss.NewStyle(),
+		HelpOverlay: lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#FFFFFF")).
+			Background(lipgloss.Color("#1a1a1a")).
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Padding(1, 2),
+		HelpTitle: lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFD700")).
+			Bold(true).
+			MarginBottom(1),
 	}
 }
 
@@ -339,6 +510,7 @@ func getThemeStyles(theme string) themeStyles {
 		s.Header = lipgloss.NewStyle().Background(lipgloss.Color("#BF0A30")).Foreground(lipgloss.Color("#FFFFFF")).Bold(true)
 		s.Footer = lipgloss.NewStyle().Background(lipgloss.Color("#00203F")).Foreground(lipgloss.Color("#FFD700"))
 		s.Input = lipgloss.NewStyle().Background(lipgloss.Color("#002868")).Foreground(lipgloss.Color("#FFFFFF"))
+		s.HelpOverlay = s.HelpOverlay.BorderForeground(lipgloss.Color("#BF0A30")).Background(lipgloss.Color("#00203F"))
 	case "retro":
 		s.User = s.User.Foreground(lipgloss.Color("#FF8800"))              // Orange
 		s.Time = s.Time.Foreground(lipgloss.Color("#00FF00")).Faint(false) // Green
@@ -352,6 +524,7 @@ func getThemeStyles(theme string) themeStyles {
 		s.Header = lipgloss.NewStyle().Background(lipgloss.Color("#FF8800")).Foreground(lipgloss.Color("#181818")).Bold(true)
 		s.Footer = lipgloss.NewStyle().Background(lipgloss.Color("#181818")).Foreground(lipgloss.Color("#00FF00"))
 		s.Input = lipgloss.NewStyle().Background(lipgloss.Color("#222200")).Foreground(lipgloss.Color("#FFFFAA"))
+		s.HelpOverlay = s.HelpOverlay.BorderForeground(lipgloss.Color("#FF8800")).Background(lipgloss.Color("#181818"))
 	case "modern":
 		s.User = s.User.Foreground(lipgloss.Color("#4F8EF7"))              // Blue
 		s.Time = s.Time.Foreground(lipgloss.Color("#A0A0A0")).Faint(false) // Gray
@@ -365,6 +538,7 @@ func getThemeStyles(theme string) themeStyles {
 		s.Header = lipgloss.NewStyle().Background(lipgloss.Color("#4F8EF7")).Foreground(lipgloss.Color("#FFFFFF")).Bold(true)
 		s.Footer = lipgloss.NewStyle().Background(lipgloss.Color("#181C24")).Foreground(lipgloss.Color("#4F8EF7"))
 		s.Input = lipgloss.NewStyle().Background(lipgloss.Color("#23272E")).Foreground(lipgloss.Color("#E0E0E0"))
+		s.HelpOverlay = s.HelpOverlay.BorderForeground(lipgloss.Color("#4F8EF7")).Background(lipgloss.Color("#181C24"))
 	}
 	return s
 }
@@ -382,7 +556,6 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 	var b strings.Builder
 	var prevDate string
 	for _, msg := range msgs {
-		// Remove debugLog.Printf
 		sender := msg.Sender
 		align := lipgloss.Left
 		msgBoxStyle := lipgloss.NewStyle().Width(width - 4)
@@ -684,31 +857,34 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.Init()()
 		})
 	case tea.KeyMsg:
-		switch v.String() {
-		case "esc":
+		switch {
+		case key.Matches(v, m.keys.Help):
+			m.showHelp = !m.showHelp
+			return m, nil
+		case key.Matches(v, m.keys.Quit):
 			m.closeWebSocket()
 			return m, tea.Quit
-		case "up":
+		case key.Matches(v, m.keys.ScrollUp):
 			if m.textarea.Focused() {
 				m.viewport.ScrollUp(1)
 			} else {
 				m.userListViewport.ScrollUp(1)
 			}
 			return m, nil
-		case "down":
+		case key.Matches(v, m.keys.ScrollDown):
 			if m.textarea.Focused() {
 				m.viewport.ScrollDown(1)
 			} else {
 				m.userListViewport.ScrollDown(1)
 			}
 			return m, nil
-		case "pgup":
+		case key.Matches(v, m.keys.PageUp):
 			m.viewport.ScrollUp(m.viewport.Height)
 			return m, nil
-		case "pgdown":
+		case key.Matches(v, m.keys.PageDown):
 			m.viewport.ScrollDown(m.viewport.Height)
 			return m, nil
-		case "ctrl+c": // Custom Copy
+		case key.Matches(v, m.keys.Copy): // Custom Copy
 			if m.textarea.Focused() {
 				text := m.textarea.Value()
 				if text != "" {
@@ -720,8 +896,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			return m, nil // Return when textarea is not focused
-		case "ctrl+v": // Custom Paste
+			return m, nil
+		case key.Matches(v, m.keys.Paste): // Custom Paste
 			if m.textarea.Focused() {
 				text, err := clipboard.ReadAll()
 				if err != nil {
@@ -731,8 +907,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			return m, nil // Return when textarea is not focused
-		case "ctrl+x": // Custom Cut
+			return m, nil
+		case key.Matches(v, m.keys.Cut): // Custom Cut
 			if m.textarea.Focused() {
 				text := m.textarea.Value()
 				if text != "" {
@@ -745,11 +921,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			return m, nil // Return when textarea is not focused
-		case "ctrl+a": // Custom Select All
+			return m, nil
+		case key.Matches(v, m.keys.SelectAll): // Custom Select All
 			if m.textarea.Focused() {
-				m.textarea.SetCursor(0)
-				// Since textarea doesn't support selecting all, we can copy all text to clipboard
 				text := m.textarea.Value()
 				if text != "" {
 					if err := clipboard.WriteAll(text); err != nil {
@@ -760,8 +934,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			return m, nil // Return when textarea is not focused
-		case "enter":
+			return m, nil
+		case key.Matches(v, m.keys.Send):
 			text := m.textarea.Value()
 			if strings.HasPrefix(text, ":sendfile ") {
 				parts := strings.SplitN(text, " ", 2)
@@ -998,6 +1172,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = v.Width
 		m.height = v.Height
+		m.help.Width = v.Width
 		chatWidth := m.width - userListWidth - 4
 		if chatWidth < 20 {
 			chatWidth = 20
@@ -1031,23 +1206,81 @@ func (m *model) listenWebSocket() tea.Cmd {
 	}
 }
 
+func (m *model) renderHelpOverlay() string {
+	if !m.showHelp {
+		return ""
+	}
+
+	title := m.styles.HelpTitle.Render("MarChat Help")
+
+	// Basic keybindings
+	basicHelp := m.help.View(m.keys)
+
+	// Command help
+	var commandHelp string
+	if *isAdmin || m.useE2E {
+		commandHelp = "\nCommands:\n"
+
+		// Basic commands
+		commandHelp += "  :sendfile <path>      Send a file\n"
+		commandHelp += "  :savefile <filename>  Save received file\n"
+		commandHelp += "  :theme <name>         Change theme (patriot, retro, modern)\n"
+		commandHelp += "  :time                 Toggle 12/24h time format\n"
+		commandHelp += "  :clear                Clear chat history\n"
+
+		// E2E commands
+		if m.useE2E {
+			commandHelp += "\nE2E Encryption:\n"
+			commandHelp += "  :showkey              Show your public key\n"
+			commandHelp += "  :addkey <user> <key>  Add user's public key\n"
+		}
+
+		// Admin commands
+		if *isAdmin {
+			commandHelp += "\nAdmin Commands:\n"
+			commandHelp += "  :cleardb              Clear server database\n"
+			commandHelp += "  :kick <user>          Kick user\n"
+			commandHelp += "  :ban <user>           Ban user\n"
+			commandHelp += "  :unban <user>         Unban user\n"
+		}
+	}
+
+	content := title + "\n\n" + basicHelp + commandHelp
+
+	// Center the help overlay
+	helpWidth := 60
+	helpHeight := strings.Count(content, "\n") + 4
+
+	// Calculate position to center the overlay
+	x := (m.width - helpWidth) / 2
+	y := (m.height - helpHeight) / 2
+	if x < 0 {
+		x = 0
+	}
+	if y < 0 {
+		y = 0
+	}
+
+	overlay := m.styles.HelpOverlay.
+		Width(helpWidth).
+		Height(helpHeight).
+		Render(content)
+
+	// Position the overlay (simplified - just return the styled content)
+	return overlay
+}
+
 func (m *model) View() string {
 	// Header with version
 	headerText := fmt.Sprintf(" marchat %s ", shared.ClientVersion)
 	header := m.styles.Header.Width(m.viewport.Width + userListWidth + 4).Render(headerText)
-	footer := m.styles.Footer.Width(m.viewport.Width + userListWidth + 4).Render(
-		"[Enter] Send  [Up/Down] Scroll  [Esc] Quit  Commands: :sendfile <path> :savefile <filename> :clear :theme NAME :time" +
-			func() string {
-				cmds := ""
-				if *isAdmin {
-					cmds += " :cleardb :kick USER :ban USER :unban USER"
-				}
-				if m.useE2E {
-					cmds += " :showkey :addkey USER KEY"
-				}
-				return cmds
-			}(),
-	)
+
+	// Simplified footer - just basic info
+	footerText := "Press Ctrl+H for help"
+	if m.showHelp {
+		footerText = "Press Ctrl+H to close help"
+	}
+	footer := m.styles.Footer.Width(m.viewport.Width + userListWidth + 4).Render(footerText)
 
 	// Banner
 	var bannerBox string
@@ -1086,6 +1319,45 @@ func (m *model) View() string {
 		inputPanel,
 		footer,
 	)
+
+	// Overlay help if shown
+	if m.showHelp {
+		// Create a background for the help overlay
+		helpOverlay := m.renderHelpOverlay()
+
+		// Calculate overlay position (centered)
+		overlayLines := strings.Split(helpOverlay, "\n")
+		overlayHeight := len(overlayLines)
+		overlayWidth := 0
+		for _, line := range overlayLines {
+			if len(line) > overlayWidth {
+				overlayWidth = len(line)
+			}
+		}
+
+		// Position overlay in center of screen
+		mainLines := strings.Split(ui, "\n")
+		if len(mainLines) > overlayHeight+4 {
+			startLine := (len(mainLines) - overlayHeight) / 2
+
+			// Insert overlay into main UI
+			for i, overlayLine := range overlayLines {
+				if startLine+i < len(mainLines) {
+					// Center the overlay line
+					padding := (m.width - overlayWidth) / 2
+					if padding < 0 {
+						padding = 0
+					}
+					mainLines[startLine+i] = strings.Repeat(" ", padding) + overlayLine
+				}
+			}
+			ui = strings.Join(mainLines, "\n")
+		} else {
+			// If screen is too small, just show help overlay
+			ui = helpOverlay
+		}
+	}
+
 	return m.styles.Background.Render(ui)
 }
 
