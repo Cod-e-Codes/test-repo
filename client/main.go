@@ -1450,7 +1450,7 @@ func main() {
 	ta.Placeholder = "Type your message..."
 	ta.Focus()
 	ta.Prompt = "┃ "
-	ta.CharLimit = 280
+	ta.CharLimit = 2000
 	ta.SetHeight(3)
 	ta.ShowLineNumbers = false
 	ta.KeyMap.InsertNewline.SetEnabled(false)
