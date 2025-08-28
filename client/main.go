@@ -1213,7 +1213,7 @@ func (m *model) renderHelpOverlay() string {
 		return ""
 	}
 
-	title := m.styles.HelpTitle.Render("MarChat Help")
+	title := m.styles.HelpTitle.Render("marchat help")
 
 	// Basic keybindings
 	basicHelp := m.help.View(m.keys)
