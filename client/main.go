@@ -104,6 +104,8 @@ func (k keyMap) GetCommandHelp(isAdmin, useE2E bool) [][]key.Binding {
 	return commands
 }
 
+// newKeyMap creates a new keymap for the application
+// This function is kept for potential future use in help documentation
 func newKeyMap() keyMap {
 	return keyMap{
 		Send: key.NewBinding(
@@ -1251,16 +1253,6 @@ func (m *model) renderHelpOverlay() string {
 	helpWidth := 60
 	helpHeight := strings.Count(content, "\n") + 4
 
-	// Calculate position to center the overlay
-	x := (m.width - helpWidth) / 2
-	y := (m.height - helpHeight) / 2
-	if x < 0 {
-		x = 0
-	}
-	if y < 0 {
-		y = 0
-	}
-
 	overlay := m.styles.HelpOverlay.
 		Width(helpWidth).
 		Height(helpHeight).
@@ -1529,6 +1521,7 @@ func main() {
 		twentyFourHour:   cfg.TwentyFourHour,
 		keystore:         keystore,
 		useE2E:           *useE2E,
+		keys:             newKeyMap(),
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
