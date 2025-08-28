@@ -367,6 +367,20 @@ export MARCHAT_BAN_HISTORY_GAPS=true
 
 ## Usage
 
+### Keyboard Shortcuts
+
+| Shortcut | Description |
+|----------|-------------|
+| `Ctrl+H` | Toggle help overlay with all commands and shortcuts |
+| `Enter` | Send message |
+| `Esc` | Quit application |
+| `↑/↓` | Scroll through chat history |
+| `PgUp/PgDn` | Page through chat history |
+| `Ctrl+C/V/X` | Copy/Paste/Cut text |
+| `Ctrl+A` | Select all text |
+
+**Tip:** Press `Ctrl+H` to see the complete help overlay with all available commands!
+
 ### Basic Commands
 
 | Command | Description | Example |
