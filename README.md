@@ -70,31 +70,12 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 ## Changelog
 
-### v0.5.0-beta.1 (Latest)
+### v0.4.0-beta.2 (Latest)
 - **Fixed Plugin Checksum Validation**: Corrected plugin installation checksum validation to properly validate downloaded ZIP files instead of extracted binaries
-- **Enhanced Plugin System**: Improved plugin download and installation process with better error handling and validation
-- **Better Plugin Security**: More robust checksum validation prevents tampering and ensures plugin integrity
-- **Bug Fixes**: Fixed various plugin system issues and improved overall stability
-
-### v0.4.0-beta.4
-- **Platform-Appropriate Configuration Directories**: Client now uses platform-specific directories for config files:
-  - Windows: `%APPDATA%\marchat`
-  - macOS: `~/Library/Application Support/marchat`
-  - Linux/Android: `~/.config/marchat`
-- **Cross-Platform Install Script**: Added `install.sh` for easy installation across all platforms
-- **Improved User Experience**: Automatic config directory creation and better file organization
-- **Backward Compatibility**: Still supports custom config paths via `--config` flag
-
-### v0.4.0-beta.3
-- **Fixed SQL Query Performance**: Improved message retrieval efficiency by changing `ORDER BY created_at ASC` to `ORDER BY created_at DESC` in `GetRecentMessages` and `GetMessagesAfter` functions
-- **Enhanced Message Ordering**: SQL queries now fetch newest messages first for better performance, while maintaining chronological display order through Go sorting
-- **Database Optimization**: More efficient message history loading, especially for users with large message histories
-
-### v0.4.0-beta.2
-- Plugin system with remote registry support
-- Ban history gaps feature for improved moderation
-- Global E2E encryption for public channels
-- Enhanced admin controls and user management
+- **Enhanced Help System**: Improved help overlay formatting with better spacing and removed deprecated individual E2E encryption commands
+- **Backward Compatibility**: Added keystore location compatibility for existing users while supporting platform-appropriate directories
+- **Documentation Updates**: Removed individual E2E encryption references from README, focusing on global encryption only
+- **Bug Fixes**: Fixed linting errors, capitalization issues, and improved overall code quality
 
 ## Database Schema
 
@@ -107,17 +88,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.5.0-beta.1:**
+**Download pre-built binaries for v0.4.0-beta.2:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.1/marchat-v0.5.0-beta.1-linux-amd64.zip
-unzip marchat-v0.5.0-beta.1-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.4.0-beta.2/marchat-v0.4.0-beta.2-linux-amd64.zip
+unzip marchat-v0.4.0-beta.2-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.1/marchat-v0.5.0-beta.1-darwin-amd64.zip
-unzip marchat-v0.5.0-beta.1-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.4.0-beta.2/marchat-v0.4.0-beta.2-darwin-amd64.zip
+unzip marchat-v0.4.0-beta.2-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -126,8 +107,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.1/marchat-v0.5.0-beta.1-android-arm64.zip
-unzip marchat-v0.5.0-beta.1-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.4.0-beta.2/marchat-v0.4.0-beta.2-android-arm64.zip
+unzip marchat-v0.4.0-beta.2-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -138,14 +119,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.5.0-beta.1
+docker pull codecodesxyz/marchat:v0.4.0-beta.2
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.5.0-beta.1
+  codecodesxyz/marchat:v0.4.0-beta.2
 ```
 
 ### Source Installation

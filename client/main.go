@@ -1216,41 +1216,38 @@ func (m *model) renderHelpOverlay() string {
 	title := m.styles.HelpTitle.Render("marchat help")
 
 	// Basic keybindings
-	basicHelp := m.help.View(m.keys)
+	basicHelp := "Keyboard Shortcuts:\n"
+	basicHelp += "  Ctrl+H               Toggle help\n"
+	basicHelp += "  Esc                  Quit application\n"
+	basicHelp += "  Enter                Send message\n"
+	basicHelp += "  ↑/↓                  Scroll chat history\n"
+	basicHelp += "  PgUp/PgDn            Page through chat\n"
+	basicHelp += "  Ctrl+C/V/X/A         Copy/Paste/Cut/Select all"
 
 	// Command help
 	var commandHelp string
-	if *isAdmin || m.useE2E {
-		commandHelp = "\nCommands:\n"
+	commandHelp = "\nCommands:\n"
 
-		// Basic commands
-		commandHelp += "  :sendfile <path>      Send a file\n"
-		commandHelp += "  :savefile <filename>  Save received file\n"
-		commandHelp += "  :theme <name>         Change theme (patriot, retro, modern)\n"
-		commandHelp += "  :time                 Toggle 12/24h time format\n"
-		commandHelp += "  :clear                Clear chat history\n"
+	// Basic commands
+	commandHelp += "  :sendfile <path>      Send a file\n"
+	commandHelp += "  :savefile <filename>  Save received file\n"
+	commandHelp += "  :theme <name>         Change theme (patriot, retro, modern)\n"
+	commandHelp += "  :time                 Toggle 12/24h time format\n"
+	commandHelp += "  :clear                Clear chat history\n"
 
-		// E2E commands
-		if m.useE2E {
-			commandHelp += "\nE2E Encryption:\n"
-			commandHelp += "  :showkey              Show your public key\n"
-			commandHelp += "  :addkey <user> <key>  Add user's public key\n"
-		}
-
-		// Admin commands
-		if *isAdmin {
-			commandHelp += "\nAdmin Commands:\n"
-			commandHelp += "  :cleardb              Clear server database\n"
-			commandHelp += "  :kick <user>          Kick user\n"
-			commandHelp += "  :ban <user>           Ban user\n"
-			commandHelp += "  :unban <user>         Unban user\n"
-		}
+	// Admin commands (only show if admin)
+	if *isAdmin {
+		commandHelp += "\nAdmin Commands:\n"
+		commandHelp += "  :cleardb              Clear server database\n"
+		commandHelp += "  :kick <user>          Kick user\n"
+		commandHelp += "  :ban <user>           Ban user\n"
+		commandHelp += "  :unban <user>         Unban user\n"
 	}
 
 	content := title + "\n\n" + basicHelp + commandHelp
 
 	// Center the help overlay
-	helpWidth := 60
+	helpWidth := 70
 	helpHeight := strings.Count(content, "\n") + 4
 
 	overlay := m.styles.HelpOverlay.
