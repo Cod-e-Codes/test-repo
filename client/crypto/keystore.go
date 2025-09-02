@@ -18,13 +18,10 @@ import (
 	"github.com/Cod-e-Codes/marchat/shared"
 )
 
-// KeyStore manages cryptographic keys for the client
+// KeyStore manages cryptographic keys for the client (global encryption only)
 type KeyStore struct {
 	mu           sync.RWMutex
-	keypair      *shared.KeyPair
-	sessionKeys  map[string]*shared.SessionKey    // conversationID -> sessionKey
-	publicKeys   map[string]*shared.PublicKeyInfo // username -> publicKey
-	globalKey    *shared.SessionKey               // Global key for public channels
+	globalKey    *shared.SessionKey // Global key for public channels
 	keystorePath string
 	passphrase   []byte
 }
@@ -32,13 +29,11 @@ type KeyStore struct {
 // NewKeyStore creates a new key store
 func NewKeyStore(keystorePath string) *KeyStore {
 	return &KeyStore{
-		sessionKeys:  make(map[string]*shared.SessionKey),
-		publicKeys:   make(map[string]*shared.PublicKeyInfo),
 		keystorePath: keystorePath,
 	}
 }
 
-// Initialize creates a new keypair if one doesn't exist
+// Initialize initializes the keystore for global encryption only
 func (ks *KeyStore) Initialize(passphrase string) error {
 	ks.mu.Lock()
 	defer ks.mu.Unlock()
@@ -48,17 +43,6 @@ func (ks *KeyStore) Initialize(passphrase string) error {
 	// Check if keystore already exists
 	if _, err := os.Stat(ks.keystorePath); err == nil {
 		if err := ks.load(); err != nil {
-			return err
-		}
-	} else {
-		// Generate new keypair
-		keypair, err := shared.GenerateKeyPair()
-		if err != nil {
-			return fmt.Errorf("failed to generate keypair: %w", err)
-		}
-
-		ks.keypair = keypair
-		if err := ks.save(); err != nil {
 			return err
 		}
 	}
@@ -79,54 +63,6 @@ func (ks *KeyStore) Load(passphrase string) error {
 
 	// Initialize global key after loading
 	return ks.initializeGlobalKey()
-}
-
-// GetKeyPair returns the user's keypair
-func (ks *KeyStore) GetKeyPair() *shared.KeyPair {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-	return ks.keypair
-}
-
-// GetMyPublicKey returns the user's public key
-func (ks *KeyStore) GetMyPublicKey() []byte {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-	if ks.keypair == nil {
-		return nil
-	}
-	return ks.keypair.PublicKey
-}
-
-// GetPublicKeyInfo returns the user's public key info for distribution
-func (ks *KeyStore) GetPublicKeyInfo(username string) *shared.PublicKeyInfo {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-	if ks.keypair == nil {
-		return nil
-	}
-	return &shared.PublicKeyInfo{
-		Username:  username,
-		PublicKey: ks.GetMyPublicKey(),
-		CreatedAt: ks.keypair.CreatedAt,
-		KeyID:     shared.GetKeyID(ks.GetMyPublicKey()),
-	}
-}
-
-// StorePublicKey stores another user's public key
-func (ks *KeyStore) StorePublicKey(pubKeyInfo *shared.PublicKeyInfo) error {
-	ks.mu.Lock()
-	defer ks.mu.Unlock()
-
-	ks.publicKeys[pubKeyInfo.Username] = pubKeyInfo
-	return ks.save()
-}
-
-// GetPublicKey retrieves another user's public key
-func (ks *KeyStore) GetPublicKey(username string) *shared.PublicKeyInfo {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-	return ks.publicKeys[username]
 }
 
 // GetGlobalKey returns the global session key
@@ -182,46 +118,23 @@ func (ks *KeyStore) initializeGlobalKey() error {
 		fmt.Printf("🔐 Generated new global E2E key (ID: %s)\n", ks.globalKey.KeyID)
 		fmt.Printf("💡 Set MARCHAT_GLOBAL_E2E_KEY=%s to share this key across clients\n",
 			base64.StdEncoding.EncodeToString(ks.globalKey.Key))
+
+		// Save the newly generated key to disk
+		if err := ks.save(); err != nil {
+			return fmt.Errorf("failed to save new global key: %w", err)
+		}
 	}
 
 	return nil
 }
 
-// DeriveSessionKey creates a session key for a conversation
-func (ks *KeyStore) DeriveSessionKey(otherUsername, conversationID string) (*shared.SessionKey, error) {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-
-	if ks.keypair == nil {
-		return nil, errors.New("no keypair available")
-	}
-
-	otherPubKey := ks.publicKeys[otherUsername]
-	if otherPubKey == nil {
-		return nil, fmt.Errorf("public key not found for user: %s", otherUsername)
-	}
-
-	sessionKey, err := shared.DeriveSessionKey(ks.keypair.PrivateKey, otherPubKey.PublicKey, conversationID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to derive session key: %w", err)
-	}
-
-	// Store the session key
-	ks.sessionKeys[conversationID] = sessionKey
-	return sessionKey, nil
-}
-
-// GetSessionKey retrieves a session key for a conversation
+// GetSessionKey retrieves the global session key (only global encryption supported)
 func (ks *KeyStore) GetSessionKey(conversationID string) *shared.SessionKey {
 	ks.mu.RLock()
 	defer ks.mu.RUnlock()
 
-	// Return global key for global conversation
-	if conversationID == "global" {
-		return ks.globalKey
-	}
-
-	return ks.sessionKeys[conversationID]
+	// Only global conversation is supported
+	return ks.globalKey
 }
 
 // EncryptMessage encrypts a message for a specific conversation
@@ -246,19 +159,13 @@ func (ks *KeyStore) DecryptMessage(encrypted *shared.EncryptedMessage, conversat
 
 // save encrypts and saves the keystore to disk
 func (ks *KeyStore) save() error {
-	// Create the keystore data
+	// Create the keystore data (global encryption only)
 	keystoreData := struct {
-		Keypair     *shared.KeyPair                  `json:"keypair"`
-		PublicKeys  map[string]*shared.PublicKeyInfo `json:"public_keys"`
-		SessionKeys map[string]*shared.SessionKey    `json:"session_keys"`
-		GlobalKey   *shared.SessionKey               `json:"global_key"`
-		Version     string                           `json:"version"`
+		GlobalKey *shared.SessionKey `json:"global_key"`
+		Version   string             `json:"version"`
 	}{
-		Keypair:     ks.keypair,
-		PublicKeys:  ks.publicKeys,
-		SessionKeys: ks.sessionKeys,
-		GlobalKey:   ks.globalKey,
-		Version:     "1.1",
+		GlobalKey: ks.globalKey,
+		Version:   "2.0", // Version 2.0 for global-only encryption
 	}
 
 	// Serialize the data
@@ -307,29 +214,22 @@ func (ks *KeyStore) load() error {
 		return fmt.Errorf("failed to decrypt keystore: %w", err)
 	}
 
-	// Deserialize the data
+	// Deserialize the data (supports both old and new formats)
 	var keystoreData struct {
-		Keypair     *shared.KeyPair                  `json:"keypair"`
-		PublicKeys  map[string]*shared.PublicKeyInfo `json:"public_keys"`
-		SessionKeys map[string]*shared.SessionKey    `json:"session_keys"`
-		GlobalKey   *shared.SessionKey               `json:"global_key"`
-		Version     string                           `json:"version"`
+		// Legacy fields for backward compatibility
+		Keypair     *shared.KeyPair                  `json:"keypair,omitempty"`
+		PublicKeys  map[string]*shared.PublicKeyInfo `json:"public_keys,omitempty"`
+		SessionKeys map[string]*shared.SessionKey    `json:"session_keys,omitempty"`
+		// Current field
+		GlobalKey *shared.SessionKey `json:"global_key"`
+		Version   string             `json:"version"`
 	}
 
 	if err := json.Unmarshal(data, &keystoreData); err != nil {
 		return fmt.Errorf("failed to unmarshal keystore: %w", err)
 	}
 
-	// Validate keypair
-	if keystoreData.Keypair != nil {
-		if err := shared.ValidateKeyPair(keystoreData.Keypair); err != nil {
-			return fmt.Errorf("invalid keypair in keystore: %w", err)
-		}
-	}
-
-	ks.keypair = keystoreData.Keypair
-	ks.publicKeys = keystoreData.PublicKeys
-	ks.sessionKeys = keystoreData.SessionKeys
+	// Only load the global key (ignore legacy individual encryption data)
 	ks.globalKey = keystoreData.GlobalKey
 
 	return nil

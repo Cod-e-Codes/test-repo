@@ -64,8 +64,6 @@ type keyMap struct {
 	SendFile key.Binding
 	SaveFile key.Binding
 	Theme    key.Binding
-	ShowKey  key.Binding
-	AddKey   key.Binding
 	// Admin commands (populated dynamically)
 	ClearDB key.Binding
 	Kick    key.Binding
@@ -93,9 +91,7 @@ func (k keyMap) GetCommandHelp(isAdmin, useE2E bool) [][]key.Binding {
 		{k.SendFile, k.SaveFile, k.Theme},
 	}
 
-	if useE2E {
-		commands = append(commands, []key.Binding{k.ShowKey, k.AddKey})
-	}
+	// Individual E2E commands removed - only global E2E encryption is supported
 
 	if isAdmin {
 		commands = append(commands, []key.Binding{k.ClearDB, k.Kick, k.Ban, k.Unban})
@@ -172,14 +168,7 @@ func newKeyMap() keyMap {
 			key.WithKeys(":theme"),
 			key.WithHelp(":theme <name>", "change theme"),
 		),
-		ShowKey: key.NewBinding(
-			key.WithKeys(":showkey"),
-			key.WithHelp(":showkey", "show your public key"),
-		),
-		AddKey: key.NewBinding(
-			key.WithKeys(":addkey"),
-			key.WithHelp(":addkey <user> <key>", "add user's public key"),
-		),
+		// Individual E2E key bindings removed - only global E2E encryption supported
 		ClearDB: key.NewBinding(
 			key.WithKeys(":cleardb"),
 			key.WithHelp(":cleardb", "clear server database (admin)"),
@@ -359,23 +348,19 @@ func validateEncryptionRoundtrip(keystore *crypto.KeyStore, username string) err
 	return nil
 }
 
-// verifyKeystoreUnlocked verifies keystore is properly unlocked
+// verifyKeystoreUnlocked verifies keystore is properly unlocked (global encryption only)
 func verifyKeystoreUnlocked(keystore *crypto.KeyStore) error {
 	if keystore == nil {
 		return fmt.Errorf("keystore is nil")
 	}
 
-	// Try to access private key material
-	keypair := keystore.GetKeyPair()
-	if keypair == nil {
-		return fmt.Errorf("cannot access keypair")
+	// Check if global key is available
+	globalKey := keystore.GetGlobalKey()
+	if globalKey == nil {
+		return fmt.Errorf("global key not available")
 	}
 
-	if keypair.PrivateKey == nil {
-		return fmt.Errorf("private key is nil")
-	}
-
-	log.Printf("DEBUG: Keystore properly unlocked")
+	log.Printf("DEBUG: Keystore properly unlocked for global encryption")
 	return nil
 }
 
@@ -1056,62 +1041,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.listenWebSocket()
 			}
 
-			// E2E Encryption commands
-			if text == ":showkey" {
-				if !m.useE2E {
-					m.banner = "E2E encryption not enabled. Use --e2e flag."
-					m.textarea.SetValue("")
-					return m, nil
-				}
-				pubKeyInfo := m.keystore.GetPublicKeyInfo(m.cfg.Username)
-				if pubKeyInfo != nil {
-					m.banner = fmt.Sprintf("🔑 Your public key ID: %s", pubKeyInfo.KeyID)
-				} else {
-					m.banner = "❌ No public key available"
-				}
-				m.textarea.SetValue("")
-				return m, nil
-			}
-
-			if strings.HasPrefix(text, ":addkey ") {
-				if !m.useE2E {
-					m.banner = "E2E encryption not enabled. Use --e2e flag."
-					m.textarea.SetValue("")
-					return m, nil
-				}
-				parts := strings.Fields(text)
-				if len(parts) < 3 {
-					m.banner = "Usage: :addkey <username> <base64-public-key>"
-					m.textarea.SetValue("")
-					return m, nil
-				}
-				username := parts[1]
-				pubKeyB64 := parts[2]
-
-				// Decode base64 public key
-				pubKey, err := base64.StdEncoding.DecodeString(pubKeyB64)
-				if err != nil {
-					m.banner = "❌ Invalid public key format"
-					m.textarea.SetValue("")
-					return m, nil
-				}
-
-				// Store the public key
-				pubKeyInfo := &shared.PublicKeyInfo{
-					Username:  username,
-					PublicKey: pubKey,
-					CreatedAt: time.Now(),
-					KeyID:     shared.GetKeyID(pubKey),
-				}
-
-				if err := m.keystore.StorePublicKey(pubKeyInfo); err != nil {
-					m.banner = fmt.Sprintf("❌ Failed to store key: %v", err)
-				} else {
-					m.banner = fmt.Sprintf("✅ Added public key for %s (ID: %s)", username, pubKeyInfo.KeyID)
-				}
-				m.textarea.SetValue("")
-				return m, nil
-			}
+			// Individual E2E encryption commands removed - only global E2E encryption supported
 			if text == ":time" {
 				m.twentyFourHour = !m.twentyFourHour
 				m.cfg.TwentyFourHour = m.twentyFourHour

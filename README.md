@@ -462,12 +462,9 @@ For automation and scripts, you can still use traditional command-line flags:
 ./marchat-client --non-interactive --server ws://localhost:8080/ws --username alice
 ```
 
-### E2E Encryption Commands
+### E2E Encryption
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `:showkey` | Display public key | `:showkey` |
-| `:addkey <user> <key>` | Add user's public key | `:addkey alice <base64-key>` |
+marchat uses **global E2E encryption** for secure group chat. Individual user-to-user encryption has been simplified in favor of a shared global encryption model that's easier to use and manage.
 
 **Enable E2E encryption:**
 ```bash
