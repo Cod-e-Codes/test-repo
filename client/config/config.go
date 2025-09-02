@@ -176,7 +176,7 @@ func (icl *InteractiveConfigLoader) LoadOrPromptConfig(overrides map[string]inte
 
 func (icl *InteractiveConfigLoader) promptNewConfig() (*Config, error) {
 	cfg := &Config{
-		Theme:          "modern",
+		Theme:          "system",
 		TwentyFourHour: true,
 	}
 
@@ -206,8 +206,8 @@ func (icl *InteractiveConfigLoader) promptNewConfig() (*Config, error) {
 	}
 
 	// Theme
-	fmt.Println("\nAvailable themes: patriot, retro, modern")
-	theme, err := icl.promptString("Theme", "modern")
+	fmt.Println("\nAvailable themes: system, patriot, retro, modern")
+	theme, err := icl.promptString("Theme", "system")
 	if err != nil {
 		return nil, err
 	}
@@ -427,7 +427,7 @@ func (icl *InteractiveConfigLoader) formatLaunchCommand(cfg *Config, adminKey, k
 		parts = append(parts, "--skip-tls-verify")
 	}
 
-	if cfg.Theme != "modern" {
+	if cfg.Theme != "system" {
 		parts = append(parts, fmt.Sprintf("--theme %s", cfg.Theme))
 	}
 
@@ -456,7 +456,7 @@ func (icl *InteractiveConfigLoader) FormatSanitizedLaunchCommand(cfg *Config) st
 		parts = append(parts, "--skip-tls-verify")
 	}
 
-	if cfg.Theme != "modern" {
+	if cfg.Theme != "system" {
 		parts = append(parts, fmt.Sprintf("--theme %s", cfg.Theme))
 	}
 

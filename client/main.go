@@ -486,6 +486,23 @@ func baseThemeStyles() themeStyles {
 func getThemeStyles(theme string) themeStyles {
 	s := baseThemeStyles()
 	switch strings.ToLower(theme) {
+	case "system":
+		// System theme uses minimal styling to respect terminal defaults
+		s.User = lipgloss.NewStyle().Bold(true)
+		s.Time = lipgloss.NewStyle().Faint(true)
+		s.Msg = lipgloss.NewStyle()
+		s.Banner = lipgloss.NewStyle().Bold(true)
+		s.Box = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
+		s.Mention = lipgloss.NewStyle().Bold(true)
+		s.UserList = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(0, 1)
+		s.Me = lipgloss.NewStyle().Bold(true)
+		s.Other = lipgloss.NewStyle()
+		// Background and UI elements use no colors to respect terminal theme
+		s.Background = lipgloss.NewStyle()
+		s.Header = lipgloss.NewStyle().Bold(true)
+		s.Footer = lipgloss.NewStyle()
+		s.Input = lipgloss.NewStyle()
+		s.HelpOverlay = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(1, 2)
 	case "patriot":
 		s.User = s.User.Foreground(lipgloss.Color("#002868"))              // Navy blue
 		s.Time = s.Time.Foreground(lipgloss.Color("#BF0A30")).Faint(false) // Red
@@ -1163,7 +1180,7 @@ func (m *model) renderHelpOverlay() string {
 	// Basic commands
 	commandHelp += "  :sendfile <path>      Send a file\n"
 	commandHelp += "  :savefile <filename>  Save received file\n"
-	commandHelp += "  :theme <name>         Change theme (patriot, retro, modern)\n"
+	commandHelp += "  :theme <name>         Change theme (system, patriot, retro, modern)\n"
 	commandHelp += "  :time                 Toggle 12/24h time format\n"
 	commandHelp += "  :clear                Clear chat history\n"
 
@@ -1500,7 +1517,7 @@ func loadConfigFromFlags(configPath, serverURL, username, theme string, isAdmin,
 		cfg.ServerURL = "ws://localhost:8080/ws"
 	}
 	if cfg.Theme == "" {
-		cfg.Theme = "modern"
+		cfg.Theme = "system"
 	}
 
 	return &cfg, nil
