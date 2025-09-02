@@ -83,7 +83,7 @@ func (icl *InteractiveConfigLoader) LoadOrPromptConfig(overrides map[string]inte
 	}
 
 	// Load profiles
-	profiles, err := icl.loadProfiles()
+	profiles, err := icl.LoadProfiles()
 	if err != nil && !os.IsNotExist(err) {
 		return nil, "", "", "", fmt.Errorf("error loading profiles: %w", err)
 	}
@@ -309,7 +309,7 @@ func (icl *InteractiveConfigLoader) promptChoice(prompt string, min, max int) (i
 	}
 }
 
-func (icl *InteractiveConfigLoader) loadProfiles() (*Profiles, error) {
+func (icl *InteractiveConfigLoader) LoadProfiles() (*Profiles, error) {
 	var profiles Profiles
 
 	if _, err := os.Stat(icl.ProfilesPath); os.IsNotExist(err) {
@@ -334,7 +334,7 @@ func (icl *InteractiveConfigLoader) loadProfiles() (*Profiles, error) {
 }
 
 func (icl *InteractiveConfigLoader) saveProfile(profile ConnectionProfile) error {
-	profiles, err := icl.loadProfiles()
+	profiles, err := icl.LoadProfiles()
 	if err != nil {
 		profiles = &Profiles{}
 	}
@@ -344,16 +344,16 @@ func (icl *InteractiveConfigLoader) saveProfile(profile ConnectionProfile) error
 		if existing.Name == profile.Name {
 			// Update existing profile
 			profiles.Profiles[i] = profile
-			return icl.saveProfiles(profiles)
+			return icl.SaveProfiles(profiles)
 		}
 	}
 
 	// Add new profile
 	profiles.Profiles = append(profiles.Profiles, profile)
-	return icl.saveProfiles(profiles)
+	return icl.SaveProfiles(profiles)
 }
 
-func (icl *InteractiveConfigLoader) saveProfiles(profiles *Profiles) error {
+func (icl *InteractiveConfigLoader) SaveProfiles(profiles *Profiles) error {
 	data, err := json.MarshalIndent(profiles, "", "  ")
 	if err != nil {
 		return err
@@ -465,7 +465,7 @@ func (icl *InteractiveConfigLoader) FormatSanitizedLaunchCommand(cfg *Config) st
 
 // AutoConnect automatically connects to the most recently used profile
 func (icl *InteractiveConfigLoader) AutoConnect() (*Config, error) {
-	profiles, err := icl.loadProfiles()
+	profiles, err := icl.LoadProfiles()
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +494,7 @@ func (icl *InteractiveConfigLoader) AutoConnect() (*Config, error) {
 
 	// Update last used timestamp
 	mostRecent.LastUsed = time.Now().Unix()
-	if err := icl.saveProfiles(profiles); err != nil {
+	if err := icl.SaveProfiles(profiles); err != nil {
 		// Log error but don't fail the connection
 		fmt.Printf("Warning: Could not update profile usage timestamp: %v\n", err)
 	}
@@ -505,7 +505,7 @@ func (icl *InteractiveConfigLoader) AutoConnect() (*Config, error) {
 
 // QuickStartConnect shows profiles and connects to selected one
 func (icl *InteractiveConfigLoader) QuickStartConnect() (*Config, error) {
-	profiles, err := icl.loadProfiles()
+	profiles, err := icl.LoadProfiles()
 	if err != nil {
 		return nil, err
 	}
@@ -550,7 +550,7 @@ func (icl *InteractiveConfigLoader) QuickStartConnect() (*Config, error) {
 
 	// Update last used timestamp
 	profile.LastUsed = time.Now().Unix()
-	if err := icl.saveProfiles(profiles); err != nil {
+	if err := icl.SaveProfiles(profiles); err != nil {
 		// Log error but don't fail the connection
 		fmt.Printf("Warning: Could not update profile usage timestamp: %v\n", err)
 	}

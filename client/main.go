@@ -1511,53 +1511,60 @@ func main() {
 		initializeClient(cfg, *adminKey, *keystorePassphrase)
 
 	} else {
-		// Use interactive configuration
+		// Check if this is a first-time user (no profiles exist)
 		loader, err := config.NewInteractiveConfigLoader()
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		// Create overrides map from provided flags
-		overrides := make(map[string]interface{})
-		if *serverURL != "" {
-			overrides["server"] = *serverURL
-		}
-		if *username != "" {
-			overrides["username"] = *username
-		}
-		if *theme != "" {
-			overrides["theme"] = *theme
-		}
-		// Only override boolean flags if they were explicitly set to true
-		if *isAdmin {
-			overrides["admin"] = *isAdmin
-		}
-		if *useE2E {
-			overrides["e2e"] = *useE2E
-		}
-		if *skipTLSVerify {
-			overrides["skip-tls-verify"] = *skipTLSVerify
-		}
+		profiles, err := loader.LoadProfiles()
+		isFirstTime := err != nil || len(profiles.Profiles) == 0
 
 		var adminKeyFromConfig, keystorePassFromConfig string
-		cfg, _, adminKeyFromConfig, keystorePassFromConfig, err = loader.LoadOrPromptConfig(overrides)
+
+		// Always use the fancy Bubble Tea UI for interactive configuration
+		if isFirstTime {
+			fmt.Println("🎉 Welcome to marchat! Let's get you set up...")
+		} else {
+			fmt.Println("📝 Let's configure your connection...")
+		}
+
+		cfg, keystorePass, err := config.RunInteractiveConfig()
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+			fmt.Printf("Configuration error: %v\n", err)
 			os.Exit(1)
 		}
 
-		// Override sensitive flags from command line if provided
-		if *adminKey != "" {
-			adminKeyFromConfig = *adminKey
-		}
-		if *keystorePassphrase != "" {
-			keystorePassFromConfig = *keystorePassphrase
+		adminKeyFromConfig = cfg.AdminKey
+		keystorePassFromConfig = keystorePass
+
+		// Save as a profile for future use
+		profileName := "Default"
+		if !isFirstTime {
+			// For returning users, create a unique profile name
+			profileName = fmt.Sprintf("Profile-%d", len(profiles.Profiles)+1)
 		}
 
-		fmt.Println("\nTo connect with these settings in the future, you can use:")
-		fmt.Printf("   %s\n", loader.FormatSanitizedLaunchCommand(cfg))
-		fmt.Println()
+		profile := &config.ConnectionProfile{
+			Name:      profileName,
+			ServerURL: cfg.ServerURL,
+			Username:  cfg.Username,
+			IsAdmin:   cfg.IsAdmin,
+			UseE2E:    cfg.UseE2E,
+			Theme:     cfg.Theme,
+			LastUsed:  time.Now().Unix(),
+		}
+		profiles.Profiles = append(profiles.Profiles, *profile)
+		if err := loader.SaveProfiles(profiles); err != nil {
+			fmt.Printf("Warning: Could not save profile: %v\n", err)
+		}
+
+		if isFirstTime {
+			fmt.Println("✅ Configuration saved! Next time you can use --auto or --quick-start for faster connections.")
+		} else {
+			fmt.Printf("✅ Configuration saved as '%s'! You can use --auto or --quick-start for faster connections.\n", profileName)
+		}
 
 		// Continue with existing client initialization...
 		initializeClient(cfg, adminKeyFromConfig, keystorePassFromConfig)
