@@ -71,7 +71,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 ## Changelog
 
 ### v0.5.0-beta.3 (Latest)
-- **Beautiful Interactive Configuration UI**: Modern Bubble Tea-based form interface with styled colors, tab navigation, and real-time validation
+- **Interactive Configuration UI**: Modern Bubble Tea-based form interface with styled colors, tab navigation, and real-time validation
 - **System Theme as Default**: New "system" theme respects terminal colors for better accessibility and out-of-box experience
 - **Duplicate Username Detection**: Intelligent error handling prevents connection loops when username is already taken
 - **Simplified E2E Encryption**: Removed individual encryption complexity, now supports global encryption only for easier deployment
