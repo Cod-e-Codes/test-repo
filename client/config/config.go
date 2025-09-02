@@ -255,9 +255,15 @@ func (icl *InteractiveConfigLoader) promptString(prompt, defaultValue string) (s
 		fmt.Printf("%s: ", prompt)
 	}
 
-	response, err := icl.reader.ReadString('\n')
+	// Use a more reliable method for reading input on Windows
+	var response string
+	_, err := fmt.Scanln(&response)
 	if err != nil {
-		return "", err
+		// If Scanln fails, try the original method as fallback
+		response, err = icl.reader.ReadString('\n')
+		if err != nil {
+			return "", err
+		}
 	}
 
 	response = strings.TrimSpace(response)
@@ -276,9 +282,15 @@ func (icl *InteractiveConfigLoader) promptYesNo(prompt string, defaultValue bool
 
 	fmt.Printf("%s [%s]: ", prompt, defaultStr)
 
-	response, err := icl.reader.ReadString('\n')
+	// Use a more reliable method for reading input on Windows
+	var response string
+	_, err := fmt.Scanln(&response)
 	if err != nil {
-		return defaultValue
+		// If Scanln fails, try the original method as fallback
+		response, err = icl.reader.ReadString('\n')
+		if err != nil {
+			return defaultValue
+		}
 	}
 
 	response = strings.ToLower(strings.TrimSpace(response))
@@ -293,9 +305,15 @@ func (icl *InteractiveConfigLoader) promptChoice(prompt string, min, max int) (i
 	for {
 		fmt.Printf("%s [%d-%d]: ", prompt, min, max)
 
-		response, err := icl.reader.ReadString('\n')
+		// Use a more reliable method for reading input on Windows
+		var response string
+		_, err := fmt.Scanln(&response)
 		if err != nil {
-			return 0, err
+			// If Scanln fails, try the original method as fallback
+			response, err = icl.reader.ReadString('\n')
+			if err != nil {
+				return 0, err
+			}
 		}
 
 		response = strings.TrimSpace(response)
@@ -521,31 +539,13 @@ func (icl *InteractiveConfigLoader) QuickStartConnect() (*Config, error) {
 		return profiles.Profiles[i].LastUsed > profiles.Profiles[j].LastUsed
 	})
 
-	fmt.Println("Quick Start - Select a connection:")
-	for i, profile := range profiles.Profiles {
-		status := ""
-		if profile.IsAdmin {
-			status += " [Admin]"
-		}
-		if profile.UseE2E {
-			status += " [E2E]"
-		}
-
-		// Show "recent" indicator
-		if i == 0 && profile.LastUsed > 0 {
-			status += " [Recent]"
-		}
-
-		fmt.Printf("  %d. %s (%s@%s)%s\n", i+1, profile.Name, profile.Username, profile.ServerURL, status)
-	}
-	fmt.Println()
-
-	choice, err := icl.promptChoice("Select connection", 1, len(profiles.Profiles))
+	// Use Bubble Tea UI for profile selection
+	choice, err := RunProfileSelection(profiles.Profiles)
 	if err != nil {
 		return nil, err
 	}
 
-	profile := &profiles.Profiles[choice-1]
+	profile := &profiles.Profiles[choice]
 	fmt.Printf("Selected: %s\n", profile.Name)
 
 	// Update last used timestamp

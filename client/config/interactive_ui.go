@@ -382,6 +382,119 @@ func (m ConfigUIModel) GetKeystorePassphrase() string {
 	return m.inputs[keystorePassField].Value()
 }
 
+// ProfileSelectionModel handles profile selection UI
+type ProfileSelectionModel struct {
+	profiles  []ConnectionProfile
+	cursor    int
+	selected  bool
+	cancelled bool
+	choice    int
+}
+
+func NewProfileSelectionModel(profiles []ConnectionProfile) ProfileSelectionModel {
+	return ProfileSelectionModel{
+		profiles: profiles,
+		cursor:   0,
+	}
+}
+
+func (m ProfileSelectionModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m ProfileSelectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "esc":
+			m.cancelled = true
+			return m, tea.Quit
+		case "up":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+		case "down":
+			if m.cursor < len(m.profiles)-1 {
+				m.cursor++
+			}
+		case "enter":
+			m.choice = m.cursor
+			m.selected = true
+			return m, tea.Quit
+		}
+	}
+	return m, nil
+}
+
+func (m ProfileSelectionModel) View() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("Quick Start - Select a connection:"))
+	b.WriteString("\n\n")
+
+	for i, profile := range m.profiles {
+		status := ""
+		if profile.IsAdmin {
+			status += " [Admin]"
+		}
+		if profile.UseE2E {
+			status += " [E2E]"
+		}
+		if i == 0 && profile.LastUsed > 0 {
+			status += " [Recent]"
+		}
+
+		line := fmt.Sprintf("%s (%s@%s)%s", profile.Name, profile.Username, profile.ServerURL, status)
+
+		if i == m.cursor {
+			b.WriteString(focusedStyle.Render("▶ " + line))
+		} else {
+			b.WriteString("  " + line)
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render("↑/↓: Navigate • Enter: Select • Esc: Cancel"))
+
+	return b.String()
+}
+
+func (m ProfileSelectionModel) IsSelected() bool {
+	return m.selected
+}
+
+func (m ProfileSelectionModel) IsCancelled() bool {
+	return m.cancelled
+}
+
+func (m ProfileSelectionModel) GetChoice() int {
+	return m.choice
+}
+
+// RunProfileSelection runs the profile selection UI
+func RunProfileSelection(profiles []ConnectionProfile) (int, error) {
+	model := NewProfileSelectionModel(profiles)
+
+	program := tea.NewProgram(model)
+	finalModel, err := program.Run()
+	if err != nil {
+		return -1, fmt.Errorf("failed to run profile selection UI: %w", err)
+	}
+
+	selectionModel := finalModel.(ProfileSelectionModel)
+
+	if selectionModel.IsCancelled() {
+		return -1, fmt.Errorf("profile selection cancelled by user")
+	}
+
+	if !selectionModel.IsSelected() {
+		return -1, fmt.Errorf("no profile selected")
+	}
+
+	return selectionModel.GetChoice(), nil
+}
+
 // RunInteractiveConfig runs the interactive configuration UI
 func RunInteractiveConfig() (*Config, string, error) {
 	model := NewConfigUI()
