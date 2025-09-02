@@ -59,7 +59,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 | **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305, global encryption for public channels |
 | **File Sharing** | Send files up to 1MB with `:sendfile` |
 | **Admin Controls** | User management, bans, and database operations with improved ban/unban experience |
-| **Themes** | Choose from patriot, retro, or modern themes |
+| **Themes** | Choose from system (default), patriot, retro, or modern themes |
 | **Docker Support** | Containerized deployment with security features |
 
 | Cross-Platform File Sharing          | Theme Switching                         |
@@ -211,7 +211,7 @@ Create `config.json` for client configuration:
 {
   "username": "your-username",
   "server_url": "ws://localhost:8080/ws",
-  "theme": "patriot",
+  "theme": "system",
   "twenty_four_hour": true
 }
 ```
@@ -370,11 +370,30 @@ export MARCHAT_BAN_HISTORY_GAPS=true
 
 **Tip:** Press `Ctrl+H` to see the complete help overlay with all available commands!
 
+### Themes
+
+marchat supports multiple visual themes to customize your chat experience:
+
+| Theme | Description | Best For |
+|-------|-------------|----------|
+| **system** *(default)* | Minimal styling that respects your terminal's color scheme | Users who prefer their terminal theme, accessibility, high contrast |
+| **patriot** | Red, white, and blue color scheme | American patriotic theme |
+| **retro** | Orange and green retro terminal colors | Classic terminal/hacker aesthetic |
+| **modern** | Blue and gray modern design | Clean, professional appearance |
+
+**Changing Themes:**
+- **During setup**: Interactive configuration will prompt for theme selection
+- **Runtime**: Use `:theme <name>` command (e.g., `:theme system`)
+- **Config file**: Set `"theme": "system"` in your `config.json`
+- **Command line**: Use `--theme system` flag
+
+The **system** theme is the default because it respects your terminal's existing color configuration, ensuring accessibility and preventing color conflicts.
+
 ### Basic Commands
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `:theme <name>` | Switch theme | `:theme patriot` |
+| `:theme <name>` | Switch theme | `:theme system` |
 | `:time` | Toggle 12/24-hour format | `:time` |
 | `:clear` | Clear chat buffer | `:clear` |
 | `:sendfile <path>` | Send file (<1MB) | `:sendfile document.txt` |
