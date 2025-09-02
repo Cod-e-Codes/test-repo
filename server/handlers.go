@@ -524,18 +524,21 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string, banGapsH
 			}
 			isAdmin = true
 		}
+
+		// Extract IP address
+		ipAddr := getClientIP(r)
+
 		// Check for duplicate username
 		for client := range hub.clients {
 			if strings.EqualFold(client.username, username) {
-				if err := conn.WriteMessage(websocket.CloseMessage, []byte("Username already taken")); err != nil {
+				log.Printf("Duplicate username attempt: '%s' (IP: %s) - username already in use by IP: %s", username, ipAddr, client.ipAddr)
+				if err := conn.WriteMessage(websocket.CloseMessage, []byte("Username already taken - please choose a different username")); err != nil {
 					log.Printf("WriteMessage error: %v", err)
 				}
 				conn.Close()
 				return
 			}
 		}
-		// Extract IP address
-		ipAddr := getClientIP(r)
 
 		// Check if user is banned
 		if hub.IsUserBanned(username) {

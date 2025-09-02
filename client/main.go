@@ -626,6 +626,15 @@ type wsMsg struct {
 
 type wsErr error
 
+// wsUsernameError represents a username-related connection error
+type wsUsernameError struct {
+	message string
+}
+
+func (e wsUsernameError) Error() string {
+	return e.message
+}
+
 type wsConnected bool
 
 type UserList struct {
@@ -648,13 +657,28 @@ func (m *model) connectWebSocket(serverURL string) error {
 		dialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 
+	log.Printf("Attempting WebSocket connection to: %s", fullURL)
 	conn, resp, err := dialer.Dial(fullURL, nil)
 	if err != nil {
+		log.Printf("WebSocket dial failed - Error: %v (Type: %T)", err, err)
 		if resp != nil {
-			log.Printf("WebSocket connection failed with status %d: %v", resp.StatusCode, err)
-		} else {
-			log.Printf("WebSocket connection failed: %v", err)
+			log.Printf("HTTP Response - Status: %d, Headers: %v", resp.StatusCode, resp.Header)
+			// Try to read response body for more details
+			if resp.Body != nil {
+				body := make([]byte, 1024)
+				if n, readErr := resp.Body.Read(body); readErr == nil && n > 0 {
+					log.Printf("Response body: %s", string(body[:n]))
+				}
+				resp.Body.Close()
+			}
 		}
+
+		// Check if this might be a duplicate username error based on response
+		if resp != nil && resp.StatusCode == 403 {
+			log.Printf("Connection forbidden - likely duplicate username")
+			return wsUsernameError{message: "Username already taken - please choose a different username"}
+		}
+
 		return err
 	}
 
@@ -682,6 +706,38 @@ func (m *model) connectWebSocket(serverURL string) error {
 	}
 	log.Printf("Handshake sent successfully")
 
+	// Brief pause to allow server to process handshake and potentially close connection
+	time.Sleep(100 * time.Millisecond)
+
+	// Test if connection is still alive after handshake
+	if err := m.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+		log.Printf("Connection test failed after handshake: %v", err)
+		log.Printf("Error type: %T", err)
+
+		// Check different types of errors that might indicate connection was closed
+		if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if ce, ok := err.(*websocket.CloseError); ok {
+				log.Printf("Close error detected - Code: %d, Text: '%s'", ce.Code, ce.Text)
+				if strings.Contains(ce.Text, "Username already taken") || strings.Contains(ce.Text, "already taken") {
+					return wsUsernameError{message: "Username already taken - please choose a different username"}
+				}
+			}
+		}
+
+		// Also check for "connection closed" type errors which might indicate duplicate username
+		errStr := err.Error()
+		log.Printf("Error string: '%s'", errStr)
+		if strings.Contains(errStr, "use of closed network connection") ||
+			strings.Contains(errStr, "connection reset") ||
+			strings.Contains(errStr, "broken pipe") {
+			// Connection was closed immediately after handshake - likely duplicate username
+			log.Printf("Connection closed immediately after handshake - assuming duplicate username")
+			return wsUsernameError{message: "Username already taken - please choose a different username"}
+		}
+
+		return err
+	}
+
 	// Set pong handler
 	m.conn.SetPongHandler(func(appData string) error {
 		return nil
@@ -708,10 +764,41 @@ func (m *model) connectWebSocket(serverURL string) error {
 			case <-m.ctx.Done():
 				return
 			default:
-				_, raw, err := conn.ReadMessage()
+				msgType, raw, err := conn.ReadMessage()
 				if err != nil {
+					// Check if it's a close error with a specific message
+					if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+						if ce, ok := err.(*websocket.CloseError); ok {
+							log.Printf("WebSocket closed: %d - %s", ce.Code, ce.Text)
+							// Check for duplicate username error
+							if strings.Contains(ce.Text, "Username already taken") {
+								m.msgChan <- wsUsernameError{message: ce.Text}
+								return
+							}
+						}
+					}
+
+					// Check for the specific "bad close code" error that indicates duplicate username
+					errStr := err.Error()
+					if strings.Contains(errStr, "bad close code") {
+						log.Printf("Detected bad close code - likely duplicate username: %v", err)
+						m.msgChan <- wsUsernameError{message: "Username already taken - please choose a different username"}
+						return
+					}
+
 					log.Printf("WebSocket read error: %v", err)
 					m.msgChan <- wsErr(err)
+					return
+				}
+
+				// Handle close messages explicitly
+				if msgType == websocket.CloseMessage {
+					log.Printf("Received close message: %s", string(raw))
+					if strings.Contains(string(raw), "Username already taken") {
+						m.msgChan <- wsUsernameError{message: string(raw)}
+						return
+					}
+					m.msgChan <- wsErr(fmt.Errorf("connection closed: %s", string(raw)))
 					return
 				}
 
@@ -795,6 +882,13 @@ func (m *model) Init() tea.Cmd {
 	return func() tea.Msg {
 		err := m.connectWebSocket(m.cfg.ServerURL)
 		if err != nil {
+			log.Printf("connectWebSocket returned error: %v (type: %T)", err, err)
+			// Preserve wsUsernameError type
+			if usernameErr, ok := err.(wsUsernameError); ok {
+				log.Printf("Detected username error: %s", usernameErr.message)
+				return usernameErr
+			}
+			log.Printf("Returning generic wsErr")
 			return wsErr(err)
 		}
 		return wsConnected(true)
@@ -848,6 +942,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.GotoBottom()
 		m.sending = false
 		return m, m.listenWebSocket()
+	case wsUsernameError:
+		log.Printf("Handling wsUsernameError: %s", v.message)
+		m.connected = false
+		m.banner = "❌ " + v.message + " - Please restart with a different username"
+		m.closeWebSocket()
+		// Don't attempt to reconnect for username errors
+		return m, nil
 	case wsErr:
 		m.connected = false
 		m.banner = "🚫 Connection lost. Reconnecting..."
