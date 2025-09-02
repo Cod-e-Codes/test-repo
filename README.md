@@ -71,12 +71,15 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 ## Changelog
 
 ### v0.5.0-beta.3 (Latest)
-- **Enhanced Interactive Configuration**: Complete client configuration overhaul with guided setup for new users
+- **Beautiful Interactive Configuration UI**: Modern Bubble Tea-based form interface with styled colors, tab navigation, and real-time validation
+- **System Theme as Default**: New "system" theme respects terminal colors for better accessibility and out-of-box experience
+- **Duplicate Username Detection**: Intelligent error handling prevents connection loops when username is already taken
+- **Simplified E2E Encryption**: Removed individual encryption complexity, now supports global encryption only for easier deployment
+- **Enhanced User Experience**: Conditional field visibility, password masking, and helpful prompts in configuration UI
 - **Connection Profile Management**: Save and manage multiple server connections with platform-appropriate storage
 - **Quick Start Options**: `--auto` and `--quick-start` flags for instant connection to saved profiles
-- **Improved User Experience**: Interactive prompts for server setup, E2E encryption, and admin configuration
+- **Improved Error Handling**: Clear error messages for duplicate usernames, connection failures, and configuration issues
 - **Backward Compatibility**: All existing command-line flags continue to work as before
-- **Bug Fixes**: Fixed E2E encryption profile saving, empty JSON file handling, and configuration override issues
 
 ### v0.5.0-beta.2
 - **Fixed Plugin Checksum Validation**: Corrected plugin installation checksum validation to properly validate downloaded ZIP files instead of extracted binaries
