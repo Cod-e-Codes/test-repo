@@ -465,7 +465,10 @@ func (icl *InteractiveConfigLoader) AutoConnect() (*Config, error) {
 
 	// Update last used timestamp
 	mostRecent.LastUsed = time.Now().Unix()
-	icl.saveProfiles(profiles)
+	if err := icl.saveProfiles(profiles); err != nil {
+		// Log error but don't fail the connection
+		fmt.Printf("Warning: Could not update profile usage timestamp: %v\n", err)
+	}
 
 	cfg := icl.profileToConfig(*mostRecent)
 	return &cfg, nil
@@ -518,7 +521,10 @@ func (icl *InteractiveConfigLoader) QuickStartConnect() (*Config, error) {
 
 	// Update last used timestamp
 	profile.LastUsed = time.Now().Unix()
-	icl.saveProfiles(profiles)
+	if err := icl.saveProfiles(profiles); err != nil {
+		// Log error but don't fail the connection
+		fmt.Printf("Warning: Could not update profile usage timestamp: %v\n", err)
+	}
 
 	cfg := icl.profileToConfig(*profile)
 	return &cfg, nil
