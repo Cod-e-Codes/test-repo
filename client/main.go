@@ -1441,7 +1441,6 @@ func main() {
 	}
 
 	var cfg *config.Config
-	var launchCommand string
 	var err error
 
 	// Check if all required flags are provided for non-interactive mode
@@ -1494,7 +1493,7 @@ func main() {
 		}
 
 		var adminKeyFromConfig, keystorePassFromConfig string
-		cfg, launchCommand, adminKeyFromConfig, keystorePassFromConfig, err = loader.LoadOrPromptConfig(overrides)
+		cfg, _, adminKeyFromConfig, keystorePassFromConfig, err = loader.LoadOrPromptConfig(overrides)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -1509,7 +1508,7 @@ func main() {
 		}
 
 		fmt.Println("\nTo connect with these settings in the future, you can use:")
-		fmt.Printf("   %s\n", launchCommand)
+		fmt.Printf("   %s\n", loader.FormatSanitizedLaunchCommand(cfg))
 		fmt.Println()
 
 		// Continue with existing client initialization...

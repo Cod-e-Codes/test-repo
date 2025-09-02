@@ -434,6 +434,35 @@ func (icl *InteractiveConfigLoader) formatLaunchCommand(cfg *Config, adminKey, k
 	return strings.Join(parts, " ")
 }
 
+// FormatSanitizedLaunchCommand creates a version safe for logging (without sensitive data)
+func (icl *InteractiveConfigLoader) FormatSanitizedLaunchCommand(cfg *Config) string {
+	var parts []string
+
+	parts = append(parts, "./marchat-client")
+	parts = append(parts, fmt.Sprintf("--server %s", cfg.ServerURL))
+	parts = append(parts, fmt.Sprintf("--username %s", cfg.Username))
+
+	if cfg.IsAdmin {
+		parts = append(parts, "--admin")
+		parts = append(parts, "--admin-key <your-admin-key>")
+	}
+
+	if cfg.UseE2E {
+		parts = append(parts, "--e2e")
+		parts = append(parts, "--keystore-passphrase <your-passphrase>")
+	}
+
+	if cfg.SkipTLSVerify {
+		parts = append(parts, "--skip-tls-verify")
+	}
+
+	if cfg.Theme != "modern" {
+		parts = append(parts, fmt.Sprintf("--theme %s", cfg.Theme))
+	}
+
+	return strings.Join(parts, " ")
+}
+
 // AutoConnect automatically connects to the most recently used profile
 func (icl *InteractiveConfigLoader) AutoConnect() (*Config, error) {
 	profiles, err := icl.loadProfiles()
