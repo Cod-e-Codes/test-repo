@@ -228,17 +228,19 @@ func init() {
 }
 
 var (
-	configPath = flag.String("config", "config.json", "Path to config file")
-	serverURL  = flag.String("server", "", "Server URL (overrides config)")
-	username   = flag.String("username", "", "Username (overrides config)")
-	theme      = flag.String("theme", "", "Theme (overrides config)")
+	configPath         = flag.String("config", "", "Path to config file (optional)")
+	serverURL          = flag.String("server", "", "Server URL")
+	username           = flag.String("username", "", "Username")
+	theme              = flag.String("theme", "", "Theme")
+	isAdmin            = flag.Bool("admin", false, "Connect as admin (requires --admin-key)")
+	adminKey           = flag.String("admin-key", "", "Admin key for privileged commands")
+	useE2E             = flag.Bool("e2e", false, "Enable end-to-end encryption")
+	keystorePassphrase = flag.String("keystore-passphrase", "", "Passphrase for keystore (required for E2E)")
+	skipTLSVerify      = flag.Bool("skip-tls-verify", false, "Skip TLS certificate verification")
+	quickStart         = flag.Bool("quick-start", false, "Use last connection or select from saved profiles")
+	autoConnect        = flag.Bool("auto", false, "Automatically connect using most recent profile")
+	nonInteractive     = flag.Bool("non-interactive", false, "Skip interactive prompts (require all flags)")
 )
-
-var isAdmin = flag.Bool("admin", false, "Connect as admin (requires --admin-key)")
-var adminKey = flag.String("admin-key", "", "Admin key for privileged commands like :cleardb, :kick, :ban, :unban")
-var useE2E = flag.Bool("e2e", false, "Enable end-to-end encryption")
-var keystorePassphrase = flag.String("keystore-passphrase", "", "Passphrase for keystore (required for E2E)")
-var skipTLSVerify = flag.Bool("skip-tls-verify", false, "Skip TLS certificate verification (for development)")
 
 // Add these helper functions after the existing imports and before the model struct
 
@@ -1388,58 +1390,234 @@ type quitMsg struct{}
 func main() {
 	flag.Parse()
 
-	// Validate admin flags
-	if *isAdmin && *adminKey == "" {
-		fmt.Println("❌ Error: --admin flag requires --admin-key")
-		fmt.Println("Usage: go run client/main.go --admin --admin-key your-key")
-		os.Exit(1)
-	}
-
-	// Validate E2E flags
-	if *useE2E && *keystorePassphrase == "" {
-		fmt.Println("❌ Error: --e2e flag requires --keystore-passphrase")
-		fmt.Println("Usage: go run client/main.go --e2e --keystore-passphrase your-passphrase")
-		os.Exit(1)
-	}
-
-	// Use platform-appropriate config path if no custom path specified
-	var configFilePath string
-	if *configPath == "config.json" {
-		// Default config path - use platform-appropriate directory
-		var err error
-		configFilePath, err = config.GetConfigPath()
+	// Auto-connect to most recent profile
+	if *autoConnect {
+		loader, err := config.NewInteractiveConfigLoader()
 		if err != nil {
-			fmt.Printf("Error getting config path: %v\n", err)
+			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-	} else {
-		// Custom config path specified
-		configFilePath = *configPath
+
+		cfg, err := loader.AutoConnect()
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Get sensitive data and connect
+		adminKey, keystorePass, err := loader.PromptSensitiveData(cfg.IsAdmin, cfg.UseE2E)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		initializeClient(cfg, adminKey, keystorePass)
+		return
 	}
 
-	cfg, _ := config.LoadConfig(configFilePath)
-	if *serverURL != "" {
-		cfg.ServerURL = *serverURL
+	// Quick start menu - actually connects using saved profiles
+	if *quickStart {
+		loader, err := config.NewInteractiveConfigLoader()
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		cfg, err := loader.QuickStartConnect()
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Get sensitive data and connect
+		adminKey, keystorePass, err := loader.PromptSensitiveData(cfg.IsAdmin, cfg.UseE2E)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		initializeClient(cfg, adminKey, keystorePass)
+		return
 	}
-	if *username != "" {
-		cfg.Username = *username
+
+	var cfg *config.Config
+	var launchCommand string
+	var err error
+
+	// Check if all required flags are provided for non-interactive mode
+	if *nonInteractive || (allFlagsProvided(*serverURL, *username, *isAdmin, *adminKey, *useE2E, *keystorePassphrase)) {
+		// Use traditional flag-based configuration
+		cfg, err = loadConfigFromFlags(*configPath, *serverURL, *username, *theme, *isAdmin, *useE2E, *skipTLSVerify)
+		if err != nil {
+			fmt.Printf("Error loading config: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Validate required flags for non-interactive mode
+		if err := validateFlags(*isAdmin, *adminKey, *useE2E, *keystorePassphrase); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			flag.Usage()
+			os.Exit(1)
+		}
+
+		// Continue with existing client initialization using flag values
+		initializeClient(cfg, *adminKey, *keystorePassphrase)
+
+	} else {
+		// Use interactive configuration
+		loader, err := config.NewInteractiveConfigLoader()
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Create overrides map from provided flags
+		overrides := make(map[string]interface{})
+		if *serverURL != "" {
+			overrides["server"] = *serverURL
+		}
+		if *username != "" {
+			overrides["username"] = *username
+		}
+		if *theme != "" {
+			overrides["theme"] = *theme
+		}
+		// Only override boolean flags if they were explicitly set to true
+		if *isAdmin {
+			overrides["admin"] = *isAdmin
+		}
+		if *useE2E {
+			overrides["e2e"] = *useE2E
+		}
+		if *skipTLSVerify {
+			overrides["skip-tls-verify"] = *skipTLSVerify
+		}
+
+		var adminKeyFromConfig, keystorePassFromConfig string
+		cfg, launchCommand, adminKeyFromConfig, keystorePassFromConfig, err = loader.LoadOrPromptConfig(overrides)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Override sensitive flags from command line if provided
+		if *adminKey != "" {
+			adminKeyFromConfig = *adminKey
+		}
+		if *keystorePassphrase != "" {
+			keystorePassFromConfig = *keystorePassphrase
+		}
+
+		fmt.Println("\nTo connect with these settings in the future, you can use:")
+		fmt.Printf("   %s\n", launchCommand)
+		fmt.Println()
+
+		// Continue with existing client initialization...
+		initializeClient(cfg, adminKeyFromConfig, keystorePassFromConfig)
 	}
-	if *theme != "" {
-		cfg.Theme = *theme
+}
+
+func allFlagsProvided(serverURL, username string, isAdmin bool, adminKey string, useE2E bool, keystorePassphrase string) bool {
+	if serverURL == "" || username == "" {
+		return false
 	}
-	if cfg.Username == "" {
-		fmt.Println("Error: --username not provided and no config found.")
-		flag.Usage()
-		os.Exit(1)
+
+	if isAdmin && adminKey == "" {
+		return false
 	}
+
+	if useE2E && keystorePassphrase == "" {
+		return false
+	}
+
+	return true
+}
+
+func loadConfigFromFlags(configPath, serverURL, username, theme string, isAdmin, useE2E, skipTLSVerify bool) (*config.Config, error) {
+	var cfg config.Config
+
+	// Try to load existing config file if specified
+	if configPath != "" {
+		if existingCfg, err := config.LoadConfig(configPath); err == nil {
+			cfg = existingCfg
+		}
+	} else {
+		// Use platform-appropriate config path
+		defaultConfigPath, err := config.GetConfigPath()
+		if err == nil {
+			if existingCfg, err := config.LoadConfig(defaultConfigPath); err == nil {
+				cfg = existingCfg
+			}
+		}
+	}
+
+	// Override with flags
+	if serverURL != "" {
+		cfg.ServerURL = serverURL
+	}
+	if username != "" {
+		cfg.Username = username
+	}
+	if theme != "" {
+		cfg.Theme = theme
+	}
+
+	cfg.IsAdmin = isAdmin
+	cfg.UseE2E = useE2E
+	cfg.SkipTLSVerify = skipTLSVerify
+
+	// Set defaults
 	if cfg.ServerURL == "" {
 		cfg.ServerURL = "ws://localhost:8080/ws"
 	}
-	if !strings.HasPrefix(cfg.ServerURL, "ws://") && !strings.HasPrefix(cfg.ServerURL, "wss://") {
-		log.Printf("Warning: --server should be a WebSocket URL (ws:// or wss://), not http://")
-	}
 	if cfg.Theme == "" {
 		cfg.Theme = "modern"
+	}
+
+	return &cfg, nil
+}
+
+func validateFlags(isAdmin bool, adminKey string, useE2E bool, keystorePassphrase string) error {
+	if isAdmin && adminKey == "" {
+		return fmt.Errorf("--admin flag requires --admin-key")
+	}
+
+	if useE2E && keystorePassphrase == "" {
+		return fmt.Errorf("--e2e flag requires --keystore-passphrase")
+	}
+
+	return nil
+}
+
+func initializeClient(cfg *config.Config, adminKeyParam, keystorePassphraseParam string) {
+	// Your existing client initialization code here...
+	fmt.Printf("Connecting to %s as %s...\n", cfg.ServerURL, cfg.Username)
+
+	// Use platform-appropriate config path for saving
+	var configFilePath string
+	defaultConfigPath, err := config.GetConfigPath()
+	if err == nil {
+		configFilePath = defaultConfigPath
+	} else {
+		configFilePath = "config.json" // fallback
+	}
+
+	// Initialize keystore if E2E is enabled
+	var keystore *crypto.KeyStore
+	if cfg.UseE2E {
+		keystorePath, err := config.GetKeystorePath()
+		if err != nil {
+			fmt.Printf("Error getting keystore path: %v\n", err)
+			os.Exit(1)
+		}
+		keystore = crypto.NewKeyStore(keystorePath)
+
+		if err := keystore.Initialize(keystorePassphraseParam); err != nil {
+			fmt.Printf("Error initializing keystore: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("E2E encryption enabled\n")
 	}
 
 	// Setup textarea
@@ -1457,58 +1635,55 @@ func main() {
 	userListVp := viewport.New(18, 10) // height will be set on resize
 	userListVp.SetContent(renderUserList([]string{cfg.Username}, cfg.Username, getThemeStyles(cfg.Theme), 18))
 
-	// Initialize keystore if E2E is enabled
-	var keystore *crypto.KeyStore
-	if *useE2E {
-		// Use platform-appropriate keystore path
-		keystorePath, err := config.GetKeystorePath()
-		if err != nil {
-			fmt.Printf("Error getting keystore path: %v\n", err)
-			os.Exit(1)
-		}
-		keystore = crypto.NewKeyStore(keystorePath)
-
+	// Additional keystore initialization if E2E is enabled
+	if cfg.UseE2E && keystore != nil {
 		// Check environment variable status
 		if envKey := os.Getenv("MARCHAT_GLOBAL_E2E_KEY"); envKey != "" {
-			fmt.Printf("🔐 Using global E2E key from environment variable\n")
+			fmt.Printf("Using global E2E key from environment variable\n")
 		} else {
-			fmt.Printf("💡 No MARCHAT_GLOBAL_E2E_KEY environment variable found\n")
-		}
-
-		// Initialize or load keystore
-		if err := keystore.Initialize(*keystorePassphrase); err != nil {
-			fmt.Printf("❌ Error initializing keystore: %v\n", err)
-			os.Exit(1)
+			fmt.Printf("No MARCHAT_GLOBAL_E2E_KEY environment variable found\n")
 		}
 
 		// Verify keystore is properly unlocked
 		if err := verifyKeystoreUnlocked(keystore); err != nil {
-			fmt.Printf("❌ Keystore unlock verification failed: %v\n", err)
+			fmt.Printf("Keystore unlock verification failed: %v\n", err)
 			os.Exit(1)
 		}
 
 		// Display global key info
 		if globalKey := keystore.GetGlobalKey(); globalKey != nil {
-			fmt.Printf("🌐 Global chat encryption: ENABLED (Key ID: %s)\n", globalKey.KeyID)
+			fmt.Printf("Global chat encryption: ENABLED (Key ID: %s)\n", globalKey.KeyID)
 		} else {
-			fmt.Printf("❌ Global key not available\n")
+			fmt.Printf("Global key not available\n")
 			os.Exit(1)
 		}
 
 		// Test encryption roundtrip (non-blocking for production use)
 		if err := validateEncryptionRoundtrip(keystore, cfg.Username); err != nil {
-			fmt.Printf("⚠️  Encryption validation failed: %v\n", err)
-			fmt.Printf("⚠️  E2E encryption will continue but may have issues\n")
+			fmt.Printf("Encryption validation failed: %v\n", err)
+			fmt.Printf("E2E encryption will continue but may have issues\n")
 			log.Printf("WARNING: Encryption validation failed: %v", err)
 		} else {
-			fmt.Printf("✅ Encryption validation passed\n")
+			fmt.Printf("Encryption validation passed\n")
 		}
 
-		fmt.Printf("🔐 E2E encryption enabled with keystore: %s\n", keystorePath)
+		keystorePath, _ := config.GetKeystorePath()
+		fmt.Printf("E2E encryption enabled with keystore: %s\n", keystorePath)
+	}
+
+	// Update global flags for compatibility with existing code
+	*isAdmin = cfg.IsAdmin
+	*useE2E = cfg.UseE2E
+	*skipTLSVerify = cfg.SkipTLSVerify
+	if len(adminKeyParam) > 0 {
+		*adminKey = adminKeyParam
+	}
+	if len(keystorePassphraseParam) > 0 {
+		*keystorePassphrase = keystorePassphraseParam
 	}
 
 	m := &model{
-		cfg:              cfg,
+		cfg:              *cfg,
 		configFilePath:   configFilePath,
 		textarea:         ta,
 		viewport:         vp,
@@ -1517,7 +1692,7 @@ func main() {
 		userListViewport: userListVp,
 		twentyFourHour:   cfg.TwentyFourHour,
 		keystore:         keystore,
-		useE2E:           *useE2E,
+		useE2E:           cfg.UseE2E,
 		keys:             newKeyMap(),
 	}
 

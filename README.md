@@ -70,7 +70,15 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 ## Changelog
 
-### v0.5.0-beta.2 (Latest)
+### v0.5.0-beta.3 (Latest)
+- **Enhanced Interactive Configuration**: Complete client configuration overhaul with guided setup for new users
+- **Connection Profile Management**: Save and manage multiple server connections with platform-appropriate storage
+- **Quick Start Options**: `--auto` and `--quick-start` flags for instant connection to saved profiles
+- **Improved User Experience**: Interactive prompts for server setup, E2E encryption, and admin configuration
+- **Backward Compatibility**: All existing command-line flags continue to work as before
+- **Bug Fixes**: Fixed E2E encryption profile saving, empty JSON file handling, and configuration override issues
+
+### v0.5.0-beta.2
 - **Fixed Plugin Checksum Validation**: Corrected plugin installation checksum validation to properly validate downloaded ZIP files instead of extracted binaries
 - **Enhanced Help System**: Improved help overlay formatting with better spacing and removed deprecated individual E2E encryption commands
 - **Backward Compatibility**: Added keystore location compatibility for existing users while supporting platform-appropriate directories
@@ -88,17 +96,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.5.0-beta.2:**
+**Download pre-built binaries for v0.5.0-beta.3:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.2/marchat-v0.5.0-beta.2-linux-amd64.zip
-unzip marchat-v0.5.0-beta.2-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.3/marchat-v0.5.0-beta.3-linux-amd64.zip
+unzip marchat-v0.5.0-beta.3-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.2/marchat-v0.5.0-beta.2-darwin-amd64.zip
-unzip marchat-v0.5.0-beta.2-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.3/marchat-v0.5.0-beta.3-darwin-amd64.zip
+unzip marchat-v0.5.0-beta.3-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -107,8 +115,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.2/marchat-v0.5.0-beta.2-android-arm64.zip
-unzip marchat-v0.5.0-beta.2-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.3/marchat-v0.5.0-beta.3-android-arm64.zip
+unzip marchat-v0.5.0-beta.3-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -393,6 +401,65 @@ export MARCHAT_BAN_HISTORY_GAPS=true
 **Connect as admin:**
 ```bash
 ./marchat-client --username admin1 --admin --admin-key your-key --server ws://localhost:8080/ws
+```
+
+## Client Configuration
+
+marchat offers multiple ways to configure and connect to servers, from interactive setup for new users to quick-start options for returning users.
+
+### Interactive Configuration (Default)
+
+When you run the client without sufficient flags, it enters interactive configuration mode:
+
+```bash
+./marchat-client
+```
+
+The interactive mode guides you through:
+- Server URL selection
+- Username setup  
+- Admin privileges configuration
+- End-to-end encryption setup
+- Theme selection
+- Profile saving for future use
+
+### Quick Start Options
+
+For returning users, marchat provides convenient quick-start options:
+
+```bash
+# Auto-connect to most recently used profile
+./marchat-client --auto
+
+# Select from saved connection profiles
+./marchat-client --quick-start
+```
+
+### Connection Profiles
+
+The client automatically saves connection profiles in platform-appropriate locations:
+- **Windows**: `%APPDATA%\marchat\profiles.json`
+- **macOS**: `~/Library/Application Support/marchat/profiles.json`  
+- **Linux**: `~/.config/marchat/profiles.json`
+
+Profiles store non-sensitive connection settings like server URL, username, and preferences. Sensitive data (admin keys, keystore passphrases) are prompted for each session.
+
+### Traditional Flag-Based Configuration
+
+For automation and scripts, you can still use traditional command-line flags:
+
+```bash
+# Basic connection
+./marchat-client --server ws://localhost:8080/ws --username alice
+
+# Admin connection
+./marchat-client --server ws://localhost:8080/ws --username admin --admin --admin-key your-key
+
+# E2E encrypted connection
+./marchat-client --server ws://localhost:8080/ws --username alice --e2e --keystore-passphrase your-passphrase
+
+# Non-interactive mode (requires all necessary flags)
+./marchat-client --non-interactive --server ws://localhost:8080/ws --username alice
 ```
 
 ### E2E Encryption Commands

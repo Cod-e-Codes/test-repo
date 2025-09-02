@@ -1,17 +1,532 @@
+// Enhanced config.go for the client
 package config
 
 import (
+	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strings"
+	"syscall"
+	"time"
+
+	"golang.org/x/term"
 )
 
 type Config struct {
-	Username       string `json:"username"`
-	ServerURL      string `json:"server_url"`
+	// Connection settings
+	Username  string `json:"username"`
+	ServerURL string `json:"server_url"`
+
+	// Admin settings (optional)
+	IsAdmin  bool   `json:"is_admin,omitempty"`
+	AdminKey string `json:"admin_key,omitempty"` // Note: Consider security implications
+
+	// E2E Encryption settings (optional)
+	UseE2E bool `json:"use_e2e,omitempty"`
+
+	// UI settings
 	Theme          string `json:"theme"`
 	TwentyFourHour bool   `json:"twenty_four_hour"`
+	SkipTLSVerify  bool   `json:"skip_tls_verify,omitempty"`
+
+	// Quick start settings
+	SaveCredentials bool  `json:"save_credentials"`
+	LastUsed        int64 `json:"last_used,omitempty"`
+}
+
+// ConnectionProfile represents a saved connection profile
+type ConnectionProfile struct {
+	Name      string `json:"name"`
+	ServerURL string `json:"server_url"`
+	Username  string `json:"username"`
+	IsAdmin   bool   `json:"is_admin"`
+	UseE2E    bool   `json:"use_e2e"`
+	Theme     string `json:"theme,omitempty"`
+	LastUsed  int64  `json:"last_used,omitempty"` // Unix timestamp
+}
+
+type Profiles struct {
+	Default  string              `json:"default,omitempty"`
+	Profiles []ConnectionProfile `json:"profiles"`
+}
+
+// InteractiveConfigLoader handles interactive configuration
+type InteractiveConfigLoader struct {
+	ConfigPath   string
+	ProfilesPath string
+	reader       *bufio.Reader
+}
+
+func NewInteractiveConfigLoader() (*InteractiveConfigLoader, error) {
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return nil, err
+	}
+
+	return &InteractiveConfigLoader{
+		ConfigPath:   filepath.Join(configDir, "config.json"),
+		ProfilesPath: filepath.Join(configDir, "profiles.json"),
+		reader:       bufio.NewReader(os.Stdin),
+	}, nil
+}
+
+// LoadOrPromptConfig loads existing config or prompts for new configuration
+func (icl *InteractiveConfigLoader) LoadOrPromptConfig(overrides map[string]interface{}) (*Config, string, string, string, error) {
+	// Try to load existing config first
+	cfg, err := LoadConfig(icl.ConfigPath)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, "", "", "", fmt.Errorf("error loading config: %w", err)
+	}
+
+	// Load profiles
+	profiles, err := icl.loadProfiles()
+	if err != nil && !os.IsNotExist(err) {
+		return nil, "", "", "", fmt.Errorf("error loading profiles: %w", err)
+	}
+
+	// Show welcome message
+	fmt.Println("Welcome to marchat!")
+	fmt.Println()
+
+	// Check if user wants to use a profile or create new connection
+	if len(profiles.Profiles) > 0 {
+		fmt.Println("Available connection profiles:")
+		for i, profile := range profiles.Profiles {
+			status := ""
+			if profile.IsAdmin {
+				status += " [Admin]"
+			}
+			if profile.UseE2E {
+				status += " [E2E]"
+			}
+			fmt.Printf("  %d. %s (%s@%s)%s\n", i+1, profile.Name, profile.Username, profile.ServerURL, status)
+		}
+		fmt.Printf("  %d. Create new connection\n", len(profiles.Profiles)+1)
+		fmt.Println()
+
+		choice, err := icl.promptChoice("Select an option", 1, len(profiles.Profiles)+1)
+		if err != nil {
+			return nil, "", "", "", err
+		}
+
+		if choice <= len(profiles.Profiles) {
+			// User selected existing profile
+			profile := profiles.Profiles[choice-1]
+			cfg = icl.profileToConfig(profile)
+
+			// Still need to prompt for sensitive data
+			adminKey, keystorePass, err := icl.promptSensitiveData(cfg.IsAdmin, cfg.UseE2E)
+			if err != nil {
+				return nil, "", "", "", err
+			}
+
+			return &cfg, icl.formatLaunchCommand(&cfg, adminKey, keystorePass), adminKey, keystorePass, nil
+		}
+	}
+
+	// Create new configuration interactively
+	newCfg, err := icl.promptNewConfig()
+	if err != nil {
+		return nil, "", "", "", err
+	}
+
+	// Apply command line overrides
+	icl.applyOverrides(newCfg, overrides)
+
+	// Ask if user wants to save this as a profile
+	if icl.promptYesNo("Save this connection as a profile for future use?", true) {
+		profileName, err := icl.promptString("Profile name", fmt.Sprintf("%s@%s", newCfg.Username, newCfg.ServerURL))
+		if err != nil {
+			return nil, "", "", "", err
+		}
+
+		profile := ConnectionProfile{
+			Name:      profileName,
+			ServerURL: newCfg.ServerURL,
+			Username:  newCfg.Username,
+			IsAdmin:   newCfg.IsAdmin,
+			UseE2E:    newCfg.UseE2E,
+			Theme:     newCfg.Theme,
+		}
+
+		if err := icl.saveProfile(profile); err != nil {
+			fmt.Printf("Could not save profile: %v\n", err)
+		} else {
+			fmt.Printf("Profile '%s' saved!\n", profileName)
+		}
+	}
+
+	// Save basic config (without sensitive data)
+	if err := SaveConfig(icl.ConfigPath, *newCfg); err != nil {
+		fmt.Printf("Could not save config: %v\n", err)
+	}
+
+	// Prompt for sensitive data
+	adminKey, keystorePass, err := icl.promptSensitiveData(newCfg.IsAdmin, newCfg.UseE2E)
+	if err != nil {
+		return nil, "", "", "", err
+	}
+
+	return newCfg, icl.formatLaunchCommand(newCfg, adminKey, keystorePass), adminKey, keystorePass, nil
+}
+
+func (icl *InteractiveConfigLoader) promptNewConfig() (*Config, error) {
+	cfg := &Config{
+		Theme:          "modern",
+		TwentyFourHour: true,
+	}
+
+	// Server URL
+	serverURL, err := icl.promptString("Server URL", "wss://marchat.mckerley.net/ws")
+	if err != nil {
+		return nil, err
+	}
+	cfg.ServerURL = serverURL
+
+	// Username
+	username, err := icl.promptString("Username", "")
+	if err != nil {
+		return nil, err
+	}
+	cfg.Username = username
+
+	// Admin privileges
+	cfg.IsAdmin = icl.promptYesNo("Connect as admin?", false)
+
+	// E2E encryption
+	cfg.UseE2E = icl.promptYesNo("Enable end-to-end encryption?", false)
+
+	// TLS verification
+	if strings.HasPrefix(cfg.ServerURL, "wss://") {
+		cfg.SkipTLSVerify = icl.promptYesNo("Skip TLS certificate verification? (only for development)", false)
+	}
+
+	// Theme
+	fmt.Println("\nAvailable themes: patriot, retro, modern")
+	theme, err := icl.promptString("Theme", "modern")
+	if err != nil {
+		return nil, err
+	}
+	cfg.Theme = theme
+
+	return cfg, nil
+}
+
+func (icl *InteractiveConfigLoader) promptSensitiveData(isAdmin, useE2E bool) (adminKey, keystorePass string, err error) {
+	if isAdmin {
+		fmt.Print("Admin key: ")
+		adminKeyBytes, err := term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			return "", "", fmt.Errorf("failed to read admin key: %w", err)
+		}
+		adminKey = strings.TrimSpace(string(adminKeyBytes))
+		fmt.Println() // New line after password input
+
+		if adminKey == "" {
+			return "", "", fmt.Errorf("admin key is required for admin connections")
+		}
+	}
+
+	if useE2E {
+		fmt.Print("Keystore passphrase: ")
+		passphraseBytes, err := term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			return "", "", fmt.Errorf("failed to read passphrase: %w", err)
+		}
+		keystorePass = strings.TrimSpace(string(passphraseBytes))
+		fmt.Println() // New line after password input
+
+		if keystorePass == "" {
+			return "", "", fmt.Errorf("keystore passphrase is required for E2E encryption")
+		}
+	}
+
+	return adminKey, keystorePass, nil
+}
+
+func (icl *InteractiveConfigLoader) promptString(prompt, defaultValue string) (string, error) {
+	if defaultValue != "" {
+		fmt.Printf("%s [%s]: ", prompt, defaultValue)
+	} else {
+		fmt.Printf("%s: ", prompt)
+	}
+
+	response, err := icl.reader.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+
+	response = strings.TrimSpace(response)
+	if response == "" && defaultValue != "" {
+		return defaultValue, nil
+	}
+
+	return response, nil
+}
+
+func (icl *InteractiveConfigLoader) promptYesNo(prompt string, defaultValue bool) bool {
+	defaultStr := "y/N"
+	if defaultValue {
+		defaultStr = "Y/n"
+	}
+
+	fmt.Printf("%s [%s]: ", prompt, defaultStr)
+
+	response, err := icl.reader.ReadString('\n')
+	if err != nil {
+		return defaultValue
+	}
+
+	response = strings.ToLower(strings.TrimSpace(response))
+	if response == "" {
+		return defaultValue
+	}
+
+	return response == "y" || response == "yes"
+}
+
+func (icl *InteractiveConfigLoader) promptChoice(prompt string, min, max int) (int, error) {
+	for {
+		fmt.Printf("%s [%d-%d]: ", prompt, min, max)
+
+		response, err := icl.reader.ReadString('\n')
+		if err != nil {
+			return 0, err
+		}
+
+		response = strings.TrimSpace(response)
+		var choice int
+		if _, err := fmt.Sscanf(response, "%d", &choice); err != nil || choice < min || choice > max {
+			fmt.Printf("Please enter a number between %d and %d\n", min, max)
+			continue
+		}
+
+		return choice, nil
+	}
+}
+
+func (icl *InteractiveConfigLoader) loadProfiles() (*Profiles, error) {
+	var profiles Profiles
+
+	if _, err := os.Stat(icl.ProfilesPath); os.IsNotExist(err) {
+		return &profiles, nil
+	}
+
+	data, err := os.ReadFile(icl.ProfilesPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle empty file
+	if len(data) == 0 {
+		return &profiles, nil
+	}
+
+	if err := json.Unmarshal(data, &profiles); err != nil {
+		return nil, err
+	}
+
+	return &profiles, nil
+}
+
+func (icl *InteractiveConfigLoader) saveProfile(profile ConnectionProfile) error {
+	profiles, err := icl.loadProfiles()
+	if err != nil {
+		profiles = &Profiles{}
+	}
+
+	// Check if profile with same name exists
+	for i, existing := range profiles.Profiles {
+		if existing.Name == profile.Name {
+			// Update existing profile
+			profiles.Profiles[i] = profile
+			return icl.saveProfiles(profiles)
+		}
+	}
+
+	// Add new profile
+	profiles.Profiles = append(profiles.Profiles, profile)
+	return icl.saveProfiles(profiles)
+}
+
+func (icl *InteractiveConfigLoader) saveProfiles(profiles *Profiles) error {
+	data, err := json.MarshalIndent(profiles, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(icl.ProfilesPath, data, 0600)
+}
+
+func (icl *InteractiveConfigLoader) profileToConfig(profile ConnectionProfile) Config {
+	return Config{
+		Username:       profile.Username,
+		ServerURL:      profile.ServerURL,
+		IsAdmin:        profile.IsAdmin,
+		UseE2E:         profile.UseE2E,
+		Theme:          profile.Theme,
+		TwentyFourHour: true, // Default
+	}
+}
+
+func (icl *InteractiveConfigLoader) applyOverrides(cfg *Config, overrides map[string]interface{}) {
+	if val, ok := overrides["server"]; ok {
+		if str, ok := val.(string); ok && str != "" {
+			cfg.ServerURL = str
+		}
+	}
+	if val, ok := overrides["username"]; ok {
+		if str, ok := val.(string); ok && str != "" {
+			cfg.Username = str
+		}
+	}
+	if val, ok := overrides["admin"]; ok {
+		if b, ok := val.(bool); ok {
+			cfg.IsAdmin = b
+		}
+	}
+	if val, ok := overrides["e2e"]; ok {
+		if b, ok := val.(bool); ok {
+			cfg.UseE2E = b
+		}
+	}
+	if val, ok := overrides["theme"]; ok {
+		if str, ok := val.(string); ok && str != "" {
+			cfg.Theme = str
+		}
+	}
+	if val, ok := overrides["skip-tls-verify"]; ok {
+		if b, ok := val.(bool); ok {
+			cfg.SkipTLSVerify = b
+		}
+	}
+}
+
+func (icl *InteractiveConfigLoader) formatLaunchCommand(cfg *Config, adminKey, keystorePass string) string {
+	var parts []string
+
+	parts = append(parts, "./marchat-client")
+	parts = append(parts, fmt.Sprintf("--server %s", cfg.ServerURL))
+	parts = append(parts, fmt.Sprintf("--username %s", cfg.Username))
+
+	if cfg.IsAdmin {
+		parts = append(parts, "--admin")
+		parts = append(parts, fmt.Sprintf("--admin-key %s", adminKey))
+	}
+
+	if cfg.UseE2E {
+		parts = append(parts, "--e2e")
+		parts = append(parts, fmt.Sprintf("--keystore-passphrase %s", keystorePass))
+	}
+
+	if cfg.SkipTLSVerify {
+		parts = append(parts, "--skip-tls-verify")
+	}
+
+	if cfg.Theme != "modern" {
+		parts = append(parts, fmt.Sprintf("--theme %s", cfg.Theme))
+	}
+
+	return strings.Join(parts, " ")
+}
+
+// AutoConnect automatically connects to the most recently used profile
+func (icl *InteractiveConfigLoader) AutoConnect() (*Config, error) {
+	profiles, err := icl.loadProfiles()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(profiles.Profiles) == 0 {
+		return nil, fmt.Errorf("no saved profiles found - run without --auto to create one")
+	}
+
+	// Find most recently used profile
+	var mostRecent *ConnectionProfile
+	var mostRecentTime int64
+
+	for i, profile := range profiles.Profiles {
+		if profile.LastUsed > mostRecentTime {
+			mostRecentTime = profile.LastUsed
+			mostRecent = &profiles.Profiles[i]
+		}
+	}
+
+	if mostRecent == nil {
+		// No usage timestamps, use first profile
+		mostRecent = &profiles.Profiles[0]
+	}
+
+	fmt.Printf("Auto-connecting to: %s (%s@%s)\n", mostRecent.Name, mostRecent.Username, mostRecent.ServerURL)
+
+	// Update last used timestamp
+	mostRecent.LastUsed = time.Now().Unix()
+	icl.saveProfiles(profiles)
+
+	cfg := icl.profileToConfig(*mostRecent)
+	return &cfg, nil
+}
+
+// QuickStartConnect shows profiles and connects to selected one
+func (icl *InteractiveConfigLoader) QuickStartConnect() (*Config, error) {
+	profiles, err := icl.loadProfiles()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(profiles.Profiles) == 0 {
+		fmt.Println("No saved connection profiles found.")
+		fmt.Println("Run without --quick-start to create your first connection profile.")
+		return nil, fmt.Errorf("no saved profiles")
+	}
+
+	// Sort profiles by last used (most recent first)
+	sort.Slice(profiles.Profiles, func(i, j int) bool {
+		return profiles.Profiles[i].LastUsed > profiles.Profiles[j].LastUsed
+	})
+
+	fmt.Println("Quick Start - Select a connection:")
+	for i, profile := range profiles.Profiles {
+		status := ""
+		if profile.IsAdmin {
+			status += " [Admin]"
+		}
+		if profile.UseE2E {
+			status += " [E2E]"
+		}
+
+		// Show "recent" indicator
+		if i == 0 && profile.LastUsed > 0 {
+			status += " [Recent]"
+		}
+
+		fmt.Printf("  %d. %s (%s@%s)%s\n", i+1, profile.Name, profile.Username, profile.ServerURL, status)
+	}
+	fmt.Println()
+
+	choice, err := icl.promptChoice("Select connection", 1, len(profiles.Profiles))
+	if err != nil {
+		return nil, err
+	}
+
+	profile := &profiles.Profiles[choice-1]
+	fmt.Printf("Selected: %s\n", profile.Name)
+
+	// Update last used timestamp
+	profile.LastUsed = time.Now().Unix()
+	icl.saveProfiles(profiles)
+
+	cfg := icl.profileToConfig(*profile)
+	return &cfg, nil
+}
+
+// PromptSensitiveData prompts for admin key and/or keystore passphrase
+func (icl *InteractiveConfigLoader) PromptSensitiveData(isAdmin, useE2E bool) (adminKey, keystorePass string, err error) {
+	return icl.promptSensitiveData(isAdmin, useE2E)
 }
 
 // GetConfigDir returns the platform-appropriate configuration directory
