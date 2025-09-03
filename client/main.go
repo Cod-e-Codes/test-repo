@@ -1727,9 +1727,6 @@ func renderEmojis(s string) string {
 func renderUserList(users []string, me string, styles themeStyles, width int, isAdmin bool, selectedUserIndex int) string {
 	var b strings.Builder
 	title := " Users "
-	if isAdmin {
-		title = " Users (Ctrl+U to select) "
-	}
 	b.WriteString(styles.UserList.Width(width).Render(title) + "\n")
 	max := maxUsersDisplay
 	for i, u := range users {
