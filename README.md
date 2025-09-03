@@ -408,7 +408,7 @@ The **system** theme is the default because it respects your terminal's existing
 |---------|-------------|------------|
 | `:store` | Open plugin store | No |
 | `:plugin list` | List installed plugins | No |
-| `:plugin install <name>` | Install plugin | No |
+| `:plugin install <name>` | Install plugin | Yes |
 | `:plugin uninstall <name>` | Uninstall plugin | Yes |
 
 ### Admin Commands

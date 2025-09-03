@@ -27,7 +27,7 @@ func (h *PluginCommandHandler) HandlePluginCommand(cmd string, args []string, is
 	case "plugin":
 		return h.handlePluginSubcommand(args, isAdmin)
 	case "install":
-		return h.handleInstall(args)
+		return h.handleInstall(args, isAdmin)
 	case "uninstall":
 		return h.handleUninstall(args, isAdmin)
 	case "enable":
@@ -59,7 +59,7 @@ func (h *PluginCommandHandler) handlePluginSubcommand(args []string, isAdmin boo
 	case "list":
 		return h.handleList()
 	case "install":
-		return h.handleInstall(subargs)
+		return h.handleInstall(subargs, isAdmin)
 	case "uninstall":
 		return h.handleUninstall(subargs, isAdmin)
 	case "enable":
@@ -76,7 +76,11 @@ func (h *PluginCommandHandler) handlePluginSubcommand(args []string, isAdmin boo
 }
 
 // handleInstall handles plugin installation
-func (h *PluginCommandHandler) handleInstall(args []string) (string, error) {
+func (h *PluginCommandHandler) handleInstall(args []string, isAdmin bool) (string, error) {
+	if !isAdmin {
+		return "Plugin installation requires admin privileges", nil
+	}
+
 	if len(args) == 0 {
 		return "Usage: :install <plugin-name> [--os <goos>] [--arch <goarch>]", nil
 	}
