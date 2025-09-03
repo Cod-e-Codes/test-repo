@@ -1292,6 +1292,8 @@ func (m *model) renderHelpOverlay() string {
 		commandHelp += "  :kick <user>          Kick user\n"
 		commandHelp += "  :ban <user>           Ban user\n"
 		commandHelp += "  :unban <user>         Unban user\n"
+		commandHelp += "  :cleanup              Clean up stale connections\n"
+		commandHelp += "  :forcedisconnect <user>  Force disconnect user\n"
 	}
 
 	content := title + "\n\n" + basicHelp + commandHelp

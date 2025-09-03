@@ -419,6 +419,8 @@ The **system** theme is the default because it respects your terminal's existing
 | `:kick <username>` | Disconnect user | `:kick user1` |
 | `:ban <username>` | Ban user for 24h with improved user experience after unban | `:ban user1` |
 | `:unban <username>` | Remove user ban with clean message history restoration | `:unban user1` |
+| `:cleanup` | Clean up stale connections | `:cleanup` |
+| `:forcedisconnect <username>` | Force disconnect user (for stale connections) | `:forcedisconnect user1` |
 
 **Connect as admin:**
 ```bash
@@ -617,6 +619,36 @@ When enabled, E2E encryption provides:
 | **"no session key found for global" error** | Fixed in latest version - global E2E key support automatically handles this error |
 | **Blank encrypted messages** | Fixed in v0.3.0-beta.5 - ensure you're using the latest version and have added recipient public keys with `:addkey` |
 | **E2E startup failures** | Fixed in v0.3.0-beta.6 - "conversation: test" session key issue resolved |
+| **Username already taken** | If you disconnected ungracefully (Ctrl+C), use admin `:forcedisconnect <username>` to remove stale connection |
+| **Stale connections preventing login** | Server automatically cleans up dead connections every 5 minutes, or use admin `:cleanup` command |
+| **Client frozen during startup** | Fixed in latest version - `--quick-start` flag now uses proper UI instead of console input |
+
+### Stale Connection Management
+
+marchat includes robust stale connection cleanup to prevent "username already taken" errors when clients disconnect ungracefully.
+
+**Automatic Cleanup:**
+- Server automatically detects and removes stale connections every 5 minutes
+- Uses WebSocket ping messages to identify broken connections
+- No manual intervention required for most cases
+
+**Manual Cleanup (Admin Commands):**
+```bash
+# Clean up all stale connections immediately
+:cleanup
+
+# Force disconnect a specific user (useful for your own stale connection)
+:forcedisconnect username
+
+# Example: Remove your own stale connection after ungraceful disconnect
+:forcedisconnect myusername
+```
+
+**Common Scenarios:**
+1. **Client crashes or Ctrl+C**: Server detects within 5 minutes and cleans up automatically
+2. **Network interruption**: Stale connection removed on next cleanup cycle
+3. **Immediate reconnection needed**: Admin can use `:forcedisconnect` for instant cleanup
+4. **Multiple stale connections**: Use `:cleanup` to remove all dead connections at once
 
 ### Network Connectivity
 

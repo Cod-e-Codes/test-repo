@@ -239,6 +239,44 @@ func (c *Client) handleAdminCommand(command string) {
 			}
 		}
 
+	case ":cleanup":
+		log.Printf("[ADMIN] Manual stale connection cleanup initiated by %s", c.username)
+		c.hub.CleanupStaleConnections()
+		c.send <- shared.Message{
+			Sender:    "System",
+			Content:   "Stale connection cleanup completed.",
+			CreatedAt: time.Now(),
+			Type:      shared.TextMessage,
+		}
+
+	case ":forcedisconnect":
+		if len(parts) < 2 {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Usage: :forcedisconnect <username>",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+			return
+		}
+		targetUsername := parts[1]
+		disconnected := c.hub.ForceDisconnectUser(targetUsername, c.username)
+		if disconnected {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "User '" + targetUsername + "' has been forcibly disconnected.",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+		} else {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "User '" + targetUsername + "' was not found in active connections.",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+		}
+
 	default:
 		log.Printf("[ADMIN] Unknown admin command by %s: %s", c.username, command)
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/Cod-e-Codes/marchat/plugin/manager"
 	"github.com/Cod-e-Codes/marchat/shared"
+	"github.com/gorilla/websocket"
 )
 
 type Hub struct {
@@ -165,6 +166,54 @@ func (h *Hub) CleanupExpiredBans() {
 	}
 }
 
+// CleanupStaleConnections removes clients with broken connections
+func (h *Hub) CleanupStaleConnections() {
+	var staleClients []*Client
+
+	// Check all clients for broken connections
+	for client := range h.clients {
+		// Try to ping the client to check if connection is alive
+		if err := client.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			log.Printf("[CLEANUP] Found stale connection for user '%s' (IP: %s): %v", client.username, client.ipAddr, err)
+			staleClients = append(staleClients, client)
+		}
+	}
+
+	// Remove stale clients
+	for _, client := range staleClients {
+		log.Printf("[CLEANUP] Removing stale connection for user '%s' (IP: %s)", client.username, client.ipAddr)
+		delete(h.clients, client)
+		close(client.send)
+		client.conn.Close()
+	}
+
+	if len(staleClients) > 0 {
+		log.Printf("[CLEANUP] Removed %d stale connections", len(staleClients))
+		h.broadcastUserList()
+	}
+}
+
+// ForceDisconnectUser forcibly removes a user from the clients map (admin command for stale connections)
+func (h *Hub) ForceDisconnectUser(username string, adminUsername string) bool {
+	for client := range h.clients {
+		if strings.EqualFold(client.username, username) {
+			log.Printf("[ADMIN] Force disconnecting user '%s' (IP: %s) by admin '%s'", username, client.ipAddr, adminUsername)
+
+			// Try to close gracefully first
+			client.conn.Close()
+
+			// Remove from clients map
+			delete(h.clients, client)
+			close(client.send)
+
+			h.broadcastUserList()
+			return true
+		}
+	}
+	log.Printf("[ADMIN] Force disconnect attempt for '%s' by '%s' - user not found", username, adminUsername)
+	return false
+}
+
 func (h *Hub) Run() {
 	// Start ban cleanup goroutine
 	go func() {
@@ -172,6 +221,15 @@ func (h *Hub) Run() {
 		defer ticker.Stop()
 		for range ticker.C {
 			h.CleanupExpiredBans()
+		}
+	}()
+
+	// Start stale connection cleanup goroutine
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute) // Check for stale connections every 5 minutes
+		defer ticker.Stop()
+		for range ticker.C {
+			h.CleanupStaleConnections()
 		}
 	}()
 
