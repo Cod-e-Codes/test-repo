@@ -1289,9 +1289,10 @@ func (m *model) renderHelpOverlay() string {
 	if *isAdmin {
 		commandHelp += "\nAdmin Commands:\n"
 		commandHelp += "  :cleardb              Clear server database\n"
-		commandHelp += "  :kick <user>          Kick user\n"
-		commandHelp += "  :ban <user>           Ban user\n"
-		commandHelp += "  :unban <user>         Unban user\n"
+		commandHelp += "  :kick <user>          Kick user (24h temporary ban)\n"
+		commandHelp += "  :ban <user>           Ban user (permanent until unban)\n"
+		commandHelp += "  :unban <user>         Unban user (remove permanent ban)\n"
+		commandHelp += "  :allow <user>         Allow user back (override kick)\n"
 		commandHelp += "  :cleanup              Clean up stale connections\n"
 		commandHelp += "  :forcedisconnect <user>  Force disconnect user\n"
 	}

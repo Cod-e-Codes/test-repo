@@ -416,9 +416,10 @@ The **system** theme is the default because it respects your terminal's existing
 | Command | Description | Example |
 |---------|-------------|---------|
 | `:cleardb` | Wipe server database | `:cleardb` |
-| `:kick <username>` | Disconnect user | `:kick user1` |
-| `:ban <username>` | Ban user for 24h with improved user experience after unban | `:ban user1` |
-| `:unban <username>` | Remove user ban with clean message history restoration | `:unban user1` |
+| `:kick <username>` | Kick user (24h temporary ban) | `:kick user1` |
+| `:ban <username>` | Ban user (permanent until unban) | `:ban user1` |
+| `:unban <username>` | Remove permanent ban | `:unban user1` |
+| `:allow <username>` | Override kick early (allow back) | `:allow user1` |
 | `:cleanup` | Clean up stale connections | `:cleanup` |
 | `:forcedisconnect <username>` | Force disconnect user (for stale connections) | `:forcedisconnect user1` |
 
@@ -426,6 +427,27 @@ The **system** theme is the default because it respects your terminal's existing
 ```bash
 ./marchat-client --username admin1 --admin --admin-key your-key --server ws://localhost:8080/ws
 ```
+
+### Moderation System
+
+marchat uses a two-tier moderation system designed for flexibility and clarity:
+
+**Temporary Kicks (24 hours):**
+- Use `:kick <username>` for temporary discipline
+- User is automatically allowed back after 24 hours
+- Can be overridden early with `:allow <username>`
+- Ideal for cooling-off periods or minor infractions
+
+**Permanent Bans (indefinite):**
+- Use `:ban <username>` for serious violations
+- User remains banned until manually unbanned
+- Only removed with `:unban <username>`
+- Ideal for persistent troublemakers or severe violations
+
+**Override Commands:**
+- `:allow <username>` - Let kicked users back early
+- `:unban <username>` - Remove permanent bans
+- Both commands restore clean message history for the user
 
 ## Client Configuration
 

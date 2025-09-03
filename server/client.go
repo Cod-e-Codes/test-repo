@@ -187,7 +187,7 @@ func (c *Client) handleAdminCommand(command string) {
 		c.hub.KickUser(targetUsername, c.username)
 		c.send <- shared.Message{
 			Sender:    "System",
-			Content:   "Kick command executed for user: " + targetUsername,
+			Content:   "User '" + targetUsername + "' has been kicked (24 hour temporary ban).",
 			CreatedAt: time.Now(),
 			Type:      shared.TextMessage,
 		}
@@ -206,7 +206,7 @@ func (c *Client) handleAdminCommand(command string) {
 		c.hub.BanUser(targetUsername, c.username)
 		c.send <- shared.Message{
 			Sender:    "System",
-			Content:   "Ban command executed for user: " + targetUsername + " (24 hours)",
+			Content:   "User '" + targetUsername + "' has been permanently banned.",
 			CreatedAt: time.Now(),
 			Type:      shared.TextMessage,
 		}
@@ -234,6 +234,34 @@ func (c *Client) handleAdminCommand(command string) {
 			c.send <- shared.Message{
 				Sender:    "System",
 				Content:   "User '" + targetUsername + "' was not found in the ban list.",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+		}
+
+	case ":allow":
+		if len(parts) < 2 {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Usage: :allow <username>",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+			return
+		}
+		targetUsername := parts[1]
+		allowed := c.hub.AllowUser(targetUsername, c.username)
+		if allowed {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "User '" + targetUsername + "' has been allowed back (kick override).",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+		} else {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "User '" + targetUsername + "' was not found in the kick list.",
 				CreatedAt: time.Now(),
 				Type:      shared.TextMessage,
 			}
