@@ -64,11 +64,18 @@ type keyMap struct {
 	SendFile key.Binding
 	SaveFile key.Binding
 	Theme    key.Binding
-	// Admin commands (populated dynamically)
+	// Admin UI commands
+	DatabaseMenu key.Binding
+	SelectUser   key.Binding
+	CloseMenu    key.Binding
+	// Admin action hotkeys
+	BanUser             key.Binding
+	KickUser            key.Binding
+	UnbanUser           key.Binding
+	AllowUser           key.Binding
+	ForceDisconnectUser key.Binding
+	// Legacy admin commands (for help display only)
 	ClearDB key.Binding
-	Kick    key.Binding
-	Ban     key.Binding
-	Unban   key.Binding
 }
 
 // ShortHelp returns keybindings to be shown in the mini help view
@@ -94,7 +101,7 @@ func (k keyMap) GetCommandHelp(isAdmin, useE2E bool) [][]key.Binding {
 	// Individual E2E commands removed - only global E2E encryption is supported
 
 	if isAdmin {
-		commands = append(commands, []key.Binding{k.ClearDB, k.Kick, k.Ban, k.Unban})
+		commands = append(commands, []key.Binding{k.DatabaseMenu, k.SelectUser, k.BanUser, k.KickUser, k.UnbanUser, k.AllowUser, k.ForceDisconnectUser})
 	}
 
 	return commands
@@ -168,22 +175,44 @@ func newKeyMap() keyMap {
 			key.WithKeys(":theme"),
 			key.WithHelp(":theme <name>", "change theme"),
 		),
-		// Individual E2E key bindings removed - only global E2E encryption supported
+		// Admin UI commands
+		DatabaseMenu: key.NewBinding(
+			key.WithKeys("ctrl+d"),
+			key.WithHelp("ctrl+d", "database menu (admin)"),
+		),
+		SelectUser: key.NewBinding(
+			key.WithKeys("ctrl+u"),
+			key.WithHelp("ctrl+u", "select/cycle user (admin)"),
+		),
+		CloseMenu: key.NewBinding(
+			key.WithKeys("esc"),
+			key.WithHelp("esc", "close menu/clear selection"),
+		),
+		// Admin action hotkeys
+		BanUser: key.NewBinding(
+			key.WithKeys("ctrl+b"),
+			key.WithHelp("ctrl+b", "ban selected user (admin)"),
+		),
+		KickUser: key.NewBinding(
+			key.WithKeys("ctrl+k"),
+			key.WithHelp("ctrl+k", "kick selected user (admin)"),
+		),
+		UnbanUser: key.NewBinding(
+			key.WithKeys("ctrl+shift+b"),
+			key.WithHelp("ctrl+shift+b", "unban user (admin)"),
+		),
+		AllowUser: key.NewBinding(
+			key.WithKeys("ctrl+a"),
+			key.WithHelp("ctrl+a", "allow user (admin)"),
+		),
+		ForceDisconnectUser: key.NewBinding(
+			key.WithKeys("ctrl+f"),
+			key.WithHelp("ctrl+f", "force disconnect selected user (admin)"),
+		),
+		// Legacy admin commands (for help display only)
 		ClearDB: key.NewBinding(
-			key.WithKeys(":cleardb"),
-			key.WithHelp(":cleardb", "clear server database (admin)"),
-		),
-		Kick: key.NewBinding(
-			key.WithKeys(":kick"),
-			key.WithHelp(":kick <user>", "kick user (admin)"),
-		),
-		Ban: key.NewBinding(
-			key.WithKeys(":ban"),
-			key.WithHelp(":ban <user>", "ban user (admin)"),
-		),
-		Unban: key.NewBinding(
-			key.WithKeys(":unban"),
-			key.WithHelp(":unban <user>", "unban user (admin)"),
+			key.WithKeys(""),
+			key.WithHelp("", ""),
 		),
 	}
 }
@@ -427,9 +456,18 @@ type model struct {
 	useE2E   bool // Flag to enable/disable E2E encryption
 
 	// Help system
-	keys     keyMap
-	help     help.Model
-	showHelp bool
+	keys         keyMap
+	help         help.Model
+	showHelp     bool
+	helpViewport viewport.Model // NEW: scrollable help viewport
+
+	// Admin UI system
+	showDBMenu     bool
+	dbMenuViewport viewport.Model
+
+	// User selection system
+	selectedUserIndex int    // Index of currently selected user (-1 = none selected)
+	selectedUser      string // Username of currently selected user
 }
 
 type themeStyles struct {
@@ -908,7 +946,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err := json.Unmarshal(v.Data, &ul); err == nil {
 				m.users = ul.Users
 				userListWidth := 18
-				m.userListViewport.SetContent(renderUserList(m.users, m.cfg.Username, m.styles, userListWidth))
+				m.userListViewport.SetContent(renderUserList(m.users, m.cfg.Username, m.styles, userListWidth, *isAdmin, m.selectedUserIndex))
 			}
 			return m, m.listenWebSocket()
 		}
@@ -966,30 +1004,116 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(v, m.keys.Help):
+			// Close any open menus first
+			if m.showDBMenu {
+				m.showDBMenu = false
+				return m, nil
+			}
 			m.showHelp = !m.showHelp
+			if m.showHelp {
+				// Set help content when help is shown
+				m.helpViewport.SetContent(m.generateHelpContent())
+				m.helpViewport.GotoTop()
+			}
 			return m, nil
 		case key.Matches(v, m.keys.Quit):
+			// If a menu is open or user selected, clear it instead of quitting
+			if m.showDBMenu || m.selectedUserIndex >= 0 {
+				m.showDBMenu = false
+				m.selectedUserIndex = -1
+				m.selectedUser = ""
+				return m, nil
+			}
 			m.closeWebSocket()
 			return m, tea.Quit
+		case key.Matches(v, m.keys.DatabaseMenu):
+			// Only show database menu if admin and no other menus are open
+			if *isAdmin && !m.showHelp {
+				m.showDBMenu = !m.showDBMenu
+				if m.showDBMenu {
+					m.dbMenuViewport.SetContent(m.generateDBMenuContent())
+					m.dbMenuViewport.GotoTop()
+				}
+			}
+			return m, nil
+		case key.Matches(v, m.keys.SelectUser):
+			// Cycle through users for admin selection
+			if *isAdmin && !m.showHelp && !m.showDBMenu && len(m.users) > 0 {
+				// Find next user that isn't the current user
+				for i := 0; i < len(m.users); i++ {
+					m.selectedUserIndex = (m.selectedUserIndex + 1) % len(m.users)
+					if m.users[m.selectedUserIndex] != m.cfg.Username {
+						m.selectedUser = m.users[m.selectedUserIndex]
+						m.banner = fmt.Sprintf("Selected user: %s", m.selectedUser)
+						break
+					}
+				}
+				// If we only have ourselves in the list, clear selection
+				if m.users[m.selectedUserIndex] == m.cfg.Username {
+					m.selectedUserIndex = -1
+					m.selectedUser = ""
+					m.banner = "No other users to select"
+				}
+			}
+			return m, nil
+		case key.Matches(v, m.keys.BanUser):
+			if *isAdmin && m.selectedUser != "" && m.selectedUser != m.cfg.Username {
+				return m.executeAdminAction("ban", m.selectedUser)
+			}
+			return m, nil
+		case key.Matches(v, m.keys.KickUser):
+			if *isAdmin && m.selectedUser != "" && m.selectedUser != m.cfg.Username {
+				return m.executeAdminAction("kick", m.selectedUser)
+			}
+			return m, nil
+		case key.Matches(v, m.keys.UnbanUser):
+			if *isAdmin {
+				// For unban, we need to prompt for username since banned users aren't in the list
+				return m.promptForUsername("unban")
+			}
+			return m, nil
+		case key.Matches(v, m.keys.AllowUser):
+			if *isAdmin {
+				// For allow, we need to prompt for username since kicked users aren't in the list
+				return m.promptForUsername("allow")
+			}
+			return m, nil
+		case key.Matches(v, m.keys.ForceDisconnectUser):
+			if *isAdmin && m.selectedUser != "" && m.selectedUser != m.cfg.Username {
+				return m.executeAdminAction("forcedisconnect", m.selectedUser)
+			}
+			return m, nil
 		case key.Matches(v, m.keys.ScrollUp):
-			if m.textarea.Focused() {
+			if m.showHelp {
+				m.helpViewport.ScrollUp(1)
+			} else if m.textarea.Focused() {
 				m.viewport.ScrollUp(1)
 			} else {
 				m.userListViewport.ScrollUp(1)
 			}
 			return m, nil
 		case key.Matches(v, m.keys.ScrollDown):
-			if m.textarea.Focused() {
+			if m.showHelp {
+				m.helpViewport.ScrollDown(1)
+			} else if m.textarea.Focused() {
 				m.viewport.ScrollDown(1)
 			} else {
 				m.userListViewport.ScrollDown(1)
 			}
 			return m, nil
 		case key.Matches(v, m.keys.PageUp):
-			m.viewport.ScrollUp(m.viewport.Height)
+			if m.showHelp {
+				m.helpViewport.ScrollUp(m.helpViewport.Height)
+			} else {
+				m.viewport.ScrollUp(m.viewport.Height)
+			}
 			return m, nil
 		case key.Matches(v, m.keys.PageDown):
-			m.viewport.ScrollDown(m.viewport.Height)
+			if m.showHelp {
+				m.helpViewport.ScrollDown(m.helpViewport.Height)
+			} else {
+				m.viewport.ScrollDown(m.viewport.Height)
+			}
 			return m, nil
 		case key.Matches(v, m.keys.Copy): // Custom Copy
 			if m.textarea.Focused() {
@@ -1217,6 +1341,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		default:
+			// Handle database menu selections
+			if m.showDBMenu && len(v.Runes) > 0 {
+				switch string(v.Runes) {
+				case "1":
+					return m.executeDBAction("cleardb")
+				case "2":
+					return m.executeDBAction("backup")
+				case "3":
+					return m.executeDBAction("stats")
+				}
+			}
+
 			var cmd tea.Cmd
 			m.textarea, cmd = m.textarea.Update(v)
 			return m, cmd
@@ -1234,17 +1370,37 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.SetWidth(chatWidth)
 		m.userListViewport.Width = userListWidth
 		m.userListViewport.Height = m.height - m.textarea.Height() - 6
+
+		// Update help viewport dimensions to be responsive
+		helpWidth := m.width - 8   // Leave reasonable margins
+		helpHeight := m.height - 8 // Leave reasonable margins
+
+		// Ensure minimum usable size for very small screens
+		if helpWidth < 60 {
+			helpWidth = 60
+		}
+		if helpHeight < 15 {
+			helpHeight = 15
+		}
+
+		// For very wide screens, limit width for readability but allow more height
+		if helpWidth > 120 {
+			helpWidth = 120
+		}
+		// Don't limit height - let it use the full available space
+
+		m.helpViewport.Width = helpWidth
+		m.helpViewport.Height = helpHeight
+
 		m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.users, m.viewport.Width, m.twentyFourHour))
 		m.viewport.GotoBottom()
-		m.userListViewport.SetContent(renderUserList(m.users, m.cfg.Username, m.styles, userListWidth))
+		m.userListViewport.SetContent(renderUserList(m.users, m.cfg.Username, m.styles, userListWidth, *isAdmin, m.selectedUserIndex))
 		return m, nil
 	case quitMsg:
 		return m, tea.Quit
 	case tea.MouseMsg:
-		if (v.Button == tea.MouseButtonWheelUp || v.Button == tea.MouseButtonWheelDown) && v.Action == tea.MouseActionPress {
-			return m, nil // Ignore mouse scroll
-		}
-		return m, nil // Return for other mouse events
+		// Ignore all mouse events for now
+		return m, nil
 	default:
 		var cmd tea.Cmd
 		m.textarea, cmd = m.textarea.Update(v)
@@ -1258,11 +1414,7 @@ func (m *model) listenWebSocket() tea.Cmd {
 	}
 }
 
-func (m *model) renderHelpOverlay() string {
-	if !m.showHelp {
-		return ""
-	}
-
+func (m *model) generateHelpContent() string {
 	title := m.styles.HelpTitle.Render("marchat help")
 
 	// Basic keybindings
@@ -1287,29 +1439,147 @@ func (m *model) renderHelpOverlay() string {
 
 	// Admin commands (only show if admin)
 	if *isAdmin {
-		commandHelp += "\nAdmin Commands:\n"
-		commandHelp += "  :cleardb              Clear server database\n"
-		commandHelp += "  :kick <user>          Kick user (24h temporary ban)\n"
-		commandHelp += "  :ban <user>           Ban user (permanent until unban)\n"
-		commandHelp += "  :unban <user>         Unban user (remove permanent ban)\n"
-		commandHelp += "  :allow <user>         Allow user back (override kick)\n"
-		commandHelp += "  :cleanup              Clean up stale connections\n"
-		commandHelp += "  :forcedisconnect <user>  Force disconnect user\n"
+		commandHelp += "\nAdmin Interface:\n"
+		commandHelp += "  Ctrl+U                Select/cycle user\n"
+		commandHelp += "  Ctrl+D                Database operations menu\n"
+		commandHelp += "\nUser Actions (requires selection):\n"
+		commandHelp += "  Ctrl+K                Kick selected user\n"
+		commandHelp += "  Ctrl+B                Ban selected user\n"
+		commandHelp += "  Ctrl+F                Force disconnect selected user\n"
+		commandHelp += "\nUser Actions (prompt for username):\n"
+		commandHelp += "  Ctrl+Shift+B          Unban user\n"
+		commandHelp += "  Ctrl+A                Allow user (override kick)\n"
+		commandHelp += "\nDatabase Operations: Clear DB, Backup DB, Show Stats\n"
 	}
 
-	content := title + "\n\n" + basicHelp + commandHelp
+	return title + "\n\n" + basicHelp + commandHelp
+}
 
-	// Center the help overlay
-	helpWidth := 70
-	helpHeight := strings.Count(content, "\n") + 4
+// generateDBMenuContent creates the database operations menu content
+func (m *model) generateDBMenuContent() string {
+	title := m.styles.HelpTitle.Render("Database Operations")
 
-	overlay := m.styles.HelpOverlay.
-		Width(helpWidth).
-		Height(helpHeight).
-		Render(content)
+	content := "\nAvailable Operations:\n\n"
+	content += "  1. Clear Database (delete all messages)\n"
+	content += "  2. Backup Database (save current state)\n"
+	content += "  3. Show Database Stats\n\n"
+	content += "Press 1-3 to select operation, Esc to cancel"
 
-	// Position the overlay (simplified - just return the styled content)
-	return overlay
+	return title + content
+}
+
+// executeAdminAction performs the selected admin action
+func (m *model) executeAdminAction(action, targetUser string) (tea.Model, tea.Cmd) {
+	if !*isAdmin || targetUser == "" {
+		return m, nil
+	}
+
+	var command string
+	switch action {
+	case "kick":
+		command = fmt.Sprintf(":kick %s", targetUser)
+	case "ban":
+		command = fmt.Sprintf(":ban %s", targetUser)
+	case "unban":
+		command = fmt.Sprintf(":unban %s", targetUser)
+	case "allow":
+		command = fmt.Sprintf(":allow %s", targetUser)
+	case "forcedisconnect":
+		command = fmt.Sprintf(":forcedisconnect %s", targetUser)
+	default:
+		return m, nil
+	}
+
+	// Send the admin command directly (unencrypted for server processing)
+	if m.conn != nil {
+		msg := shared.Message{
+			Sender:  m.cfg.Username,
+			Content: command,
+			Type:    shared.AdminCommandType, // Special type for admin commands
+		}
+		err := m.conn.WriteJSON(msg)
+		if err != nil {
+			m.banner = "❌ Failed to send admin command"
+		} else {
+			m.banner = fmt.Sprintf("✅ %s action sent for %s", action, targetUser)
+			// Clear selection after successful action
+			if action == "kick" || action == "ban" || action == "forcedisconnect" {
+				m.selectedUserIndex = -1
+				m.selectedUser = ""
+			}
+		}
+	}
+
+	return m, m.listenWebSocket()
+}
+
+// promptForUsername prompts for a username for actions like unban/allow
+func (m *model) promptForUsername(action string) (tea.Model, tea.Cmd) {
+	// For now, we'll use the textarea to get the username
+	// This is a simple implementation - could be improved with a dedicated prompt
+	switch action {
+	case "unban":
+		m.banner = "Type username to unban in chat and press Enter (prefix with :unban)"
+	case "allow":
+		m.banner = "Type username to allow in chat and press Enter (prefix with :allow)"
+	}
+	return m, nil
+}
+
+// executeDBAction performs the selected database action
+func (m *model) executeDBAction(action string) (tea.Model, tea.Cmd) {
+	if !*isAdmin {
+		m.showDBMenu = false
+		return m, nil
+	}
+
+	switch action {
+	case "cleardb":
+		if m.conn != nil {
+			msg := shared.Message{
+				Sender:  m.cfg.Username,
+				Content: ":cleardb",
+				Type:    shared.AdminCommandType,
+			}
+			err := m.conn.WriteJSON(msg)
+			if err != nil {
+				m.banner = "❌ Failed to send cleardb command"
+			} else {
+				m.banner = "✅ Database clear command sent"
+			}
+		}
+	case "backup":
+		if m.conn != nil {
+			msg := shared.Message{
+				Sender:  m.cfg.Username,
+				Content: ":backup",
+				Type:    shared.AdminCommandType,
+			}
+			err := m.conn.WriteJSON(msg)
+			if err != nil {
+				m.banner = "❌ Failed to send backup command"
+			} else {
+				m.banner = "✅ Database backup command sent"
+			}
+		}
+	case "stats":
+		if m.conn != nil {
+			msg := shared.Message{
+				Sender:  m.cfg.Username,
+				Content: ":stats",
+				Type:    shared.AdminCommandType,
+			}
+			err := m.conn.WriteJSON(msg)
+			if err != nil {
+				m.banner = "❌ Failed to send stats command"
+			} else {
+				m.banner = "✅ Database stats command sent"
+			}
+		}
+	}
+
+	m.showDBMenu = false
+	return m, m.listenWebSocket()
 }
 
 func (m *model) View() string {
@@ -1362,42 +1632,79 @@ func (m *model) View() string {
 		footer,
 	)
 
-	// Overlay help if shown
+	// Show help as full-screen modal if shown
 	if m.showHelp {
-		// Create a background for the help overlay
-		helpOverlay := m.renderHelpOverlay()
+		// Use most of the available screen space for help
+		helpWidth := m.width - 8   // Leave reasonable margins
+		helpHeight := m.height - 8 // Leave reasonable margins
 
-		// Calculate overlay position (centered)
-		overlayLines := strings.Split(helpOverlay, "\n")
-		overlayHeight := len(overlayLines)
-		overlayWidth := 0
-		for _, line := range overlayLines {
-			if len(line) > overlayWidth {
-				overlayWidth = len(line)
-			}
+		// Ensure minimum usable size for very small screens
+		if helpWidth < 60 {
+			helpWidth = 60
+		}
+		if helpHeight < 15 {
+			helpHeight = 15
 		}
 
-		// Position overlay in center of screen
-		mainLines := strings.Split(ui, "\n")
-		if len(mainLines) > overlayHeight+4 {
-			startLine := (len(mainLines) - overlayHeight) / 2
-
-			// Insert overlay into main UI
-			for i, overlayLine := range overlayLines {
-				if startLine+i < len(mainLines) {
-					// Center the overlay line
-					padding := (m.width - overlayWidth) / 2
-					if padding < 0 {
-						padding = 0
-					}
-					mainLines[startLine+i] = strings.Repeat(" ", padding) + overlayLine
-				}
-			}
-			ui = strings.Join(mainLines, "\n")
-		} else {
-			// If screen is too small, just show help overlay
-			ui = helpOverlay
+		// For very wide screens, limit width for readability but allow more height
+		if helpWidth > 120 {
+			helpWidth = 120
 		}
+		// Don't limit height - let it use the full available space
+
+		// Create help footer with navigation instructions
+		helpFooter := "Use ↑/↓ or PgUp/PgDn to scroll • Press Ctrl+H to close help"
+		footerStyle := lipgloss.NewStyle().
+			Width(helpWidth).
+			Align(lipgloss.Center).
+			Foreground(lipgloss.Color("#888888")).
+			BorderTop(true).
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color("#444444")).
+			PaddingTop(1)
+
+		// Adjust content height to leave room for footer
+		contentHeight := helpHeight - 3 // Reserve 3 lines for footer (border + padding + text)
+		if contentHeight < 10 {
+			contentHeight = 10
+		}
+
+		// Create help content viewport
+		helpContent := m.styles.HelpOverlay.
+			Width(helpWidth).
+			Height(contentHeight).
+			BorderBottom(false). // Remove bottom border since footer will have top border
+			Render(m.helpViewport.View())
+
+		// Combine content and footer
+		helpModal := lipgloss.JoinVertical(lipgloss.Left,
+			helpContent,
+			footerStyle.Render(helpFooter),
+		)
+
+		// Center the help modal on the screen
+		ui = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, helpModal)
+	}
+
+	// Show admin menus if open
+	if m.showDBMenu {
+		menuWidth := 60
+		menuHeight := 15
+
+		// Ensure minimum size
+		if m.width < menuWidth+4 {
+			menuWidth = m.width - 4
+		}
+		if m.height < menuHeight+4 {
+			menuHeight = m.height - 4
+		}
+
+		dbMenu := m.styles.HelpOverlay.
+			Width(menuWidth).
+			Height(menuHeight).
+			Render(m.dbMenuViewport.View())
+
+		ui = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dbMenu)
 	}
 
 	return m.styles.Background.Render(ui)
@@ -1417,20 +1724,38 @@ func renderEmojis(s string) string {
 	return s
 }
 
-func renderUserList(users []string, me string, styles themeStyles, width int) string {
+func renderUserList(users []string, me string, styles themeStyles, width int, isAdmin bool, selectedUserIndex int) string {
 	var b strings.Builder
-	b.WriteString(styles.UserList.Width(width).Render(" Users ") + "\n")
+	title := " Users "
+	if isAdmin {
+		title = " Users (Ctrl+U to select) "
+	}
+	b.WriteString(styles.UserList.Width(width).Render(title) + "\n")
 	max := maxUsersDisplay
 	for i, u := range users {
 		if i >= max {
 			b.WriteString(lipgloss.NewStyle().Italic(true).Faint(true).Width(width).Render(fmt.Sprintf("+%d more", len(users)-max)) + "\n")
 			break
 		}
+
+		var userStyle lipgloss.Style
+		var prefix string
+
 		if u == me {
-			b.WriteString(styles.Me.Render("• "+u) + "\n")
+			userStyle = styles.Me
+			prefix = "• "
 		} else {
-			b.WriteString(styles.Other.Render("• "+u) + "\n")
+			userStyle = styles.Other
+			prefix = "• "
+
+			// Highlight selected user
+			if isAdmin && selectedUserIndex == i {
+				userStyle = userStyle.Background(lipgloss.Color("#444444")).Bold(true)
+				prefix = "► " // Arrow to indicate selection
+			}
 		}
+
+		b.WriteString(userStyle.Render(prefix+u) + "\n")
 	}
 	return b.String()
 }
@@ -1690,7 +2015,12 @@ func initializeClient(cfg *config.Config, adminKeyParam, keystorePassphraseParam
 	vp := viewport.New(80, 20)
 
 	userListVp := viewport.New(18, 10) // height will be set on resize
-	userListVp.SetContent(renderUserList([]string{cfg.Username}, cfg.Username, getThemeStyles(cfg.Theme), 18))
+	userListVp.SetContent(renderUserList([]string{cfg.Username}, cfg.Username, getThemeStyles(cfg.Theme), 18, cfg.IsAdmin, -1))
+
+	helpVp := viewport.New(70, 20) // initial size, will be adjusted on resize
+
+	// Initialize admin menu viewports
+	dbMenuVp := viewport.New(60, 15)
 
 	// Additional keystore initialization if E2E is enabled
 	if cfg.UseE2E && keystore != nil {
@@ -1740,17 +2070,20 @@ func initializeClient(cfg *config.Config, adminKeyParam, keystorePassphraseParam
 	}
 
 	m := &model{
-		cfg:              *cfg,
-		configFilePath:   configFilePath,
-		textarea:         ta,
-		viewport:         vp,
-		styles:           getThemeStyles(cfg.Theme),
-		users:            []string{cfg.Username},
-		userListViewport: userListVp,
-		twentyFourHour:   cfg.TwentyFourHour,
-		keystore:         keystore,
-		useE2E:           cfg.UseE2E,
-		keys:             newKeyMap(),
+		cfg:               *cfg,
+		configFilePath:    configFilePath,
+		textarea:          ta,
+		viewport:          vp,
+		styles:            getThemeStyles(cfg.Theme),
+		users:             []string{cfg.Username},
+		userListViewport:  userListVp,
+		helpViewport:      helpVp,
+		dbMenuViewport:    dbMenuVp,
+		twentyFourHour:    cfg.TwentyFourHour,
+		keystore:          keystore,
+		useE2E:            cfg.UseE2E,
+		keys:              newKeyMap(),
+		selectedUserIndex: -1, // No user selected initially
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
