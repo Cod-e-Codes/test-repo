@@ -4,7 +4,7 @@
 # Supports Windows, Linux, macOS, and Android (via PowerShell Core)
 
 param(
-    [string]$Version = "v0.5.0-beta.3"
+    [string]$Version = "v0.5.0-beta.4"
 )
 
 $ErrorActionPreference = "Stop"
@@ -151,16 +151,8 @@ if (!(Test-Path $INSTALL_DIR)) {
 }
 
 # Find the correct binary files
-$SERVER_BINARY = ""
-$CLIENT_BINARY = ""
-
-Get-ChildItem -Path $EXTRACT_DIR | ForEach-Object {
-    if ($_.Name -like "*marchat-server*") {
-        $SERVER_BINARY = $_.FullName
-    } elseif ($_.Name -like "*marchat-client*") {
-        $CLIENT_BINARY = $_.FullName
-    }
-}
+$SERVER_BINARY = Get-ChildItem -Path $EXTRACT_DIR | Where-Object { $_.Name -like "*marchat-server*" } | Select-Object -First 1 -ExpandProperty FullName
+$CLIENT_BINARY = Get-ChildItem -Path $EXTRACT_DIR | Where-Object { $_.Name -like "*marchat-client*" } | Select-Object -First 1 -ExpandProperty FullName
 
 if ([string]::IsNullOrEmpty($SERVER_BINARY) -or [string]::IsNullOrEmpty($CLIENT_BINARY)) {
     Write-Host "❌ Error: Could not find marchat binaries in the downloaded archive" -ForegroundColor Red

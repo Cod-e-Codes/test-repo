@@ -70,7 +70,15 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 ## Changelog
 
-### v0.5.0-beta.3 (Latest)
+### v0.5.0-beta.4 (Latest)
+- **Stale Connection Management**: Automatic cleanup of dead connections every 5 minutes with WebSocket ping health checks
+- **Enhanced Admin Commands**: Added `:cleanup` and `:forcedisconnect <username>` for manual stale connection removal
+- **Restructured Moderation System**: `:ban` now permanent until unban, `:kick` for 24h temp ban, `:allow` to override kicks early
+- **Admin-Only Plugin Installation**: Plugin installation now requires admin privileges for improved security
+- **Windows Terminal Fix**: Fixed `--quick-start` flag freezing on Windows by implementing Bubble Tea UI for profile selection
+- **Improved Documentation**: Comprehensive troubleshooting section and moderation system documentation
+
+### v0.5.0-beta.3
 - **Interactive Configuration UI**: Modern Bubble Tea-based form interface with styled colors, tab navigation, and real-time validation
 - **System Theme as Default**: New "system" theme respects terminal colors for better accessibility and out-of-box experience
 - **Duplicate Username Detection**: Intelligent error handling prevents connection loops when username is already taken
@@ -99,17 +107,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.5.0-beta.3:**
+**Download pre-built binaries for v0.5.0-beta.4:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.3/marchat-v0.5.0-beta.3-linux-amd64.zip
-unzip marchat-v0.5.0-beta.3-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.4/marchat-v0.5.0-beta.4-linux-amd64.zip
+unzip marchat-v0.5.0-beta.4-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.3/marchat-v0.5.0-beta.3-darwin-amd64.zip
-unzip marchat-v0.5.0-beta.3-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.4/marchat-v0.5.0-beta.4-darwin-amd64.zip
+unzip marchat-v0.5.0-beta.4-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -118,8 +126,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.3/marchat-v0.5.0-beta.3-android-arm64.zip
-unzip marchat-v0.5.0-beta.3-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.4/marchat-v0.5.0-beta.4-android-arm64.zip
+unzip marchat-v0.5.0-beta.4-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
