@@ -1017,6 +1017,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case key.Matches(v, m.keys.Quit):
+			// If help is open, close it instead of quitting
+			if m.showHelp {
+				m.showHelp = false
+				return m, nil
+			}
 			// If a menu is open or user selected, clear it instead of quitting
 			if m.showDBMenu || m.selectedUserIndex >= 0 {
 				m.showDBMenu = false
