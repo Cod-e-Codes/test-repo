@@ -33,6 +33,10 @@ type Config struct {
 	TwentyFourHour bool   `json:"twenty_four_hour"`
 	SkipTLSVerify  bool   `json:"skip_tls_verify,omitempty"`
 
+	// Bell notification settings
+	EnableBell    bool `json:"enable_bell,omitempty"`     // Enable/disable bell
+	BellOnMention bool `json:"bell_on_mention,omitempty"` // Only bell on mentions
+
 	// Quick start settings
 	SaveCredentials bool  `json:"save_credentials"`
 	LastUsed        int64 `json:"last_used,omitempty"`

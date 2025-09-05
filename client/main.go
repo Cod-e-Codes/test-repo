@@ -478,6 +478,72 @@ type model struct {
 	// Code snippet system
 	showCodeSnippet  bool
 	codeSnippetModel codeSnippetModel
+
+	// Bell notification system
+	bellManager *BellManager
+}
+
+// BellManager handles bell notifications with rate limiting
+type BellManager struct {
+	lastBell    time.Time
+	minInterval time.Duration
+	enabled     bool
+}
+
+// NewBellManager creates a new bell manager with default settings
+func NewBellManager() *BellManager {
+	return &BellManager{
+		minInterval: 500 * time.Millisecond, // Minimum 500ms between bells
+		enabled:     true,
+	}
+}
+
+// PlayBell plays the bell sound with rate limiting
+func (b *BellManager) PlayBell() {
+	if !b.enabled {
+		return
+	}
+
+	now := time.Now()
+	if now.Sub(b.lastBell) < b.minInterval {
+		return // Too soon since last bell
+	}
+
+	b.lastBell = now
+	fmt.Print("\a") // ASCII bell character
+}
+
+// SetEnabled enables or disables the bell
+func (b *BellManager) SetEnabled(enabled bool) {
+	b.enabled = enabled
+}
+
+// IsEnabled returns whether the bell is currently enabled
+func (b *BellManager) IsEnabled() bool {
+	return b.enabled
+}
+
+// shouldPlayBell determines if a bell should be played for a message
+func (m *model) shouldPlayBell(msg shared.Message) bool {
+	// Don't bell for our own messages
+	if msg.Sender == m.cfg.Username {
+		return false
+	}
+
+	// If bell is disabled, don't play
+	if !m.cfg.EnableBell {
+		return false
+	}
+
+	// If bell on mention only is enabled, check for mentions
+	if m.cfg.BellOnMention {
+		// Check if the message mentions the current user
+		mentionPattern := fmt.Sprintf("@%s", m.cfg.Username)
+		return strings.Contains(strings.ToLower(msg.Content), strings.ToLower(mentionPattern))
+	}
+
+	// Bell for all messages from other users
+	return true
 }
 
 type themeStyles struct {
@@ -1004,6 +1070,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.showCodeSnippet = false
 		return m, m.listenWebSocket()
 	case shared.Message:
+		// Check if we should play a bell for this message
+		if m.shouldPlayBell(v) {
+			m.bellManager.PlayBell()
+		}
+
 		if len(m.messages) >= maxMessages {
 			m.messages = m.messages[len(m.messages)-maxMessages+1:]
 		}
@@ -1353,6 +1424,33 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.SetValue("")
 				return m, nil
 			}
+			if text == ":bell" {
+				m.cfg.EnableBell = !m.cfg.EnableBell
+				m.bellManager.SetEnabled(m.cfg.EnableBell)
+				status := "disabled"
+				if m.cfg.EnableBell {
+					status = "enabled"
+					m.bellManager.PlayBell() // Test beep
+				}
+				m.banner = fmt.Sprintf("Message bell %s", status)
+				_ = config.SaveConfig(*configPath, m.cfg)
+				m.textarea.SetValue("")
+				return m, nil
+			}
+			if text == ":bell-mention" {
+				m.cfg.BellOnMention = !m.cfg.BellOnMention
+				status := "disabled"
+				if m.cfg.BellOnMention {
+					status = "enabled"
+					if m.cfg.EnableBell {
+						m.bellManager.PlayBell() // Test beep
+					}
+				}
+				m.banner = fmt.Sprintf("Bell on mention only %s", status)
+				_ = config.SaveConfig(*configPath, m.cfg)
+				m.textarea.SetValue("")
+				return m, nil
+			}
 			if text == ":code" {
 				// Launch code snippet interface
 				m.textarea.SetValue("")
@@ -1516,6 +1614,8 @@ func (m *model) generateHelpContent() string {
 	commandHelp += "  :time                 Toggle 12/24h time format\n"
 	commandHelp += "  :clear                Clear chat history\n"
 	commandHelp += "  :code                 Create syntax highlighted code snippet\n"
+	commandHelp += "  :bell                 Toggle message bell notifications\n"
+	commandHelp += "  :bell-mention         Toggle bell only on mentions\n"
 
 	// Admin commands (only show if admin)
 	if *isAdmin {
@@ -2279,7 +2379,11 @@ func initializeClient(cfg *config.Config, adminKeyParam, keystorePassphraseParam
 		useE2E:            cfg.UseE2E,
 		keys:              newKeyMap(),
 		selectedUserIndex: -1, // No user selected initially
+		bellManager:       NewBellManager(),
 	}
+
+	// Initialize bell manager with config settings
+	m.bellManager.SetEnabled(cfg.EnableBell)
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 

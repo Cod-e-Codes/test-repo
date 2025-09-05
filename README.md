@@ -60,6 +60,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 | **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305, global encryption for public channels |
 | **File Sharing** | Send files up to 1MB with `:sendfile` |
 | **Admin Controls** | User management, bans, and database operations with improved ban/unban experience |
+| **Bell Notifications** | Audio alerts for new messages with `:bell` and `:bell-mention` commands |
 | **Themes** | Choose from system (default), patriot, retro, or modern themes |
 | **Docker Support** | Containerized deployment with security features |
 
@@ -75,6 +76,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 - **Server Admin Panel**: New `--admin-panel` flag enables built-in terminal admin panel with Ctrl+A hotkey access
 - **Fixed Allow Command**: Resolved `:allow` command issues with E2E encryption by implementing hotkey alternatives
 - **Key Binding Improvements**: Changed allow command hotkey from Ctrl+A to Ctrl+Shift+A to resolve conflicts
+- **Bell Notifications**: New `:bell` and `:bell-mention` commands for audio alerts with rate limiting and config persistence
 - **Enhanced Documentation**: Updated README with comprehensive admin panel documentation and E2E encryption notes
 
 ### v0.6.0-beta.1
@@ -460,6 +462,29 @@ marchat supports multiple visual themes to customize your chat experience:
 
 The **system** theme is the default because it respects your terminal's existing color configuration, ensuring accessibility and preventing color conflicts.
 
+### Bell Notifications
+
+marchat includes audio notification support to alert you when new messages arrive:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Bell Enabled** | Play audio alert for all new messages | `false` |
+| **Bell on Mention Only** | Only play bell when mentioned with `@username` | `false` |
+
+**Bell Commands:**
+- `:bell` - Toggle bell notifications on/off
+- `:bell-mention` - Toggle bell only on mentions mode
+
+**How it works:**
+- Uses the ASCII bell character (`\a`) which works on most terminal emulators
+- Includes rate limiting (500ms minimum between bells) to prevent spam
+- Respects your terminal's volume settings
+- Automatically saves your preferences to the config file
+
+**Configuration:**
+- **Runtime**: Use `:bell` and `:bell-mention` commands
+- **Config file**: Set `"enable_bell": true` and `"bell_on_mention": false` in your `config.json`
+
 ### Basic Commands
 
 | Command | Description | Example |
@@ -470,6 +495,8 @@ The **system** theme is the default because it respects your terminal's existing
 | `:sendfile <path>` | Send file (<1MB) | `:sendfile document.txt` |
 | `:savefile <name>` | Save received file | `:savefile received.txt` |
 | `:code` | Open code snippet composer | `:code` |
+| `:bell` | Toggle message bell notifications | `:bell` |
+| `:bell-mention` | Toggle bell only on mentions | `:bell-mention` |
 | `:admin` | Open admin panel (admin only) | `:admin` |
 
 ### Plugin Commands
