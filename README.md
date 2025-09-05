@@ -71,7 +71,13 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 ## Changelog
 
-### v0.6.0-beta.1 (Latest)
+### v0.6.0-beta.2 (Latest)
+- **Server Admin Panel**: New `--admin-panel` flag enables built-in terminal admin panel with Ctrl+A hotkey access
+- **Fixed Allow Command**: Resolved `:allow` command issues with E2E encryption by implementing hotkey alternatives
+- **Key Binding Improvements**: Changed allow command hotkey from Ctrl+A to Ctrl+Shift+A to resolve conflicts
+- **Enhanced Documentation**: Updated README with comprehensive admin panel documentation and E2E encryption notes
+
+### v0.6.0-beta.1
 - **Admin UI with Hotkeys**: New `:admin` command opens full-screen admin panel with hotkey navigation (Tab/Shift+Tab, Enter, Esc)
 - **Code Snippet Interface**: New `:code` command opens syntax-highlighted code snippet composer with language selection and live preview
 - **Enhanced Configuration System**: Improved interactive setup with connection profiles, auto-connect, and quick-start options
@@ -116,17 +122,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.6.0-beta.1:**
+**Download pre-built binaries for v0.6.0-beta.2:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.1/marchat-v0.6.0-beta.1-linux-amd64.zip
-unzip marchat-v0.6.0-beta.1-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.2/marchat-v0.6.0-beta.2-linux-amd64.zip
+unzip marchat-v0.6.0-beta.2-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.1/marchat-v0.6.0-beta.1-darwin-amd64.zip
-unzip marchat-v0.6.0-beta.1-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.2/marchat-v0.6.0-beta.2-darwin-amd64.zip
+unzip marchat-v0.6.0-beta.2-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -135,8 +141,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.1/marchat-v0.6.0-beta.1-android-arm64.zip
-unzip marchat-v0.6.0-beta.1-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.2/marchat-v0.6.0-beta.2-android-arm64.zip
+unzip marchat-v0.6.0-beta.2-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -147,14 +153,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.6.0-beta.1
+docker pull codecodesxyz/marchat:v0.6.0-beta.2
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.6.0-beta.1
+  codecodesxyz/marchat:v0.6.0-beta.2
 ```
 
 ### Source Installation
