@@ -1851,49 +1851,112 @@ func main() {
 		profiles, err := loader.LoadProfiles()
 		isFirstTime := err != nil || len(profiles.Profiles) == 0
 
+		var cfg *config.Config
 		var adminKeyFromConfig, keystorePassFromConfig string
 
-		// Always use the fancy Bubble Tea UI for interactive configuration
 		if isFirstTime {
+			// First time user - show welcome and go straight to config creation
 			fmt.Println("🎉 Welcome to marchat! Let's get you set up...")
-		} else {
-			fmt.Println("📝 Let's configure your connection...")
-		}
 
-		cfg, keystorePass, err := config.RunInteractiveConfig()
-		if err != nil {
-			fmt.Printf("Configuration error: %v\n", err)
-			os.Exit(1)
-		}
+			configResult, keystorePass, err := config.RunInteractiveConfig()
+			if err != nil {
+				fmt.Printf("Configuration error: %v\n", err)
+				os.Exit(1)
+			}
+			cfg = configResult
+			adminKeyFromConfig = cfg.AdminKey
+			keystorePassFromConfig = keystorePass
 
-		adminKeyFromConfig = cfg.AdminKey
-		keystorePassFromConfig = keystorePass
-
-		// Save as a profile for future use
-		profileName := "Default"
-		if !isFirstTime {
-			// For returning users, create a unique profile name
-			profileName = fmt.Sprintf("Profile-%d", len(profiles.Profiles)+1)
-		}
-
-		profile := &config.ConnectionProfile{
-			Name:      profileName,
-			ServerURL: cfg.ServerURL,
-			Username:  cfg.Username,
-			IsAdmin:   cfg.IsAdmin,
-			UseE2E:    cfg.UseE2E,
-			Theme:     cfg.Theme,
-			LastUsed:  time.Now().Unix(),
-		}
-		profiles.Profiles = append(profiles.Profiles, *profile)
-		if err := loader.SaveProfiles(profiles); err != nil {
-			fmt.Printf("Warning: Could not save profile: %v\n", err)
-		}
-
-		if isFirstTime {
+			// Save as the default profile
+			profile := &config.ConnectionProfile{
+				Name:      "Default",
+				ServerURL: cfg.ServerURL,
+				Username:  cfg.Username,
+				IsAdmin:   cfg.IsAdmin,
+				UseE2E:    cfg.UseE2E,
+				Theme:     cfg.Theme,
+				LastUsed:  time.Now().Unix(),
+			}
+			profiles.Profiles = append(profiles.Profiles, *profile)
+			if err := loader.SaveProfiles(profiles); err != nil {
+				fmt.Printf("Warning: Could not save profile: %v\n", err)
+			}
 			fmt.Println("✅ Configuration saved! Next time you can use --auto or --quick-start for faster connections.")
+
 		} else {
-			fmt.Printf("✅ Configuration saved as '%s'! You can use --auto or --quick-start for faster connections.\n", profileName)
+			// Existing user - show profile selection with option to create new
+			fmt.Println("📝 Select a connection profile or create a new one...")
+
+			// Sort profiles by last used (most recent first)
+			sort.Slice(profiles.Profiles, func(i, j int) bool {
+				return profiles.Profiles[i].LastUsed > profiles.Profiles[j].LastUsed
+			})
+
+			choice, isCreateNew, err := config.RunProfileSelectionWithNew(profiles.Profiles)
+			if err != nil {
+				fmt.Printf("Profile selection error: %v\n", err)
+				os.Exit(1)
+			}
+
+			if isCreateNew {
+				// User chose to create a new profile
+				fmt.Println("Creating a new connection profile...")
+
+				configResult, keystorePass, err := config.RunInteractiveConfig()
+				if err != nil {
+					fmt.Printf("Configuration error: %v\n", err)
+					os.Exit(1)
+				}
+				cfg = configResult
+				adminKeyFromConfig = cfg.AdminKey
+				keystorePassFromConfig = keystorePass
+
+				// Save as a new profile
+				profileName := fmt.Sprintf("Profile-%d", len(profiles.Profiles)+1)
+				profile := &config.ConnectionProfile{
+					Name:      profileName,
+					ServerURL: cfg.ServerURL,
+					Username:  cfg.Username,
+					IsAdmin:   cfg.IsAdmin,
+					UseE2E:    cfg.UseE2E,
+					Theme:     cfg.Theme,
+					LastUsed:  time.Now().Unix(),
+				}
+				profiles.Profiles = append(profiles.Profiles, *profile)
+				if err := loader.SaveProfiles(profiles); err != nil {
+					fmt.Printf("Warning: Could not save profile: %v\n", err)
+				}
+				fmt.Printf("✅ Configuration saved as '%s'! You can use --auto or --quick-start for faster connections.\n", profileName)
+
+			} else {
+				// User selected an existing profile
+				profile := &profiles.Profiles[choice]
+				fmt.Printf("Selected: %s\n", profile.Name)
+
+				// Update last used timestamp
+				profile.LastUsed = time.Now().Unix()
+				if err := loader.SaveProfiles(profiles); err != nil {
+					// Log error but don't fail the connection
+					fmt.Printf("Warning: Could not update profile usage timestamp: %v\n", err)
+				}
+
+				// Convert profile to config
+				cfg = &config.Config{
+					Username:       profile.Username,
+					ServerURL:      profile.ServerURL,
+					IsAdmin:        profile.IsAdmin,
+					UseE2E:         profile.UseE2E,
+					Theme:          profile.Theme,
+					TwentyFourHour: true, // Default value
+				}
+
+				// Get sensitive data
+				adminKeyFromConfig, keystorePassFromConfig, err = loader.PromptSensitiveData(cfg.IsAdmin, cfg.UseE2E)
+				if err != nil {
+					fmt.Printf("Error getting sensitive data: %v\n", err)
+					os.Exit(1)
+				}
+			}
 		}
 
 		// Continue with existing client initialization...

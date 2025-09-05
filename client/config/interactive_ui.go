@@ -384,17 +384,19 @@ func (m ConfigUIModel) GetKeystorePassphrase() string {
 
 // ProfileSelectionModel handles profile selection UI
 type ProfileSelectionModel struct {
-	profiles  []ConnectionProfile
-	cursor    int
-	selected  bool
-	cancelled bool
-	choice    int
+	profiles      []ConnectionProfile
+	cursor        int
+	selected      bool
+	cancelled     bool
+	choice        int
+	showNewOption bool // Whether to show "Create New Profile" option
 }
 
-func NewProfileSelectionModel(profiles []ConnectionProfile) ProfileSelectionModel {
+func NewProfileSelectionModel(profiles []ConnectionProfile, showNewOption bool) ProfileSelectionModel {
 	return ProfileSelectionModel{
-		profiles: profiles,
-		cursor:   0,
+		profiles:      profiles,
+		cursor:        0,
+		showNewOption: showNewOption,
 	}
 }
 
@@ -414,7 +416,11 @@ func (m ProfileSelectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor--
 			}
 		case "down":
-			if m.cursor < len(m.profiles)-1 {
+			maxCursor := len(m.profiles) - 1
+			if m.showNewOption {
+				maxCursor++ // Add one more option for "Create New Profile"
+			}
+			if m.cursor < maxCursor {
 				m.cursor++
 			}
 		case "enter":
@@ -429,7 +435,11 @@ func (m ProfileSelectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m ProfileSelectionModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(titleStyle.Render("Quick Start - Select a connection:"))
+	if m.showNewOption {
+		b.WriteString(titleStyle.Render("Select a connection profile:"))
+	} else {
+		b.WriteString(titleStyle.Render("Quick Start - Select a connection:"))
+	}
 	b.WriteString("\n\n")
 
 	for i, profile := range m.profiles {
@@ -454,6 +464,17 @@ func (m ProfileSelectionModel) View() string {
 		b.WriteString("\n")
 	}
 
+	// Add "Create New Profile" option if enabled
+	if m.showNewOption {
+		newProfileLine := "Create New Profile"
+		if m.cursor == len(m.profiles) {
+			b.WriteString(focusedStyle.Render("▶ " + newProfileLine))
+		} else {
+			b.WriteString("  " + newProfileLine)
+		}
+		b.WriteString("\n")
+	}
+
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render("↑/↓: Navigate • Enter: Select • Esc: Cancel"))
 
@@ -472,9 +493,14 @@ func (m ProfileSelectionModel) GetChoice() int {
 	return m.choice
 }
 
-// RunProfileSelection runs the profile selection UI
+// IsCreateNew returns true if user selected "Create New Profile"
+func (m ProfileSelectionModel) IsCreateNew() bool {
+	return m.showNewOption && m.choice == len(m.profiles)
+}
+
+// RunProfileSelection runs the profile selection UI (for quick-start)
 func RunProfileSelection(profiles []ConnectionProfile) (int, error) {
-	model := NewProfileSelectionModel(profiles)
+	model := NewProfileSelectionModel(profiles, false)
 
 	program := tea.NewProgram(model)
 	finalModel, err := program.Run()
@@ -493,6 +519,29 @@ func RunProfileSelection(profiles []ConnectionProfile) (int, error) {
 	}
 
 	return selectionModel.GetChoice(), nil
+}
+
+// RunProfileSelectionWithNew runs the profile selection UI with "Create New" option
+func RunProfileSelectionWithNew(profiles []ConnectionProfile) (int, bool, error) {
+	model := NewProfileSelectionModel(profiles, true)
+
+	program := tea.NewProgram(model)
+	finalModel, err := program.Run()
+	if err != nil {
+		return -1, false, fmt.Errorf("failed to run profile selection UI: %w", err)
+	}
+
+	selectionModel := finalModel.(ProfileSelectionModel)
+
+	if selectionModel.IsCancelled() {
+		return -1, false, fmt.Errorf("profile selection cancelled by user")
+	}
+
+	if !selectionModel.IsSelected() {
+		return -1, false, fmt.Errorf("no profile selected")
+	}
+
+	return selectionModel.GetChoice(), selectionModel.IsCreateNew(), nil
 }
 
 // RunInteractiveConfig runs the interactive configuration UI
