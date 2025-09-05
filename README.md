@@ -483,7 +483,7 @@ The **system** theme is the default because it respects your terminal's existing
 | `:kick <username>` | Kick user (24h temporary ban) | `:kick user1` |
 | `:ban <username>` | Ban user (permanent until unban) | `:ban user1` |
 | `:unban <username>` | Remove permanent ban | `:unban user1` |
-| `:allow <username>` | Override kick early (allow back) | `:allow user1` |
+| `:allow <username>` | Override kick early (allow back) | `:allow user1` or `Ctrl+Shift+A` |
 | `:cleanup` | Clean up stale connections | `:cleanup` |
 | `:forcedisconnect <username>` | Force disconnect user (for stale connections) | `:forcedisconnect user1` |
 
@@ -491,6 +491,8 @@ The **system** theme is the default because it respects your terminal's existing
 ```bash
 ./marchat-client --username admin1 --admin --admin-key your-key --server ws://localhost:8080/ws
 ```
+
+**Note:** When E2E encryption is enabled, admin commands typed in chat (like `:allow username`) will be encrypted and won't work. Use the hotkey alternatives instead (e.g., `Ctrl+Shift+A` for allow command).
 
 ### Moderation System
 

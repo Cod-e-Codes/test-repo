@@ -208,8 +208,8 @@ func newKeyMap() keyMap {
 			key.WithHelp("ctrl+shift+b", "unban user (admin)"),
 		),
 		AllowUser: key.NewBinding(
-			key.WithKeys("ctrl+a"),
-			key.WithHelp("ctrl+a", "allow user (admin)"),
+			key.WithKeys("ctrl+shift+a"),
+			key.WithHelp("ctrl+shift+a", "allow user (admin)"),
 		),
 		ForceDisconnectUser: key.NewBinding(
 			key.WithKeys("ctrl+f"),
@@ -1528,7 +1528,7 @@ func (m *model) generateHelpContent() string {
 		commandHelp += "  Ctrl+F                Force disconnect selected user\n"
 		commandHelp += "\nUser Actions (prompt for username):\n"
 		commandHelp += "  Ctrl+Shift+B          Unban user\n"
-		commandHelp += "  Ctrl+A                Allow user (override kick)\n"
+		commandHelp += "  Ctrl+Shift+A          Allow user (override kick)\n"
 		commandHelp += "\nDatabase Operations: Clear DB, Backup DB, Show Stats\n"
 	}
 

@@ -132,8 +132,8 @@ func (h *Hub) IsUserBanned(username string) bool {
 		if time.Now().Before(kickTime) {
 			return true
 		}
-		// Kick has expired, remove it
-		delete(h.tempKicks, lowerUsername)
+		// Kick has expired, but don't remove it here - let CleanupExpiredBans handle it
+		// This prevents race conditions with the :allow command
 	}
 
 	return false
