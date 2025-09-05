@@ -64,9 +64,9 @@ func (c *Client) readPump() {
 			c.hub.broadcast <- msg
 			continue
 		}
-		// Handle admin commands
-		if strings.HasPrefix(msg.Content, ":") {
-			log.Printf("Command received from %s: %s (admin=%v)", c.username, msg.Content, c.isAdmin)
+		// Handle admin commands (both old text-based and new AdminCommandType)
+		if strings.HasPrefix(msg.Content, ":") || msg.Type == shared.AdminCommandType {
+			log.Printf("Command received from %s: %s (admin=%v, type=%s)", c.username, msg.Content, c.isAdmin, msg.Type)
 			if c.isAdmin {
 				c.handleAdminCommand(msg.Content)
 			} else {
@@ -300,6 +300,50 @@ func (c *Client) handleAdminCommand(command string) {
 			c.send <- shared.Message{
 				Sender:    "System",
 				Content:   "User '" + targetUsername + "' was not found in active connections.",
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+		}
+
+	case ":backup":
+		log.Printf("[ADMIN] Database backup requested by %s", c.username)
+		// We need the database file path - this should be passed from the server config
+		// For now, we'll use a default path - this should be made configurable
+		dbPath := "marchat.db" // This should be configurable
+		backupFilename, err := BackupDatabase(dbPath)
+		if err != nil {
+			log.Printf("Failed to backup database: %v", err)
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Database backup failed: " + err.Error(),
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+		} else {
+			log.Printf("Database backup created: %s", backupFilename)
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Database backup created: " + backupFilename,
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+		}
+
+	case ":stats":
+		log.Printf("[ADMIN] Database stats requested by %s", c.username)
+		stats, err := GetDatabaseStats(c.db)
+		if err != nil {
+			log.Printf("Failed to get database stats: %v", err)
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Failed to get database stats: " + err.Error(),
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+		} else {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   stats,
 				CreatedAt: time.Now(),
 				Type:      shared.TextMessage,
 			}

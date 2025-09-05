@@ -7,8 +7,9 @@ import "time"
 type MessageType string
 
 const (
-	TextMessage     MessageType = "text"
-	FileMessageType MessageType = "file"
+	TextMessage      MessageType = "text"
+	FileMessageType  MessageType = "file"
+	AdminCommandType MessageType = "admin_command"
 )
 
 type Message struct {

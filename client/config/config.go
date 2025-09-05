@@ -181,7 +181,7 @@ func (icl *InteractiveConfigLoader) promptNewConfig() (*Config, error) {
 	}
 
 	// Server URL
-	serverURL, err := icl.promptString("Server URL", "wss://marchat.mckerley.net/ws")
+	serverURL, err := icl.promptString("Server URL", "")
 	if err != nil {
 		return nil, err
 	}

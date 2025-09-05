@@ -3,9 +3,13 @@ package server
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -451,6 +455,75 @@ func sortMessagesByTimestamp(messages []shared.Message) {
 func ClearMessages(db *sql.DB) error {
 	_, err := db.Exec(`DELETE FROM messages`)
 	return err
+}
+
+// BackupDatabase creates a backup of the current database
+func BackupDatabase(dbPath string) (string, error) {
+
+	// Generate backup filename with timestamp
+	timestamp := time.Now().Format("2006-01-02_15-04-05")
+	backupFilename := fmt.Sprintf("marchat_backup_%s.db", timestamp)
+
+	// Get directory of the original database
+	dbDir := filepath.Dir(dbPath)
+	backupPath := filepath.Join(dbDir, backupFilename)
+
+	// Open source file
+	sourceFile, err := os.Open(dbPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open source database: %v", err)
+	}
+	defer sourceFile.Close()
+
+	// Create destination file
+	destFile, err := os.Create(backupPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create backup file: %v", err)
+	}
+	defer destFile.Close()
+
+	// Copy file contents
+	_, err = io.Copy(destFile, sourceFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to copy database: %v", err)
+	}
+
+	return backupFilename, nil
+}
+
+// GetDatabaseStats returns statistics about the database
+func GetDatabaseStats(db *sql.DB) (string, error) {
+	var stats strings.Builder
+
+	// Count messages
+	var messageCount int
+	err := db.QueryRow("SELECT COUNT(*) FROM messages").Scan(&messageCount)
+	if err != nil {
+		return "", fmt.Errorf("failed to count messages: %v", err)
+	}
+
+	// Count unique users
+	var userCount int
+	err = db.QueryRow("SELECT COUNT(DISTINCT sender) FROM messages WHERE sender != 'System'").Scan(&userCount)
+	if err != nil {
+		return "", fmt.Errorf("failed to count users: %v", err)
+	}
+
+	// Get oldest and newest message dates
+	var oldestDate, newestDate sql.NullString
+	err = db.QueryRow("SELECT MIN(created_at), MAX(created_at) FROM messages").Scan(&oldestDate, &newestDate)
+	if err != nil {
+		return "", fmt.Errorf("failed to get date range: %v", err)
+	}
+
+	stats.WriteString("Database Statistics:\n")
+	stats.WriteString(fmt.Sprintf("  Total Messages: %d\n", messageCount))
+	stats.WriteString(fmt.Sprintf("  Unique Users: %d\n", userCount))
+	if oldestDate.Valid && newestDate.Valid {
+		stats.WriteString(fmt.Sprintf("  Date Range: %s to %s\n", oldestDate.String, newestDate.String))
+	}
+
+	return stats.String(), nil
 }
 
 func (h *Hub) broadcastUserList() {
