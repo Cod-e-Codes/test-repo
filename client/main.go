@@ -33,6 +33,7 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gorilla/websocket"
 )
@@ -61,9 +62,10 @@ type keyMap struct {
 	TimeFormat key.Binding
 	Clear      key.Binding
 	// Commands
-	SendFile key.Binding
-	SaveFile key.Binding
-	Theme    key.Binding
+	SendFile    key.Binding
+	SaveFile    key.Binding
+	Theme       key.Binding
+	CodeSnippet key.Binding
 	// Admin UI commands
 	DatabaseMenu key.Binding
 	SelectUser   key.Binding
@@ -95,7 +97,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 // GetCommandHelp returns command-specific help based on user permissions
 func (k keyMap) GetCommandHelp(isAdmin, useE2E bool) [][]key.Binding {
 	commands := [][]key.Binding{
-		{k.SendFile, k.SaveFile, k.Theme},
+		{k.SendFile, k.SaveFile, k.Theme, k.CodeSnippet},
 	}
 
 	// Individual E2E commands removed - only global E2E encryption is supported
@@ -174,6 +176,10 @@ func newKeyMap() keyMap {
 		Theme: key.NewBinding(
 			key.WithKeys(":theme"),
 			key.WithHelp(":theme <name>", "change theme"),
+		),
+		CodeSnippet: key.NewBinding(
+			key.WithKeys(":code"),
+			key.WithHelp(":code", "create syntax highlighted code snippet"),
 		),
 		// Admin UI commands
 		DatabaseMenu: key.NewBinding(
@@ -468,6 +474,10 @@ type model struct {
 	// User selection system
 	selectedUserIndex int    // Index of currently selected user (-1 = none selected)
 	selectedUser      string // Username of currently selected user
+
+	// Code snippet system
+	showCodeSnippet  bool
+	codeSnippetModel codeSnippetModel
 }
 
 type themeStyles struct {
@@ -627,6 +637,8 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 			content = fileInfo + "\n" + styles.Msg.Render("Type :savefile "+msg.File.Filename+" to save.")
 		} else {
 			content = renderEmojis(msg.Content)
+			// Render code blocks with syntax highlighting
+			content = renderCodeBlocks(content, width-4)
 			// Improved mention highlighting: highlight if any @username in user list (case-insensitive)
 			matches := mentionRegex.FindAllStringSubmatch(msg.Content, -1)
 			highlight := false
@@ -677,6 +689,10 @@ type wsConnected bool
 
 type UserList struct {
 	Users []string `json:"users"`
+}
+
+type codeSnippetMsg struct {
+	content string
 }
 
 func (m *model) connectWebSocket(serverURL string) error {
@@ -961,6 +977,32 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			os.Exit(1)
 		}
 		return m, m.listenWebSocket()
+	case codeSnippetMsg:
+		// Handle code snippet message from the code snippet interface
+		m.sending = true
+		if m.conn != nil {
+			if m.useE2E {
+				// Use E2E encryption for global chat
+				recipients := m.users
+				if len(recipients) == 0 {
+					recipients = []string{m.cfg.Username}
+				}
+				if err := debugEncryptAndSend(recipients, v.content, m.conn, m.keystore, m.cfg.Username); err != nil {
+					log.Printf("Failed to send code snippet: %v", err)
+					m.banner = "❌ Failed to send code snippet"
+				}
+			} else {
+				// Send plain text message
+				msg := shared.Message{Sender: m.cfg.Username, Content: v.content}
+				if err := debugWebSocketWrite(m.conn, msg); err != nil {
+					log.Printf("Failed to send code snippet: %v", err)
+					m.banner = "❌ Failed to send code snippet"
+				}
+			}
+		}
+		m.sending = false
+		m.showCodeSnippet = false
+		return m, m.listenWebSocket()
 	case shared.Message:
 		if len(m.messages) >= maxMessages {
 			m.messages = m.messages[len(m.messages)-maxMessages+1:]
@@ -1009,6 +1051,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.showDBMenu = false
 				return m, nil
 			}
+			if m.showCodeSnippet {
+				m.showCodeSnippet = false
+				return m, nil
+			}
 			m.showHelp = !m.showHelp
 			if m.showHelp {
 				// Set help content when help is shown
@@ -1016,6 +1062,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.helpViewport.GotoTop()
 			}
 			return m, nil
+		case m.showCodeSnippet:
+			// Handle code snippet interface
+			var cmd tea.Cmd
+			updatedModel, cmd := m.codeSnippetModel.Update(v)
+			if csModel, ok := updatedModel.(codeSnippetModel); ok {
+				m.codeSnippetModel = csModel
+			}
+			return m, cmd
 		case key.Matches(v, m.keys.Quit):
 			// If help is open, close it instead of quitting
 			if m.showHelp {
@@ -1299,6 +1353,26 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.SetValue("")
 				return m, nil
 			}
+			if text == ":code" {
+				// Launch code snippet interface
+				m.textarea.SetValue("")
+				m.showCodeSnippet = true
+				// Initialize code snippet model
+				m.codeSnippetModel = newCodeSnippetModel(m.styles, m.width, m.height,
+					func(code string) {
+						// Send the code as a message using a channel to avoid race conditions
+						select {
+						case m.msgChan <- codeSnippetMsg{content: code}:
+						default:
+							log.Printf("Failed to send code snippet message")
+						}
+					},
+					func() {
+						// Cancel - just hide the code snippet interface
+						m.showCodeSnippet = false
+					})
+				return m, nil
+			}
 			if text != "" {
 				m.sending = true
 				if m.conn != nil {
@@ -1441,6 +1515,7 @@ func (m *model) generateHelpContent() string {
 	commandHelp += "  :theme <name>         Change theme (system, patriot, retro, modern)\n"
 	commandHelp += "  :time                 Toggle 12/24h time format\n"
 	commandHelp += "  :clear                Clear chat history\n"
+	commandHelp += "  :code                 Create syntax highlighted code snippet\n"
 
 	// Admin commands (only show if admin)
 	if *isAdmin {
@@ -1637,6 +1712,35 @@ func (m *model) View() string {
 		footer,
 	)
 
+	// Show code snippet interface as full-screen if shown
+	if m.showCodeSnippet {
+		// Use most of the available screen space for code snippet
+		codeWidth := m.width - 8   // Leave reasonable margins
+		codeHeight := m.height - 8 // Leave reasonable margins
+
+		// Ensure minimum usable size for very small screens
+		if codeWidth < 60 {
+			codeWidth = 60
+		}
+		if codeHeight < 15 {
+			codeHeight = 15
+		}
+
+		// Update code snippet model dimensions
+		m.codeSnippetModel.width = codeWidth
+		m.codeSnippetModel.height = codeHeight
+
+		// Create code snippet content
+		codeContent := m.styles.HelpOverlay.
+			Width(codeWidth).
+			Height(codeHeight).
+			Render(m.codeSnippetModel.View())
+
+		// Center the code snippet modal on the screen
+		ui = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, codeContent)
+		return m.styles.Background.Render(ui)
+	}
+
 	// Show help as full-screen modal if shown
 	if m.showHelp {
 		// Use most of the available screen space for help
@@ -1727,6 +1831,40 @@ func renderEmojis(s string) string {
 		s = strings.ReplaceAll(s, k, v)
 	}
 	return s
+}
+
+// renderCodeBlocks detects and renders syntax highlighted code blocks in messages
+func renderCodeBlocks(content string, width int) string {
+	// Look for markdown code blocks
+	codeBlockRegex := regexp.MustCompile("```([a-zA-Z0-9+]*)\n([\\s\\S]*?)```")
+
+	return codeBlockRegex.ReplaceAllStringFunc(content, func(match string) string {
+		// Extract language and code
+		parts := codeBlockRegex.FindStringSubmatch(match)
+		if len(parts) < 3 {
+			return match // Return original if parsing fails
+		}
+
+		language := parts[1]
+		code := parts[2]
+
+		// Use Glamour to render the code block
+		markdown := fmt.Sprintf("```%s\n%s\n```", language, code)
+		r, err := glamour.NewTermRenderer(
+			glamour.WithAutoStyle(),
+			glamour.WithWordWrap(width-4),
+		)
+		if err != nil {
+			return match // Return original if Glamour fails
+		}
+
+		rendered, err := r.Render(markdown)
+		if err != nil {
+			return match // Return original if rendering fails
+		}
+
+		return rendered
+	})
 }
 
 func renderUserList(users []string, me string, styles themeStyles, width int, isAdmin bool, selectedUserIndex int) string {
