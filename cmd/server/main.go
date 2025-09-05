@@ -279,7 +279,9 @@ func main() {
 					pluginManager := hub.GetPluginManager()
 					panel := server.NewAdminPanel(hub, db, pluginManager, cfg.ConfigDir, cfg.DBPath, listenPort)
 					p := tea.NewProgram(panel, tea.WithAltScreen())
-					p.Run()
+					if _, err := p.Run(); err != nil {
+						log.Printf("Admin panel error: %v", err)
+					}
 
 					// Set terminal back to raw mode
 					oldState, err = term.MakeRaw(fd)
