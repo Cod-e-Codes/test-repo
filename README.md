@@ -70,7 +70,15 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 ## Changelog
 
-### v0.5.0-beta.4 (Latest)
+### v0.6.0-beta.1 (Latest)
+- **Admin UI with Hotkeys**: New `:admin` command opens full-screen admin panel with hotkey navigation (Tab/Shift+Tab, Enter, Esc)
+- **Code Snippet Interface**: New `:code` command opens syntax-highlighted code snippet composer with language selection and live preview
+- **Enhanced Configuration System**: Improved interactive setup with connection profiles, auto-connect, and quick-start options
+- **Optimized Performance**: Removed Glamour dependency for faster syntax highlighting using Chroma directly
+- **Better User Experience**: Full-screen modals for admin and code features, improved navigation and error handling
+- **Cross-Platform Improvements**: Better Windows compatibility and platform-appropriate configuration directories
+
+### v0.5.0-beta.4
 - **Stale Connection Management**: Automatic cleanup of dead connections every 5 minutes with WebSocket ping health checks
 - **Enhanced Admin Commands**: Added `:cleanup` and `:forcedisconnect <username>` for manual stale connection removal
 - **Restructured Moderation System**: `:ban` now permanent until unban, `:kick` for 24h temp ban, `:allow` to override kicks early
@@ -107,17 +115,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.5.0-beta.4:**
+**Download pre-built binaries for v0.6.0-beta.1:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.4/marchat-v0.5.0-beta.4-linux-amd64.zip
-unzip marchat-v0.5.0-beta.4-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.1/marchat-v0.6.0-beta.1-linux-amd64.zip
+unzip marchat-v0.6.0-beta.1-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.4/marchat-v0.5.0-beta.4-darwin-amd64.zip
-unzip marchat-v0.5.0-beta.4-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.1/marchat-v0.6.0-beta.1-darwin-amd64.zip
+unzip marchat-v0.6.0-beta.1-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -126,8 +134,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.5.0-beta.4/marchat-v0.5.0-beta.4-android-arm64.zip
-unzip marchat-v0.5.0-beta.4-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.1/marchat-v0.6.0-beta.1-android-arm64.zip
+unzip marchat-v0.6.0-beta.1-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -138,14 +146,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.5.0-beta.2
+docker pull codecodesxyz/marchat:v0.6.0-beta.1
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.5.0-beta.2
+  codecodesxyz/marchat:v0.6.0-beta.1
 ```
 
 ### Source Installation
@@ -409,6 +417,8 @@ The **system** theme is the default because it respects your terminal's existing
 | `:clear` | Clear chat buffer | `:clear` |
 | `:sendfile <path>` | Send file (<1MB) | `:sendfile document.txt` |
 | `:savefile <name>` | Save received file | `:savefile received.txt` |
+| `:code` | Open code snippet composer | `:code` |
+| `:admin` | Open admin panel (admin only) | `:admin` |
 
 ### Plugin Commands
 
