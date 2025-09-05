@@ -9,7 +9,6 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 )
 
 type codeSnippetState int
@@ -284,27 +283,22 @@ func (m codeSnippetModel) View() string {
 }
 
 func (m codeSnippetModel) formatCodeBlock(language, plainCode string, copied bool) string {
-	// Create a markdown code block with the language using the plain code
-	markdown := fmt.Sprintf("```%s\n%s\n```", language, plainCode)
-
-	// Use Glamour to render it with proper styling
-	r, _ := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-		glamour.WithWordWrap(m.width-4),
-	)
-
-	rendered, err := r.Render(markdown)
+	// Use Chroma directly for syntax highlighting
+	var sb strings.Builder
+	err := quick.Highlight(&sb, plainCode, language, "terminal256", "monokai")
 	if err != nil {
-		// Fallback to simple formatting if Glamour fails
+		// Fallback to simple formatting if highlighting fails
 		return fmt.Sprintf("```%s\n%s\n```\n\n%s", language, plainCode, m.styles.Time.Render("Press Enter to send, 'r' to restart, Esc to cancel."))
 	}
 
+	highlighted := sb.String()
+
 	// Add status message
 	if copied {
-		rendered += "\n" + m.styles.Banner.Render("✓ Code copied to clipboard!")
+		highlighted += "\n" + m.styles.Banner.Render("✓ Code copied to clipboard!")
 	} else {
-		rendered += "\n" + m.styles.Time.Render("Press Enter to send message, 'r' to restart, 'c' to copy, Esc to cancel.")
+		highlighted += "\n" + m.styles.Time.Render("Press Enter to send message, 'r' to restart, 'c' to copy, Esc to cancel.")
 	}
 
-	return rendered
+	return highlighted
 }

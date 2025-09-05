@@ -15,6 +15,7 @@ import (
 	"github.com/Cod-e-Codes/marchat/client/config"
 	"github.com/Cod-e-Codes/marchat/client/crypto"
 	"github.com/Cod-e-Codes/marchat/shared"
+	"github.com/alecthomas/chroma/quick"
 
 	"os/signal"
 	"syscall"
@@ -33,7 +34,6 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gorilla/websocket"
 )
@@ -638,7 +638,7 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 		} else {
 			content = renderEmojis(msg.Content)
 			// Render code blocks with syntax highlighting
-			content = renderCodeBlocks(content, width-4)
+			content = renderCodeBlocks(content)
 			// Improved mention highlighting: highlight if any @username in user list (case-insensitive)
 			matches := mentionRegex.FindAllStringSubmatch(msg.Content, -1)
 			highlight := false
@@ -1834,7 +1834,7 @@ func renderEmojis(s string) string {
 }
 
 // renderCodeBlocks detects and renders syntax highlighted code blocks in messages
-func renderCodeBlocks(content string, width int) string {
+func renderCodeBlocks(content string) string {
 	// Look for markdown code blocks
 	codeBlockRegex := regexp.MustCompile("```([a-zA-Z0-9+]*)\n([\\s\\S]*?)```")
 
@@ -1848,22 +1848,14 @@ func renderCodeBlocks(content string, width int) string {
 		language := parts[1]
 		code := parts[2]
 
-		// Use Glamour to render the code block
-		markdown := fmt.Sprintf("```%s\n%s\n```", language, code)
-		r, err := glamour.NewTermRenderer(
-			glamour.WithAutoStyle(),
-			glamour.WithWordWrap(width-4),
-		)
+		// Use Chroma directly for syntax highlighting
+		var sb strings.Builder
+		err := quick.Highlight(&sb, code, language, "terminal256", "monokai")
 		if err != nil {
-			return match // Return original if Glamour fails
+			return match // Return original if highlighting fails
 		}
 
-		rendered, err := r.Render(markdown)
-		if err != nil {
-			return match // Return original if rendering fails
-		}
-
-		return rendered
+		return sb.String()
 	})
 }
 
