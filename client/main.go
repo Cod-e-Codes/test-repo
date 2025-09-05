@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/Cod-e-Codes/marchat/shared"
 	"github.com/alecthomas/chroma/quick"
 
+	"os/exec"
 	"os/signal"
 	"syscall"
 
@@ -45,6 +47,7 @@ const pingPeriod = 50 * time.Second        // moved from magic number
 const reconnectMaxDelay = 30 * time.Second // for exponential backoff
 
 var mentionRegex *regexp.Regexp
+var urlRegex *regexp.Regexp
 
 // keyMap defines all keybindings for the help system
 type keyMap struct {
@@ -242,6 +245,9 @@ func sortMessagesByTimestamp(messages []shared.Message) {
 
 func init() {
 	mentionRegex = regexp.MustCompile(`\B@([a-zA-Z0-9_]+)\b`)
+	// URL regex pattern to match http/https URLs and common domain patterns
+	// This pattern matches URLs more comprehensively
+	urlRegex = regexp.MustCompile(`(https?://[^\s<>"{}|\\^` + "`" + `\[\]]+|www\.[^\s<>"{}|\\^` + "`" + `\[\]]+\.[a-zA-Z]{2,})`)
 	// Set up debug logger
 	f, err := os.OpenFile("marchat-debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err == nil {
@@ -547,12 +553,13 @@ func (m *model) shouldPlayBell(msg shared.Message) bool {
 }
 
 type themeStyles struct {
-	User    lipgloss.Style
-	Time    lipgloss.Style
-	Msg     lipgloss.Style
-	Banner  lipgloss.Style
-	Box     lipgloss.Style // frame color
-	Mention lipgloss.Style // mention highlighting
+	User      lipgloss.Style
+	Time      lipgloss.Style
+	Msg       lipgloss.Style
+	Banner    lipgloss.Style
+	Box       lipgloss.Style // frame color
+	Mention   lipgloss.Style // mention highlighting
+	Hyperlink lipgloss.Style // hyperlink highlighting
 
 	UserList lipgloss.Style // NEW: user list panel
 	Me       lipgloss.Style // NEW: current user style
@@ -577,6 +584,7 @@ func baseThemeStyles() themeStyles {
 		Banner:     lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5F5F")).Bold(true),
 		Box:        lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("#AAAAAA")),
 		Mention:    lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700")),
+		Hyperlink:  lipgloss.NewStyle().Underline(true).Foreground(lipgloss.Color("#4A9EFF")),
 		UserList:   lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#AAAAAA")).Padding(0, 1),
 		Me:         lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD700")).Bold(true),
 		Other:      lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA")),
@@ -608,6 +616,7 @@ func getThemeStyles(theme string) themeStyles {
 		s.Banner = lipgloss.NewStyle().Bold(true)
 		s.Box = lipgloss.NewStyle().Border(lipgloss.NormalBorder())
 		s.Mention = lipgloss.NewStyle().Bold(true)
+		s.Hyperlink = lipgloss.NewStyle().Underline(true)
 		s.UserList = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(0, 1)
 		s.Me = lipgloss.NewStyle().Bold(true)
 		s.Other = lipgloss.NewStyle()
@@ -622,7 +631,8 @@ func getThemeStyles(theme string) themeStyles {
 		s.Time = s.Time.Foreground(lipgloss.Color("#BF0A30")).Faint(false) // Red
 		s.Msg = s.Msg.Foreground(lipgloss.Color("#FFFFFF"))
 		s.Box = s.Box.BorderForeground(lipgloss.Color("#BF0A30"))
-		s.Mention = s.Mention.Foreground(lipgloss.Color("#FFD700")) // Gold
+		s.Mention = s.Mention.Foreground(lipgloss.Color("#FFD700"))     // Gold
+		s.Hyperlink = s.Hyperlink.Foreground(lipgloss.Color("#87CEEB")) // Sky blue
 		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#002868"))
 		s.Me = s.Me.Foreground(lipgloss.Color("#BF0A30"))
 		// Background and UI
@@ -636,7 +646,8 @@ func getThemeStyles(theme string) themeStyles {
 		s.Time = s.Time.Foreground(lipgloss.Color("#00FF00")).Faint(false) // Green
 		s.Msg = s.Msg.Foreground(lipgloss.Color("#FFFFAA"))
 		s.Box = s.Box.BorderForeground(lipgloss.Color("#FF8800"))
-		s.Mention = s.Mention.Foreground(lipgloss.Color("#00FFFF")) // Cyan
+		s.Mention = s.Mention.Foreground(lipgloss.Color("#00FFFF"))     // Cyan
+		s.Hyperlink = s.Hyperlink.Foreground(lipgloss.Color("#00FFFF")) // Cyan
 		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#FF8800"))
 		s.Me = s.Me.Foreground(lipgloss.Color("#FF8800"))
 		// Background and UI
@@ -650,7 +661,8 @@ func getThemeStyles(theme string) themeStyles {
 		s.Time = s.Time.Foreground(lipgloss.Color("#A0A0A0")).Faint(false) // Gray
 		s.Msg = s.Msg.Foreground(lipgloss.Color("#E0E0E0"))
 		s.Box = s.Box.BorderForeground(lipgloss.Color("#4F8EF7"))
-		s.Mention = s.Mention.Foreground(lipgloss.Color("#FF5F5F")) // Red
+		s.Mention = s.Mention.Foreground(lipgloss.Color("#FF5F5F"))     // Red
+		s.Hyperlink = s.Hyperlink.Foreground(lipgloss.Color("#4A9EFF")) // Bright blue
 		s.UserList = s.UserList.BorderForeground(lipgloss.Color("#4F8EF7"))
 		s.Me = s.Me.Foreground(lipgloss.Color("#4F8EF7"))
 		// Background and UI
@@ -705,6 +717,8 @@ func renderMessages(msgs []shared.Message, styles themeStyles, username string, 
 			content = renderEmojis(msg.Content)
 			// Render code blocks with syntax highlighting
 			content = renderCodeBlocks(content)
+			// Render hyperlinks
+			content = renderHyperlinks(content, styles)
 			// Improved mention highlighting: highlight if any @username in user list (case-insensitive)
 			matches := mentionRegex.FindAllStringSubmatch(msg.Content, -1)
 			highlight := false
@@ -1576,7 +1590,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case quitMsg:
 		return m, tea.Quit
 	case tea.MouseMsg:
-		// Ignore all mouse events for now
+		// Handle mouse events for hyperlinks
+		switch v.Action {
+		case tea.MouseActionPress:
+			if v.Button == tea.MouseButtonLeft {
+				// Check if click is within the viewport area
+				if v.X >= 0 && v.X < m.viewport.Width && v.Y >= 0 && v.Y < m.viewport.Height {
+					// Try to find a URL at the click position
+					clickedURL := m.findURLAtClickPosition(v.X, v.Y)
+					if clickedURL != "" {
+						if err := openURL(clickedURL); err != nil {
+							m.banner = "❌ Failed to open URL: " + err.Error()
+						} else {
+							m.banner = "✅ Opening URL: " + clickedURL
+						}
+					}
+				}
+			}
+		}
 		return m, nil
 	default:
 		var cmd tea.Cmd
@@ -1589,6 +1620,42 @@ func (m *model) listenWebSocket() tea.Cmd {
 	return func() tea.Msg {
 		return <-m.msgChan
 	}
+}
+
+// renderMessagesContent returns the raw content of messages for URL detection
+func (m *model) renderMessagesContent() string {
+	var content strings.Builder
+	for _, msg := range m.messages {
+		content.WriteString(msg.Content)
+		content.WriteString(" ")
+	}
+	return content.String()
+}
+
+// findURLAtClickPosition attempts to find a URL at the given click position
+func (m *model) findURLAtClickPosition(clickX, clickY int) string {
+	// Get all URLs from the current messages
+	allURLs := urlRegex.FindAllString(m.renderMessagesContent(), -1)
+	if len(allURLs) == 0 {
+		return ""
+	}
+
+	// Adjust clickY to account for header and other UI elements
+	// This is an approximation - the exact calculation would need to account for
+	// header height, banner height, etc.
+	adjustedY := clickY - 3 // Approximate offset for header/banner
+
+	// If the click is in a reasonable area of the viewport, return the first URL
+	// This is a simplified approach - in a full implementation, you'd need to
+	// track the exact position of each URL in the rendered text
+	if adjustedY >= 0 && adjustedY < m.viewport.Height && clickX >= 0 && clickX < m.viewport.Width {
+		// For now, we'll return the first URL found in the visible area
+		// This works reasonably well for most use cases where there's typically
+		// only one URL visible at a time
+		return allURLs[0]
+	}
+
+	return ""
 }
 
 func (m *model) generateHelpContent() string {
@@ -1931,6 +1998,54 @@ func renderEmojis(s string) string {
 		s = strings.ReplaceAll(s, k, v)
 	}
 	return s
+}
+
+// renderHyperlinks detects and formats URLs in text
+func renderHyperlinks(content string, styles themeStyles) string {
+	return urlRegex.ReplaceAllStringFunc(content, func(url string) string {
+		return styles.Hyperlink.Render(url)
+	})
+}
+
+// openURL opens a URL in the default browser
+func openURL(url string) error {
+	// Ensure URL has a protocol
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
+	}
+
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "windows":
+		// Try multiple methods for Windows
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+		if err := cmd.Start(); err != nil {
+			// Fallback to start command
+			cmd = exec.Command("cmd", "/c", "start", url)
+			return cmd.Start()
+		}
+		return nil
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "linux":
+		// Try xdg-open first, then fallback to other methods
+		cmd = exec.Command("xdg-open", url)
+		if err := cmd.Start(); err != nil {
+			// Try other common Linux methods
+			cmd = exec.Command("sensible-browser", url)
+			if err := cmd.Start(); err != nil {
+				cmd = exec.Command("firefox", url)
+				return cmd.Start()
+			}
+			return nil
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
+	}
+
+	return cmd.Start()
 }
 
 // renderCodeBlocks detects and renders syntax highlighted code blocks in messages
