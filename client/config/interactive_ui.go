@@ -63,7 +63,7 @@ func NewConfigUI() ConfigUIModel {
 
 		switch configField(i) {
 		case serverURLField:
-			t.Placeholder = "wss://marchat.mckerley.net/ws"
+			t.Placeholder = "wss://example.com/ws"
 			t.Prompt = "Server URL: "
 			t.CharLimit = 256
 			t.Width = 50
@@ -256,7 +256,7 @@ func (m *ConfigUIModel) validateAndBuildConfig() error {
 
 	// Validation
 	if serverURL == "" {
-		serverURL = "wss://marchat.mckerley.net/ws"
+		return fmt.Errorf("server URL is required")
 	}
 	if username == "" {
 		return fmt.Errorf("username is required")
