@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/alecthomas/chroma/quick"
@@ -240,7 +241,10 @@ func (m codeSnippetModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "c":
 				// copy to clipboard - sanitize the code first
 				sanitizedCode := strings.ReplaceAll(m.code, "\x00", "")
-				clipboard.WriteAll(sanitizedCode)
+				if err := clipboard.WriteAll(sanitizedCode); err != nil {
+					// Silently ignore clipboard errors - not critical for functionality
+					log.Printf("Failed to copy to clipboard: %v", err)
+				}
 			}
 		}
 		return m, nil
