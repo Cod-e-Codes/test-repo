@@ -27,6 +27,7 @@ A lightweight terminal chat with separate server and client binaries, real-time 
   - [Source Installation](#source-installation)
 - [Quick Start](#quick-start)  
 - [Configuration](#configuration)
+- [Admin Panel](#admin-panel)
 - [TLS Support](#tls-support)
 - [Plugin System](#plugin-system)
 - [Ban History Gaps](#ban-history-gaps)
@@ -192,6 +193,9 @@ export MARCHAT_USERS="admin1,admin2"
 
 # Start server
 ./marchat-server
+
+# Or start with admin panel enabled
+./marchat-server --admin-panel
 ```
 
 ### 3. Connect Client
@@ -234,6 +238,48 @@ Create `config.json` for client configuration:
   "twenty_four_hour": true
 }
 ```
+
+## Admin Panel
+
+marchat includes a built-in terminal-based admin panel that provides a comprehensive interface for server management. The admin panel allows you to monitor server statistics, manage users, configure plugins, and perform administrative tasks directly from the terminal.
+
+### Enabling the Admin Panel
+
+Start the server with the `--admin-panel` flag to enable the admin panel:
+
+```bash
+./marchat-server --admin-panel
+```
+
+When the admin panel is enabled, you'll see an additional message in the server startup banner:
+```
+🖥️ Admin Panel: Press Ctrl+A to open admin panel, Ctrl+C to shutdown
+```
+
+### Using the Admin Panel
+
+Once the server is running with the admin panel enabled:
+
+1. **Open Admin Panel**: Press `Ctrl+A` to launch the admin panel interface
+2. **Navigate**: Use arrow keys to navigate through different sections
+3. **Exit**: Press `q` or `Esc` to return to the server console
+4. **Shutdown**: Press `Ctrl+C` to gracefully shutdown the server
+
+### Admin Panel Features
+
+The admin panel provides access to:
+
+- **Server Statistics**: Real-time monitoring of connected users, message counts, and system performance
+- **User Management**: View connected users, manage bans, and handle user permissions
+- **Plugin Management**: Install, configure, and manage server plugins
+- **System Configuration**: View and modify server settings
+- **Database Management**: Access database statistics and perform maintenance tasks
+
+### Requirements
+
+- The admin panel requires a terminal environment (stdin must be a terminal)
+- If running in a non-terminal environment (like systemd services), the admin panel will be automatically disabled with a warning message
+- The admin panel uses terminal raw mode for hotkey detection, which is automatically restored when exiting
 
 ## TLS Support
 
