@@ -1417,7 +1417,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if text == ":time" {
 				m.twentyFourHour = !m.twentyFourHour
 				m.cfg.TwentyFourHour = m.twentyFourHour
-				_ = config.SaveConfig(*configPath, m.cfg)
+				_ = config.SaveConfig(m.configFilePath, m.cfg)
 				m.banner = "Timestamp format: " + map[bool]string{true: "24h", false: "12h"}[m.twentyFourHour]
 				m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.users, m.viewport.Width, m.twentyFourHour))
 				m.viewport.GotoBottom()
@@ -1433,7 +1433,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.bellManager.PlayBell() // Test beep
 				}
 				m.banner = fmt.Sprintf("Message bell %s", status)
-				_ = config.SaveConfig(*configPath, m.cfg)
+				_ = config.SaveConfig(m.configFilePath, m.cfg)
 				m.textarea.SetValue("")
 				return m, nil
 			}
@@ -1447,7 +1447,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				m.banner = fmt.Sprintf("Bell on mention only %s", status)
-				_ = config.SaveConfig(*configPath, m.cfg)
+				_ = config.SaveConfig(m.configFilePath, m.cfg)
 				m.textarea.SetValue("")
 				return m, nil
 			}
