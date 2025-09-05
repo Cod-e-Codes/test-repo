@@ -72,11 +72,13 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 ## Changelog
 
+### v0.6.0-beta.3 (Upcoming)
+- **Bell Notifications**: New `:bell` and `:bell-mention` commands for audio alerts with rate limiting and config persistence
+
 ### v0.6.0-beta.2 (Latest)
 - **Server Admin Panel**: New `--admin-panel` flag enables built-in terminal admin panel with Ctrl+A hotkey access
 - **Fixed Allow Command**: Resolved `:allow` command issues with E2E encryption by implementing hotkey alternatives
 - **Key Binding Improvements**: Changed allow command hotkey from Ctrl+A to Ctrl+Shift+A to resolve conflicts
-- **Bell Notifications**: New `:bell` and `:bell-mention` commands for audio alerts with rate limiting and config persistence
 - **Enhanced Documentation**: Updated README with comprehensive admin panel documentation and E2E encryption notes
 
 ### v0.6.0-beta.1
