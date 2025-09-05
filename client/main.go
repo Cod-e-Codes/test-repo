@@ -485,6 +485,10 @@ type model struct {
 	showCodeSnippet  bool
 	codeSnippetModel codeSnippetModel
 
+	// File picker system
+	showFilePicker  bool
+	filePickerModel filePickerModel
+
 	// Bell notification system
 	bellManager *BellManager
 }
@@ -773,6 +777,10 @@ type UserList struct {
 
 type codeSnippetMsg struct {
 	content string
+}
+
+type fileSendMsg struct {
+	filePath string
 }
 
 func (m *model) connectWebSocket(serverURL string) error {
@@ -1083,6 +1091,52 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sending = false
 		m.showCodeSnippet = false
 		return m, m.listenWebSocket()
+	case fileSendMsg:
+		// Handle file send message from the file picker interface
+		m.sending = true
+		if m.conn != nil {
+			// Read the file
+			data, err := os.ReadFile(v.filePath)
+			if err != nil {
+				m.banner = "❌ Failed to read file: " + err.Error()
+				m.sending = false
+				m.showFilePicker = false
+				return m, nil
+			}
+
+			// Check file size (1MB limit)
+			if len(data) > 1024*1024 {
+				m.banner = "❌ File too large (max 1MB)"
+				m.sending = false
+				m.showFilePicker = false
+				return m, nil
+			}
+
+			filename := filepath.Base(v.filePath)
+			msg := shared.Message{
+				Sender:    m.cfg.Username,
+				Type:      shared.FileMessageType,
+				CreatedAt: time.Now(),
+				File: &shared.FileMeta{
+					Filename: filename,
+					Size:     int64(len(data)),
+					Data:     data,
+				},
+			}
+
+			err = m.conn.WriteJSON(msg)
+			if err != nil {
+				m.banner = "❌ Failed to send file (connection lost)"
+				m.sending = false
+				m.showFilePicker = false
+				return m, m.listenWebSocket()
+			}
+
+			m.banner = "File sent: " + filename
+		}
+		m.sending = false
+		m.showFilePicker = false
+		return m, m.listenWebSocket()
 	case shared.Message:
 		// Check if we should play a bell for this message
 		if m.shouldPlayBell(v) {
@@ -1155,10 +1209,28 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.codeSnippetModel = csModel
 			}
 			return m, cmd
+		case m.showFilePicker:
+			// Handle file picker interface
+			var cmd tea.Cmd
+			updatedModel, cmd := m.filePickerModel.Update(v)
+			if fpModel, ok := updatedModel.(filePickerModel); ok {
+				m.filePickerModel = fpModel
+			}
+			return m, cmd
 		case key.Matches(v, m.keys.Quit):
 			// If help is open, close it instead of quitting
 			if m.showHelp {
 				m.showHelp = false
+				return m, nil
+			}
+			// If code snippet is open, close it instead of quitting
+			if m.showCodeSnippet {
+				m.showCodeSnippet = false
+				return m, nil
+			}
+			// If file picker is open, close it instead of quitting
+			if m.showFilePicker {
+				m.showFilePicker = false
 				return m, nil
 			}
 			// If a menu is open or user selected, clear it instead of quitting
@@ -1312,11 +1384,32 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case key.Matches(v, m.keys.Send):
 			text := m.textarea.Value()
+			if text == ":sendfile" {
+				// Open file picker when no path provided
+				m.textarea.SetValue("")
+				m.showFilePicker = true
+				// Initialize file picker model
+				m.filePickerModel = newFilePickerModel(m.styles, m.width, m.height,
+					func(filePath string) {
+						// Send the file using a channel to avoid race conditions
+						select {
+						case m.msgChan <- fileSendMsg{filePath: filePath}:
+						default:
+							log.Printf("Failed to send file message")
+						}
+					},
+					func() {
+						// Cancel - just hide the file picker interface
+						m.showFilePicker = false
+					})
+				return m, nil
+			}
 			if strings.HasPrefix(text, ":sendfile ") {
 				parts := strings.SplitN(text, " ", 2)
 				if len(parts) == 2 {
 					path := strings.TrimSpace(parts[1])
 					if path != "" {
+						// Send file with provided path (existing functionality)
 						data, err := os.ReadFile(path)
 						if err != nil {
 							m.banner = "❌ Failed to read file: " + err.Error()
@@ -1352,6 +1445,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, m.listenWebSocket()
 					}
 				}
+				return m, nil
 			}
 			if strings.HasPrefix(text, ":savefile ") {
 				filename := strings.TrimSpace(strings.TrimPrefix(text, ":savefile "))
@@ -1675,7 +1769,7 @@ func (m *model) generateHelpContent() string {
 	commandHelp = "\nCommands:\n"
 
 	// Basic commands
-	commandHelp += "  :sendfile <path>      Send a file\n"
+	commandHelp += "  :sendfile [path]      Send a file (use without path for file picker)\n"
 	commandHelp += "  :savefile <filename>  Save received file\n"
 	commandHelp += "  :theme <name>         Change theme (system, patriot, retro, modern)\n"
 	commandHelp += "  :time                 Toggle 12/24h time format\n"
@@ -1905,6 +1999,35 @@ func (m *model) View() string {
 
 		// Center the code snippet modal on the screen
 		ui = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, codeContent)
+		return m.styles.Background.Render(ui)
+	}
+
+	// Show file picker interface as full-screen if shown
+	if m.showFilePicker {
+		// Use most of the available screen space for file picker
+		fileWidth := m.width - 8   // Leave reasonable margins
+		fileHeight := m.height - 8 // Leave reasonable margins
+
+		// Ensure minimum usable size for very small screens
+		if fileWidth < 60 {
+			fileWidth = 60
+		}
+		if fileHeight < 15 {
+			fileHeight = 15
+		}
+
+		// Update file picker model dimensions
+		m.filePickerModel.width = fileWidth
+		m.filePickerModel.height = fileHeight
+
+		// Create file picker content
+		fileContent := m.styles.HelpOverlay.
+			Width(fileWidth).
+			Height(fileHeight).
+			Render(m.filePickerModel.View())
+
+		// Center the file picker modal on the screen
+		ui = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, fileContent)
 		return m.styles.Background.Render(ui)
 	}
 

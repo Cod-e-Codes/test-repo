@@ -58,7 +58,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 | **Real-time Chat** | Fast WebSocket-based messaging with a lightweight SQLite backend |
 | **Plugin System** | Install and manage plugins via remote registry with `:store` and `:plugin` commands |
 | **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305, global encryption for public channels |
-| **File Sharing** | Send files up to 1MB with `:sendfile` |
+| **File Sharing** | Send files up to 1MB with `:sendfile` command and interactive file picker |
 | **Admin Controls** | User management, bans, and database operations with improved ban/unban experience |
 | **Bell Notifications** | Audio alerts for new messages with `:bell` and `:bell-mention` commands |
 | **Themes** | Choose from system (default), patriot, retro, or modern themes |
@@ -73,6 +73,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 ## Changelog
 
 ### v0.6.0-beta.3 (Upcoming)
+- **Interactive File Picker**: New file browser interface for `:sendfile` command with directory navigation and file type filtering
 - **Bell Notifications**: New `:bell` and `:bell-mention` commands for audio alerts with rate limiting and config persistence
 
 ### v0.6.0-beta.2 (Latest)
@@ -494,12 +495,40 @@ marchat includes audio notification support to alert you when new messages arriv
 | `:theme <name>` | Switch theme | `:theme system` |
 | `:time` | Toggle 12/24-hour format | `:time` |
 | `:clear` | Clear chat buffer | `:clear` |
-| `:sendfile <path>` | Send file (<1MB) | `:sendfile document.txt` |
+| `:sendfile [path]` | Send file (<1MB) - use without path for file picker | `:sendfile document.txt` or `:sendfile` |
 | `:savefile <name>` | Save received file | `:savefile received.txt` |
 | `:code` | Open code snippet composer | `:code` |
 | `:bell` | Toggle message bell notifications | `:bell` |
 | `:bell-mention` | Toggle bell only on mentions | `:bell-mention` |
 | `:admin` | Open admin panel (admin only) | `:admin` |
+
+### File Sharing
+
+marchat supports file sharing with two methods:
+
+**Direct File Send:**
+```bash
+:sendfile /path/to/file.txt
+```
+
+**Interactive File Picker:**
+```bash
+:sendfile
+```
+This opens a file browser where you can:
+- Navigate directories with arrow keys
+- Enter directories by pressing Enter on folder items
+- Go up one level using the ".. (Parent Directory)" option
+- View file sizes and types
+- Filter by allowed file types (text, code, images, documents, archives)
+- Send files up to 1MB
+
+**Supported File Types:**
+- Text: `.txt`, `.md`, `.json`, `.yaml`, `.xml`, `.csv`, `.log`, `.conf`
+- Code: `.go`, `.py`, `.js`, `.ts`, `.java`, `.c`, `.cpp`, `.h`, `.html`, `.css`
+- Images: `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.svg`
+- Documents: `.pdf`, `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx`
+- Archives: `.zip`, `.tar`, `.gz`, `.rar`
 
 ### Plugin Commands
 
