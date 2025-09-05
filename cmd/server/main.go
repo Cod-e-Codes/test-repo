@@ -9,11 +9,14 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Cod-e-Codes/marchat/config"
 	"github.com/Cod-e-Codes/marchat/server"
 	"github.com/Cod-e-Codes/marchat/shared"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/term"
 )
 
 // Multi-admin support
@@ -31,6 +34,7 @@ var adminKey = flag.String("admin-key", "", "Admin key for privileged commands (
 var port = flag.Int("port", 0, "Port to listen on (deprecated, use MARCHAT_PORT)")
 var configPath = flag.String("config", "", "Path to server config file (JSON, deprecated)")
 var configDir = flag.String("config-dir", "", "Configuration directory (default: ./config in dev, $XDG_CONFIG_HOME/marchat in prod)")
+var enableAdminPanel = flag.Bool("admin-panel", false, "Enable the built-in admin panel TUI")
 
 func printBanner(addr string, admins []string, scheme string) {
 	fmt.Println(`
@@ -176,6 +180,12 @@ func main() {
 	hub := server.NewHub(pluginDir, dataDir, registryURL, db)
 	go hub.Run()
 
+	// Initialize admin panel if enabled (but don't start it yet)
+	var adminPanelReady bool
+	if *enableAdminPanel {
+		adminPanelReady = true
+	}
+
 	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, key, cfg.BanGapsHistory))
 
 	addr := fmt.Sprintf(":%d", listenPort)
@@ -191,13 +201,17 @@ func main() {
 		log.Printf("TLS disabled - running in HTTP mode")
 	}
 	printBanner(serverAddr, admins, scheme)
+	if adminPanelReady {
+		fmt.Println("\U0001F4BB Admin Panel: Press Ctrl+A to open admin panel, Ctrl+C to shutdown")
+	}
 
 	// Create a custom server instance
 	srv := &http.Server{Addr: addr}
 
 	// Channel to listen for OS signals (Ctrl+C, etc.)
 	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
+	adminShutdown := make(chan bool, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	// Run server in a goroutine
 	go func() {
@@ -214,9 +228,89 @@ func main() {
 		}
 	}()
 
-	// Block until we receive SIGINT (Ctrl+C)
-	<-stop
-	log.Println("Shutting down server gracefully...")
+	// Start admin panel hotkey listener
+	if adminPanelReady {
+		go func() {
+			// Check if stdin is a terminal
+			fd := os.Stdin.Fd()
+			if !term.IsTerminal(fd) {
+				log.Printf("Warning: stdin is not a terminal, admin panel hotkeys disabled")
+				return
+			}
+
+			// Set terminal to raw mode for character-by-character input
+			oldState, err := term.MakeRaw(fd)
+			if err != nil {
+				log.Printf("Warning: Could not set terminal to raw mode: %v", err)
+				return
+			}
+
+			// Ensure we restore terminal state when the goroutine exits
+			defer func() {
+				if err := term.Restore(fd, oldState); err != nil {
+					log.Printf("Warning: Could not restore terminal state: %v", err)
+				}
+			}()
+
+			log.Printf("Admin panel ready - press Ctrl+A to open")
+
+			// Read input character by character
+			buf := make([]byte, 1)
+			for {
+				n, err := os.Stdin.Read(buf)
+				if err != nil {
+					log.Printf("Error reading from stdin: %v", err)
+					break
+				}
+				if n == 0 {
+					continue
+				}
+
+				// Check for Ctrl+A (ASCII 1) or Ctrl+C (ASCII 3)
+				if buf[0] == 1 {
+					log.Printf("Admin panel hotkey detected (Ctrl+A)")
+
+					// Temporarily restore terminal state
+					if err := term.Restore(fd, oldState); err != nil {
+						log.Printf("Warning: Could not restore terminal state: %v", err)
+					}
+
+					// Launch admin panel
+					pluginManager := hub.GetPluginManager()
+					panel := server.NewAdminPanel(hub, db, pluginManager, cfg.ConfigDir, cfg.DBPath, listenPort)
+					p := tea.NewProgram(panel, tea.WithAltScreen())
+					p.Run()
+
+					// Set terminal back to raw mode
+					oldState, err = term.MakeRaw(fd)
+					if err != nil {
+						log.Printf("Warning: Could not reset terminal to raw mode: %v", err)
+						break
+					}
+					log.Printf("Admin panel ready - press Ctrl+A to open")
+				} else if buf[0] == 3 { // Ctrl+C (ASCII 3)
+					log.Printf("Ctrl+C detected, shutting down server...")
+
+					// Restore terminal state before shutdown
+					if err := term.Restore(fd, oldState); err != nil {
+						log.Printf("Warning: Could not restore terminal state: %v", err)
+					}
+
+					// Signal shutdown via our channel
+					adminShutdown <- true
+					return
+				}
+			}
+		}()
+	}
+
+	// Block until we receive SIGINT (Ctrl+C) or admin shutdown
+	select {
+	case <-stop:
+		log.Println("Shutting down server gracefully...")
+	case <-adminShutdown:
+		log.Println("Shutting down server gracefully...")
+	}
 
 	// Create a context with timeout for graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

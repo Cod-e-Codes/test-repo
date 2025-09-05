@@ -373,3 +373,8 @@ func (h *Hub) Run() {
 func (h *Hub) getDB() *sql.DB {
 	return h.db
 }
+
+// GetPluginManager returns the plugin manager reference
+func (h *Hub) GetPluginManager() *manager.PluginManager {
+	return h.pluginManager
+}
