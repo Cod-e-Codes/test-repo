@@ -227,7 +227,7 @@ func (hc *HealthChecker) getSystemMetrics() SystemMetrics {
 
 	totalMessages := 0
 	if hc.db != nil {
-		hc.db.QueryRow("SELECT COUNT(*) FROM messages").Scan(&totalMessages)
+		_ = hc.db.QueryRow("SELECT COUNT(*) FROM messages").Scan(&totalMessages)
 	}
 
 	return SystemMetrics{
@@ -287,9 +287,9 @@ func (hc *HealthChecker) SimpleHealthHandler(w http.ResponseWriter, r *http.Requ
 	// Simple response for load balancers
 	if health.Status == HealthStatusHealthy {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	} else {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte("UNHEALTHY"))
+		_, _ = w.Write([]byte("UNHEALTHY"))
 	}
 }
