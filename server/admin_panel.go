@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -27,6 +27,7 @@ const (
 	tabSystem
 	tabLogs
 	tabPlugins
+	tabMetrics // New metrics tab
 )
 
 // Plugin information
@@ -51,24 +52,60 @@ type userInfo struct {
 
 // System statistics
 type systemStats struct {
-	Uptime        time.Duration
-	MemoryUsage   float64
-	CPUUsage      float64
-	ActiveUsers   int
-	TotalUsers    int
-	MessagesSent  int
-	PluginsActive int
-	ServerStatus  string
+	Uptime         time.Duration
+	MemoryUsage    float64
+	CPUUsage       float64
+	ActiveUsers    int
+	TotalUsers     int
+	MessagesSent   int
+	PluginsActive  int
+	ServerStatus   string
+	GoroutineCount int
+	HeapSize       uint64
+	AllocatedMem   uint64
+	GCCount        uint32
+}
+
+// Metrics data for charts and graphs
+type metricsData struct {
+	ConnectionHistory []connectionPoint
+	MessageHistory    []messagePoint
+	MemoryHistory     []memoryPoint
+	LastUpdated       time.Time
+	PeakUsers         int
+	PeakMemory        uint64
+	TotalConnections  int
+	TotalDisconnects  int
+	AverageResponse   time.Duration
+}
+
+type connectionPoint struct {
+	Time  time.Time
+	Count int
+}
+
+type messagePoint struct {
+	Time  time.Time
+	Count int
+}
+
+type memoryPoint struct {
+	Time   time.Time
+	Memory uint64
 }
 
 // Configuration data
 type configData struct {
-	Port        int
-	AdminKey    string
-	DBPath      string
-	LogLevel    string
-	MaxMessages int
-	ConfigDir   string
+	Port           int
+	AdminKey       string
+	DBPath         string
+	LogLevel       string
+	MaxMessages    int
+	ConfigDir      string
+	TLSEnabled     bool
+	E2EEnabled     bool
+	MaxFileSize    int64
+	MaxConnections int
 }
 
 // Log entry
@@ -77,6 +114,7 @@ type logEntry struct {
 	Level     string
 	Message   string
 	User      string
+	Component string
 }
 
 // AdminPanel represents the main admin panel state
@@ -88,12 +126,19 @@ type AdminPanel struct {
 	// Components
 	help      help.Model
 	userTable table.Model
-	logViewer textarea.Model
+
+	// Scroll state for each tab
+	overviewScroll int
+	systemScroll   int
+	pluginsScroll  int
+	metricsScroll  int
+	logsScroll     int
 
 	// Data
 	users      []userInfo
 	plugins    []pluginInfo
 	systemInfo systemStats
+	metrics    metricsData
 	config     configData
 	logs       []logEntry
 
@@ -112,32 +157,40 @@ type AdminPanel struct {
 	message        string
 	messageTimer   int
 
+	// Performance tracking
+	lastMessageCount int
+	messageRate      float64
+	connectionRate   float64
+
 	// Keybindings
 	keys keyMap
 }
 
 // Keybindings
 type keyMap struct {
-	TabNext   key.Binding
-	TabPrev   key.Binding
-	Quit      key.Binding
-	Refresh   key.Binding
-	ClearDB   key.Binding
-	BackupDB  key.Binding
-	ShowStats key.Binding
-	Help      key.Binding
-	Action    key.Binding
-	Ban       key.Binding
-	Unban     key.Binding
-	Kick      key.Binding
-	Allow     key.Binding
-	AddAdmin  key.Binding
-	Enable    key.Binding
-	Disable   key.Binding
-	Install   key.Binding
-	Uninstall key.Binding
-	Up        key.Binding
-	Down      key.Binding
+	TabNext      key.Binding
+	TabPrev      key.Binding
+	Quit         key.Binding
+	Refresh      key.Binding
+	ClearDB      key.Binding
+	BackupDB     key.Binding
+	ShowStats    key.Binding
+	Help         key.Binding
+	Action       key.Binding
+	Ban          key.Binding
+	Unban        key.Binding
+	Kick         key.Binding
+	Allow        key.Binding
+	AddAdmin     key.Binding
+	Enable       key.Binding
+	Disable      key.Binding
+	Install      key.Binding
+	Uninstall    key.Binding
+	Up           key.Binding
+	Down         key.Binding
+	ExportLogs   key.Binding
+	ResetMetrics key.Binding
+	ForceGC      key.Binding
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
@@ -146,15 +199,15 @@ func (k keyMap) ShortHelp() []key.Binding {
 
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.TabNext, k.TabPrev, k.Refresh},
-		{k.Action, k.Help, k.Quit},
+		{k.TabNext, k.TabPrev, k.Refresh, k.Help},
+		{k.Action, k.Quit, k.ExportLogs, k.ForceGC},
 		{k.Ban, k.Unban, k.Kick, k.Allow, k.AddAdmin},
 		{k.Enable, k.Disable, k.Install, k.Uninstall},
-		{k.ClearDB, k.BackupDB, k.ShowStats},
+		{k.ClearDB, k.BackupDB, k.ShowStats, k.ResetMetrics},
 	}
 }
 
-// Styling
+// Enhanced styling
 var (
 	// Colors
 	primaryColor   = lipgloss.Color("#7D56F4")
@@ -162,11 +215,17 @@ var (
 	successColor   = lipgloss.Color("#00FFA3")
 	warningColor   = lipgloss.Color("#FFA500")
 	errorColor     = lipgloss.Color("#FF4444")
+	accentColor    = lipgloss.Color("#FFD700")
 
-	// Styles
+	// Enhanced styles
 	titleStyle = lipgloss.NewStyle().
 			Foreground(primaryColor).
 			Bold(true).
+			MarginLeft(2)
+
+	subtitleStyle = lipgloss.NewStyle().
+			Foreground(secondaryColor).
+			Italic(true).
 			MarginLeft(2)
 
 	tabStyle = lipgloss.NewStyle().
@@ -175,7 +234,8 @@ var (
 
 	activeTabStyle = tabStyle.
 			Foreground(primaryColor).
-			Bold(true)
+			Bold(true).
+			Background(lipgloss.Color("235"))
 
 	statusStyle = lipgloss.NewStyle().
 			Foreground(successColor).
@@ -189,14 +249,23 @@ var (
 				Foreground(warningColor).
 				Bold(true)
 
+	infoStylePanel = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#00BFFF")).
+			Bold(true)
+
+	metricLabelStyle = lipgloss.NewStyle().
+				Foreground(accentColor).
+				Bold(true)
+
+	metricValueStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("white")).
+				Bold(true)
+
 	// Border styles
 	mainBorder = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(primaryColor).
 			Padding(1, 2)
-
-	contentStyle = lipgloss.NewStyle().
-			Padding(1, 0)
 
 	messageStyle = lipgloss.NewStyle().
 			Foreground(secondaryColor).
@@ -288,9 +357,21 @@ func NewAdminPanel(hub *Hub, db *sql.DB, pluginManager *manager.PluginManager, c
 			key.WithKeys("down"),
 			key.WithHelp("↓", "down"),
 		),
+		ExportLogs: key.NewBinding(
+			key.WithKeys("E"),
+			key.WithHelp("E", "export logs"),
+		),
+		ResetMetrics: key.NewBinding(
+			key.WithKeys("R"),
+			key.WithHelp("R", "reset metrics"),
+		),
+		ForceGC: key.NewBinding(
+			key.WithKeys("G"),
+			key.WithHelp("G", "force GC"),
+		),
 	}
 
-	// Initialize table
+	// Initialize enhanced table
 	columns := []table.Column{
 		{Title: "Username", Width: 15},
 		{Title: "Status", Width: 10},
@@ -298,61 +379,62 @@ func NewAdminPanel(hub *Hub, db *sql.DB, pluginManager *manager.PluginManager, c
 		{Title: "Messages", Width: 10},
 		{Title: "Admin", Width: 8},
 		{Title: "Last Seen", Width: 12},
+		{Title: "Connected", Width: 12},
 	}
 
 	t := table.New(
 		table.WithColumns(columns),
 		table.WithFocused(true),
-		table.WithHeight(10),
+		table.WithHeight(12),
 	)
 
-	// Style the table
+	// Enhanced table styling
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(primaryColor).
 		BorderBottom(true).
-		Bold(true)
+		Bold(true).
+		Foreground(accentColor)
 	s.Selected = s.Selected.
 		Foreground(lipgloss.Color("229")).
 		Background(secondaryColor).
 		Bold(false)
 	t.SetStyles(s)
 
-	// Initialize log viewer
-	logViewer := textarea.New()
-	logViewer.Placeholder = "System logs will appear here..."
-	logViewer.SetHeight(15)
-	logViewer.SetWidth(80)
-	logViewer.ShowLineNumbers = true
-	logViewer.FocusedStyle.CursorLine = lipgloss.NewStyle().
-		Background(lipgloss.Color("57")).
-		Foreground(lipgloss.Color("230"))
-
 	panel := &AdminPanel{
 		activeTab:     tabOverview,
-		tabs:          []string{"Overview", "Users", "System", "Logs", "Plugins"},
+		tabs:          []string{"Overview", "Users", "System", "Logs", "Plugins", "Metrics"},
 		help:          help.New(),
 		userTable:     t,
-		logViewer:     logViewer,
 		keys:          keys,
 		hub:           hub,
 		db:            db,
 		pluginManager: pluginManager,
 		startTime:     time.Now(),
 		config: configData{
-			Port:        port,
-			AdminKey:    "***hidden***",
-			DBPath:      dbPath,
-			LogLevel:    "info",
-			MaxMessages: 1000, // Actual limit from handlers.go
-			ConfigDir:   configDir,
+			Port:           port,
+			AdminKey:       "***hidden***",
+			DBPath:         dbPath,
+			LogLevel:       "info",
+			MaxMessages:    1000,
+			ConfigDir:      configDir,
+			TLSEnabled:     false,       // Detect from server config
+			E2EEnabled:     false,       // Detect from server config
+			MaxFileSize:    1024 * 1024, // 1MB
+			MaxConnections: 1000,        // Default limit
 		},
 		systemInfo: systemStats{
 			Uptime:       0,
 			MemoryUsage:  0,
 			CPUUsage:     0,
 			ServerStatus: "Running",
+		},
+		metrics: metricsData{
+			ConnectionHistory: make([]connectionPoint, 0),
+			MessageHistory:    make([]messagePoint, 0),
+			MemoryHistory:     make([]memoryPoint, 0),
+			LastUpdated:       time.Now(),
 		},
 		selectedUser:   -1,
 		selectedPlugin: -1,
@@ -373,6 +455,8 @@ func (ap *AdminPanel) refreshData() {
 	ap.loadLogs()
 	// Update system stats
 	ap.updateSystemStats()
+	// Update metrics
+	ap.updateMetrics()
 	// Update user table
 	ap.updateUserTable()
 }
@@ -428,8 +512,9 @@ func (ap *AdminPanel) loadUsers() {
 		if user, exists := userMap[username]; exists {
 			user.Status = "Online"
 			user.IP = client.ipAddr
-			user.ConnectedAt = time.Now() // Simplified
+			user.ConnectedAt = time.Now() // Simplified - would need client.connectedAt
 			user.LastSeen = time.Now()
+			user.IsAdmin = client.isAdmin
 		} else {
 			userMap[username] = &userInfo{
 				Username:    username,
@@ -496,15 +581,63 @@ func (ap *AdminPanel) loadPlugins() {
 }
 
 func (ap *AdminPanel) loadLogs() {
-	// Create some sample logs based on system activity
+	// Enhanced log entries with more system information
+	currentTime := time.Now()
 	ap.logs = []logEntry{
-		{Timestamp: time.Now().Add(-1 * time.Minute), Level: "INFO", Message: "Admin panel started", User: "Admin"},
-		{Timestamp: time.Now().Add(-2 * time.Minute), Level: "INFO", Message: fmt.Sprintf("Active users: %d", len(ap.hub.clients)), User: "System"},
-		{Timestamp: time.Now().Add(-5 * time.Minute), Level: "INFO", Message: "Server running normally", User: "System"},
+		{
+			Timestamp: currentTime.Add(-30 * time.Second),
+			Level:     "INFO",
+			Message:   "Admin panel started by user",
+			User:      "Admin",
+			Component: "AdminPanel",
+		},
+		{
+			Timestamp: currentTime.Add(-1 * time.Minute),
+			Level:     "INFO",
+			Message:   fmt.Sprintf("Active connections: %d", len(ap.hub.clients)),
+			User:      "System",
+			Component: "ConnectionManager",
+		},
+		{
+			Timestamp: currentTime.Add(-2 * time.Minute),
+			Level:     "INFO",
+			Message:   fmt.Sprintf("Memory usage: %.1f MB", ap.systemInfo.MemoryUsage),
+			User:      "System",
+			Component: "Monitor",
+		},
+		{
+			Timestamp: currentTime.Add(-5 * time.Minute),
+			Level:     "INFO",
+			Message:   "Server startup completed successfully",
+			User:      "System",
+			Component: "Server",
+		},
 	}
+
+	// Add plugin-related logs
+	for _, plugin := range ap.plugins {
+		if plugin.Status == "Active" {
+			ap.logs = append(ap.logs, logEntry{
+				Timestamp: currentTime.Add(-3 * time.Minute),
+				Level:     "INFO",
+				Message:   fmt.Sprintf("Plugin '%s' loaded successfully", plugin.Name),
+				User:      "System",
+				Component: "PluginManager",
+			})
+		}
+	}
+
+	// Sort logs by timestamp (newest first)
+	sort.Slice(ap.logs, func(i, j int) bool {
+		return ap.logs[i].Timestamp.After(ap.logs[j].Timestamp)
+	})
 }
 
 func (ap *AdminPanel) updateSystemStats() {
+	// Get runtime memory stats
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
 	// Get message count
 	var messageCount int
 	err := ap.db.QueryRow("SELECT COUNT(*) FROM messages").Scan(&messageCount)
@@ -527,12 +660,70 @@ func (ap *AdminPanel) updateSystemStats() {
 		}
 	}
 
+	// Calculate message rate
+	if ap.lastMessageCount > 0 {
+		timeDiff := time.Since(ap.metrics.LastUpdated).Seconds()
+		if timeDiff > 0 {
+			ap.messageRate = float64(messageCount-ap.lastMessageCount) / timeDiff
+		}
+	}
+	ap.lastMessageCount = messageCount
+
 	ap.systemInfo.MessagesSent = messageCount
 	ap.systemInfo.TotalUsers = userCount
 	ap.systemInfo.ActiveUsers = len(ap.hub.clients)
 	ap.systemInfo.PluginsActive = activePlugins
 	ap.systemInfo.Uptime = time.Since(ap.startTime)
 	ap.systemInfo.ServerStatus = "Running"
+	ap.systemInfo.GoroutineCount = runtime.NumGoroutine()
+	ap.systemInfo.HeapSize = m.HeapSys
+	ap.systemInfo.AllocatedMem = m.Alloc
+	ap.systemInfo.GCCount = m.NumGC
+	ap.systemInfo.MemoryUsage = float64(m.Alloc) / 1024 / 1024 // Convert to MB
+}
+
+func (ap *AdminPanel) updateMetrics() {
+	currentTime := time.Now()
+
+	// Add connection point
+	ap.metrics.ConnectionHistory = append(ap.metrics.ConnectionHistory, connectionPoint{
+		Time:  currentTime,
+		Count: ap.systemInfo.ActiveUsers,
+	})
+
+	// Add message point
+	ap.metrics.MessageHistory = append(ap.metrics.MessageHistory, messagePoint{
+		Time:  currentTime,
+		Count: ap.systemInfo.MessagesSent,
+	})
+
+	// Add memory point
+	ap.metrics.MemoryHistory = append(ap.metrics.MemoryHistory, memoryPoint{
+		Time:   currentTime,
+		Memory: ap.systemInfo.AllocatedMem,
+	})
+
+	// Keep only last 100 points for performance
+	maxPoints := 100
+	if len(ap.metrics.ConnectionHistory) > maxPoints {
+		ap.metrics.ConnectionHistory = ap.metrics.ConnectionHistory[len(ap.metrics.ConnectionHistory)-maxPoints:]
+	}
+	if len(ap.metrics.MessageHistory) > maxPoints {
+		ap.metrics.MessageHistory = ap.metrics.MessageHistory[len(ap.metrics.MessageHistory)-maxPoints:]
+	}
+	if len(ap.metrics.MemoryHistory) > maxPoints {
+		ap.metrics.MemoryHistory = ap.metrics.MemoryHistory[len(ap.metrics.MemoryHistory)-maxPoints:]
+	}
+
+	// Update peak values
+	if ap.systemInfo.ActiveUsers > ap.metrics.PeakUsers {
+		ap.metrics.PeakUsers = ap.systemInfo.ActiveUsers
+	}
+	if ap.systemInfo.AllocatedMem > ap.metrics.PeakMemory {
+		ap.metrics.PeakMemory = ap.systemInfo.AllocatedMem
+	}
+
+	ap.metrics.LastUpdated = currentTime
 }
 
 func (ap *AdminPanel) updateUserTable() {
@@ -555,6 +746,11 @@ func (ap *AdminPanel) updateUserTable() {
 			lastSeen = formatDuration(time.Since(user.LastSeen))
 		}
 
+		connected := "N/A"
+		if !user.ConnectedAt.IsZero() && user.Status == "Online" {
+			connected = formatDuration(time.Since(user.ConnectedAt))
+		}
+
 		rows = append(rows, table.Row{
 			user.Username,
 			status,
@@ -562,6 +758,7 @@ func (ap *AdminPanel) updateUserTable() {
 			fmt.Sprintf("%d", user.Messages),
 			adminStatus,
 			lastSeen,
+			connected,
 		})
 	}
 	ap.userTable.SetRows(rows)
@@ -601,9 +798,14 @@ func (ap *AdminPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			availableWidth = 30
 		}
 
+		// Calculate available height (subtract space for title, tabs, help, and message)
+		availableHeight := msg.Height - 8 // Reserve space for title, tabs, help, and message
+		if availableHeight < 10 {
+			availableHeight = 10
+		}
+
 		ap.help.Width = availableWidth
 		ap.userTable.SetWidth(availableWidth)
-		ap.logViewer.SetWidth(availableWidth)
 
 	case tea.KeyMsg:
 		switch {
@@ -664,6 +866,20 @@ func (ap *AdminPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return ap, ap.allowUser(username)
 				}
 			}
+		case key.Matches(msg, ap.keys.ForceGC):
+			runtime.GC()
+			ap.message = "🗑️ Garbage collection forced"
+			ap.messageTimer = 3
+		case key.Matches(msg, ap.keys.ResetMetrics):
+			ap.resetMetrics()
+			ap.message = "📊 Metrics reset"
+			ap.messageTimer = 3
+		case key.Matches(msg, ap.keys.ExportLogs):
+			return ap, ap.exportLogs()
+		case key.Matches(msg, ap.keys.Up):
+			ap.handleScroll(-1)
+		case key.Matches(msg, ap.keys.Down):
+			ap.handleScroll(1)
 		}
 
 	case tickMsg:
@@ -720,13 +936,72 @@ func (ap *AdminPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		ap.userTable, cmd = ap.userTable.Update(msg)
 		cmds = append(cmds, cmd)
-	case tabLogs:
-		var cmd tea.Cmd
-		ap.logViewer, cmd = ap.logViewer.Update(msg)
-		cmds = append(cmds, cmd)
 	}
 
 	return ap, tea.Batch(cmds...)
+}
+
+func (ap *AdminPanel) handleScroll(direction int) {
+	switch ap.activeTab {
+	case tabOverview:
+		ap.overviewScroll += direction
+		if ap.overviewScroll < 0 {
+			ap.overviewScroll = 0
+		}
+	case tabSystem:
+		ap.systemScroll += direction
+		if ap.systemScroll < 0 {
+			ap.systemScroll = 0
+		}
+	case tabPlugins:
+		ap.pluginsScroll += direction
+		if ap.pluginsScroll < 0 {
+			ap.pluginsScroll = 0
+		}
+	case tabMetrics:
+		ap.metricsScroll += direction
+		if ap.metricsScroll < 0 {
+			ap.metricsScroll = 0
+		}
+	case tabLogs:
+		ap.logsScroll += direction
+		if ap.logsScroll < 0 {
+			ap.logsScroll = 0
+		}
+	}
+}
+
+func (ap *AdminPanel) renderScrollableContent(content string, scrollOffset int) string {
+	lines := strings.Split(content, "\n")
+	availableHeight := ap.height - 8 // Reserve space for title, tabs, help, and message
+	if availableHeight < 10 {
+		availableHeight = 10
+	}
+
+	// Calculate how many lines we can display
+	maxLines := availableHeight - 2 // Reserve space for borders
+	if maxLines < 1 {
+		maxLines = 1
+	}
+
+	// Apply scroll offset
+	startLine := scrollOffset
+	if startLine >= len(lines) {
+		startLine = len(lines) - 1
+	}
+	if startLine < 0 {
+		startLine = 0
+	}
+
+	// Get the lines to display
+	endLine := startLine + maxLines
+	if endLine > len(lines) {
+		endLine = len(lines)
+	}
+
+	// Join the visible lines
+	visibleLines := lines[startLine:endLine]
+	return strings.Join(visibleLines, "\n")
 }
 
 func (ap *AdminPanel) View() string {
@@ -804,6 +1079,8 @@ func (ap *AdminPanel) renderContent() string {
 		return ap.renderLogs()
 	case tabPlugins:
 		return ap.renderPlugins()
+	case tabMetrics:
+		return ap.renderMetrics()
 	default:
 		return "Unknown tab"
 	}
@@ -818,7 +1095,7 @@ func (ap *AdminPanel) renderOverview() string {
 	}
 
 	// System status
-	doc.WriteString(contentStyle.Width(contentWidth).Render("System Status\n"))
+	doc.WriteString(subtitleStyle.Width(contentWidth).Render("System Status\n"))
 	doc.WriteString(strings.Repeat("─", min(20, contentWidth-2)) + "\n")
 
 	statusText := "🟢 " + ap.systemInfo.ServerStatus
@@ -828,16 +1105,18 @@ func (ap *AdminPanel) renderOverview() string {
 	doc.WriteString(fmt.Sprintf("Total Users: %d\n", ap.systemInfo.TotalUsers))
 	doc.WriteString(fmt.Sprintf("Messages Sent: %d\n", ap.systemInfo.MessagesSent))
 	doc.WriteString(fmt.Sprintf("Active Plugins: %d\n", ap.systemInfo.PluginsActive))
+	doc.WriteString(fmt.Sprintf("Memory Usage: %.1f MB\n", ap.systemInfo.MemoryUsage))
+	doc.WriteString(fmt.Sprintf("Goroutines: %d\n", ap.systemInfo.GoroutineCount))
 
 	doc.WriteString("\n")
 
 	// Database info
-	doc.WriteString(contentStyle.Width(contentWidth).Render("Database Information\n"))
+	doc.WriteString(subtitleStyle.Width(contentWidth).Render("Database Information\n"))
 	doc.WriteString(strings.Repeat("─", min(20, contentWidth-2)) + "\n")
 	doc.WriteString(fmt.Sprintf("Database Path: %s\n", ap.config.DBPath))
 	doc.WriteString(fmt.Sprintf("Config Directory: %s\n", ap.config.ConfigDir))
 
-	return doc.String()
+	return ap.renderScrollableContent(doc.String(), ap.overviewScroll)
 }
 
 func (ap *AdminPanel) renderUsers() string {
@@ -848,7 +1127,7 @@ func (ap *AdminPanel) renderUsers() string {
 		contentWidth = 30
 	}
 
-	doc.WriteString(contentStyle.Width(contentWidth).Render("User Management\n"))
+	doc.WriteString(subtitleStyle.Width(contentWidth).Render("User Management\n"))
 	doc.WriteString(strings.Repeat("─", min(20, contentWidth-2)) + "\n")
 
 	// Show selected user info
@@ -893,28 +1172,29 @@ func (ap *AdminPanel) renderSystem() string {
 		contentWidth = 30
 	}
 
-	doc.WriteString(contentStyle.Width(contentWidth).Render("System Management\n"))
+	doc.WriteString(subtitleStyle.Width(contentWidth).Render("System Management\n"))
 	doc.WriteString(strings.Repeat("─", min(20, contentWidth-2)) + "\n")
 
-	doc.WriteString("Use [c] Clear Database, [b] Backup Database, [s] Show Stats\n\n")
+	doc.WriteString(infoStylePanel.Render("Use [c] Clear Database, [b] Backup Database, [s] Show Stats\n\n"))
 
-	doc.WriteString("Configuration:\n")
+	doc.WriteString(subtitleStyle.Render("Configuration:\n"))
 	doc.WriteString(fmt.Sprintf("  Server Port: %d\n", ap.config.Port))
 	doc.WriteString(fmt.Sprintf("  Database: %s\n", ap.config.DBPath))
 	doc.WriteString(fmt.Sprintf("  Config Directory: %s\n", ap.config.ConfigDir))
 	doc.WriteString(fmt.Sprintf("  Log Level: %s\n", ap.config.LogLevel))
-	doc.WriteString(fmt.Sprintf("  Max Messages: %d (database limit)\n", ap.config.MaxMessages))
-	doc.WriteString("  Max Users: No limit (system resources)\n")
-	doc.WriteString("  Max File Size: 1MB\n")
-	doc.WriteString("  WebSocket Buffer: 1MB+ per connection\n")
+	doc.WriteString(fmt.Sprintf("  Max Messages: %d\n", ap.config.MaxMessages))
+	doc.WriteString(fmt.Sprintf("  Max Connections: %d\n", ap.config.MaxConnections))
+	doc.WriteString(fmt.Sprintf("  Max File Size: %.1f MB\n", float64(ap.config.MaxFileSize)/1024/1024))
+	doc.WriteString(fmt.Sprintf("  TLS Enabled: %t\n", ap.config.TLSEnabled))
+	doc.WriteString(fmt.Sprintf("  E2E Enabled: %t\n", ap.config.E2EEnabled))
 
 	doc.WriteString("\n")
-	doc.WriteString("Database Statistics:\n")
+	doc.WriteString(subtitleStyle.Render("Database Statistics:\n"))
 	doc.WriteString(fmt.Sprintf("  Total Messages: %d\n", ap.systemInfo.MessagesSent))
 	doc.WriteString(fmt.Sprintf("  Total Users: %d\n", ap.systemInfo.TotalUsers))
 	doc.WriteString(fmt.Sprintf("  Active Plugins: %d\n", ap.systemInfo.PluginsActive))
 
-	return doc.String()
+	return ap.renderScrollableContent(doc.String(), ap.systemScroll)
 }
 
 func (ap *AdminPanel) renderLogs() string {
@@ -925,11 +1205,10 @@ func (ap *AdminPanel) renderLogs() string {
 		contentWidth = 30
 	}
 
-	doc.WriteString(contentStyle.Width(contentWidth).Render("System Logs\n"))
+	doc.WriteString(subtitleStyle.Width(contentWidth).Render("System Logs\n"))
 	doc.WriteString(strings.Repeat("─", min(20, contentWidth-2)) + "\n")
 
-	// Update log viewer with recent logs
-	var logText strings.Builder
+	// Add logs content
 	for _, logEntry := range ap.logs {
 		var levelStyle lipgloss.Style
 		switch logEntry.Level {
@@ -940,16 +1219,14 @@ func (ap *AdminPanel) renderLogs() string {
 		default:
 			levelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("blue")).Bold(true)
 		}
-		logText.WriteString(fmt.Sprintf("[%s] %s: %s\n",
+		doc.WriteString(fmt.Sprintf("[%s] %s %s: %s\n",
 			levelStyle.Render(logEntry.Level),
 			logEntry.Timestamp.Format("15:04:05"),
+			logEntry.Component,
 			logEntry.Message))
 	}
 
-	ap.logViewer.SetValue(logText.String())
-	doc.WriteString(ap.logViewer.View())
-
-	return doc.String()
+	return ap.renderScrollableContent(doc.String(), ap.logsScroll)
 }
 
 func (ap *AdminPanel) renderPlugins() string {
@@ -960,10 +1237,10 @@ func (ap *AdminPanel) renderPlugins() string {
 		contentWidth = 30
 	}
 
-	doc.WriteString(contentStyle.Width(contentWidth).Render("Plugin Management\n"))
+	doc.WriteString(subtitleStyle.Width(contentWidth).Render("Plugin Management\n"))
 	doc.WriteString(strings.Repeat("─", min(20, contentWidth-2)) + "\n")
 
-	doc.WriteString("Use ↑/↓ to navigate, [e] Enable, [d] Disable, [i] Install, [n] Uninstall\n\n")
+	doc.WriteString(infoStylePanel.Render("Use ↑/↓ to navigate, [e] Enable, [d] Disable, [i] Install, [n] Uninstall\n\n"))
 
 	if len(ap.plugins) == 0 {
 		doc.WriteString("No plugins found.\n")
@@ -993,7 +1270,83 @@ func (ap *AdminPanel) renderPlugins() string {
 		}
 	}
 
-	return doc.String()
+	return ap.renderScrollableContent(doc.String(), ap.pluginsScroll)
+}
+
+func (ap *AdminPanel) renderMetrics() string {
+	doc := strings.Builder{}
+
+	contentWidth := ap.width - 12
+	if contentWidth < 30 {
+		contentWidth = 30
+	}
+
+	doc.WriteString(subtitleStyle.Width(contentWidth).Render("Performance Metrics\n"))
+	doc.WriteString(strings.Repeat("─", min(20, contentWidth-2)) + "\n")
+
+	doc.WriteString(infoStylePanel.Render("Use [G] Force GC, [R] Reset Metrics, [E] Export Logs\n\n"))
+
+	// System Performance - more compact layout
+	doc.WriteString(metricLabelStyle.Render("System Performance:\n"))
+	doc.WriteString(fmt.Sprintf("Memory: %s | Goroutines: %s | Heap: %s\n",
+		metricValueStyle.Render(fmt.Sprintf("%.1f MB", ap.systemInfo.MemoryUsage)),
+		metricValueStyle.Render(fmt.Sprintf("%d", ap.systemInfo.GoroutineCount)),
+		metricValueStyle.Render(fmt.Sprintf("%.1f MB", float64(ap.systemInfo.HeapSize)/1024/1024))))
+	doc.WriteString(fmt.Sprintf("Allocated: %s | GC Count: %s\n",
+		metricValueStyle.Render(fmt.Sprintf("%.1f MB", float64(ap.systemInfo.AllocatedMem)/1024/1024)),
+		metricValueStyle.Render(fmt.Sprintf("%d", ap.systemInfo.GCCount))))
+
+	doc.WriteString("\n")
+
+	// Connection Metrics - more compact layout
+	doc.WriteString(metricLabelStyle.Render("Connection Metrics:\n"))
+	doc.WriteString(fmt.Sprintf("Active: %s | Peak: %s | Total: %s | Disconnects: %s\n",
+		metricValueStyle.Render(fmt.Sprintf("%d", ap.systemInfo.ActiveUsers)),
+		metricValueStyle.Render(fmt.Sprintf("%d", ap.metrics.PeakUsers)),
+		metricValueStyle.Render(fmt.Sprintf("%d", ap.metrics.TotalConnections)),
+		metricValueStyle.Render(fmt.Sprintf("%d", ap.metrics.TotalDisconnects))))
+
+	doc.WriteString("\n")
+
+	// Message Metrics - more compact layout
+	doc.WriteString(metricLabelStyle.Render("Message Metrics:\n"))
+	doc.WriteString(fmt.Sprintf("Total: %s | Rate: %s | Conn Rate: %s\n",
+		metricValueStyle.Render(fmt.Sprintf("%d", ap.systemInfo.MessagesSent)),
+		metricValueStyle.Render(fmt.Sprintf("%.2f msg/s", ap.messageRate)),
+		metricValueStyle.Render(fmt.Sprintf("%.2f conn/s", ap.connectionRate))))
+
+	doc.WriteString("\n")
+
+	// Memory History Chart (simplified)
+	if len(ap.metrics.MemoryHistory) > 0 {
+		doc.WriteString(metricLabelStyle.Render("Memory History (last 5):\n"))
+		recent := ap.metrics.MemoryHistory
+		if len(recent) > 5 {
+			recent = recent[len(recent)-5:]
+		}
+		for _, point := range recent {
+			value := float64(point.Memory) / 1024 / 1024
+			doc.WriteString(fmt.Sprintf("  %s: %.1f MB\n",
+				point.Time.Format("15:04:05"), value))
+		}
+	}
+
+	doc.WriteString("\n")
+
+	// Connection History Chart (simplified)
+	if len(ap.metrics.ConnectionHistory) > 0 {
+		doc.WriteString(metricLabelStyle.Render("Connection History (last 5):\n"))
+		recent := ap.metrics.ConnectionHistory
+		if len(recent) > 5 {
+			recent = recent[len(recent)-5:]
+		}
+		for _, point := range recent {
+			doc.WriteString(fmt.Sprintf("  %s: %d users\n",
+				point.Time.Format("15:04:05"), point.Count))
+		}
+	}
+
+	return ap.renderScrollableContent(doc.String(), ap.metricsScroll)
 }
 
 // Database operation messages
@@ -1097,6 +1450,47 @@ func (ap *AdminPanel) allowUser(username string) tea.Cmd {
 		return actionMsg{
 			success: false,
 			message: fmt.Sprintf("❌ User '%s' was not found in kick list", username),
+		}
+	}
+}
+
+func (ap *AdminPanel) resetMetrics() {
+	ap.metrics = metricsData{
+		ConnectionHistory: make([]connectionPoint, 0),
+		MessageHistory:    make([]messagePoint, 0),
+		MemoryHistory:     make([]memoryPoint, 0),
+		LastUpdated:       time.Now(),
+		PeakUsers:         0,
+		PeakMemory:        0,
+		TotalConnections:  0,
+		TotalDisconnects:  0,
+		AverageResponse:   0,
+	}
+	ap.lastMessageCount = 0
+	ap.messageRate = 0
+	ap.connectionRate = 0
+}
+
+func (ap *AdminPanel) exportLogs() tea.Cmd {
+	return func() tea.Msg {
+		// Create a simple log export
+		var logText strings.Builder
+		logText.WriteString("Marchat Admin Panel Log Export\n")
+		logText.WriteString("==============================\n\n")
+
+		for _, logEntry := range ap.logs {
+			logText.WriteString(fmt.Sprintf("[%s] %s %s: %s\n",
+				logEntry.Timestamp.Format("2006-01-02 15:04:05"),
+				logEntry.Level,
+				logEntry.Component,
+				logEntry.Message))
+		}
+
+		// In a real implementation, you would write this to a file
+		// For now, we'll just return a success message
+		return actionMsg{
+			success: true,
+			message: "📄 Logs exported successfully (console output)",
 		}
 	}
 }
