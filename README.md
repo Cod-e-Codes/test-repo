@@ -63,7 +63,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 | **Bell Notifications** | Audio alerts for new messages with `:bell` and `:bell-mention` commands |
 | **Themes** | Choose from system (default), patriot, retro, or modern themes |
 | **Docker Support** | Containerized deployment with security features |
-| **Enhanced Security** | Confirmation prompts for destructive admin operations with audit logging |
+| **Enhanced Security** | Admin user management with ban/kick system and security logging |
 | **Health Monitoring** | Comprehensive health check endpoints (`/health`, `/health/simple`) with system metrics |
 | **Structured Logging** | JSON-structured logging with component separation and user tracking |
 
@@ -78,25 +78,14 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 ### 🔒 Enhanced Admin Security
 
-Destructive operations now require explicit confirmation:
+Admin commands for user management and system operations:
 
 ```bash
-:cleardb                   # Requires "CONFIRM"
-:ban username              # Requires "BAN" 
-:kick username             # Requires "KICK"
-:backup                    # Requires "BACKUP"
-```
-
-Example confirmation flow:
-```
-User: :cleardb
-System: 🚨 DESTRUCTIVE OPERATION
-        Clear Database will permanently delete all messages.
-        This action cannot be undone.
-        Type "CONFIRM" to proceed: _
-
-User: CONFIRM
-System: ✅ Database cleared successfully
+:cleardb                   # Clear all messages from database
+:ban username              # Permanently ban user
+:kick username             # Temporarily kick user (24h)
+:unban username            # Remove permanent ban
+:allow username            # Override kick early
 ```
 
 ### 🏥 Health Check Endpoints
@@ -144,7 +133,7 @@ Component loggers:
 ## Changelog
 
 ### v0.6.0-beta.3 (Latest)
-- **Enhanced Admin Security**: Confirmation prompts for destructive operations (`:cleardb`, `:ban`, `:kick`, `:backup`) with 5-minute timeout protection
+- **Enhanced Admin Security**: Improved admin user management system with ban/kick functionality and security logging
 - **Health Check Endpoints**: Comprehensive `/health` and `/health/simple` endpoints with system metrics, component health monitoring, and performance tracking
 - **Structured Logging**: JSON-structured logging with component separation, user tracking, and comprehensive audit trails
 - **Interactive File Picker**: New file browser interface for `:sendfile` command with directory navigation and file type filtering
