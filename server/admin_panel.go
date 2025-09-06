@@ -798,12 +798,6 @@ func (ap *AdminPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			availableWidth = 30
 		}
 
-		// Calculate available height (subtract space for title, tabs, help, and message)
-		availableHeight := msg.Height - 8 // Reserve space for title, tabs, help, and message
-		if availableHeight < 10 {
-			availableHeight = 10
-		}
-
 		ap.help.Width = availableWidth
 		ap.userTable.SetWidth(availableWidth)
 
