@@ -25,6 +25,8 @@ type Client struct {
 	isAdmin              bool
 	ipAddr               string // Store IP address for logging and ban enforcement
 	pluginCommandHandler *PluginCommandHandler
+	filterEngine         *FilterEngine
+	securityManager      *AdminSecurityManager
 }
 
 func (c *Client) readPump() {
@@ -66,11 +68,19 @@ func (c *Client) readPump() {
 		}
 		// Handle admin commands (both old text-based and new AdminCommandType)
 		if strings.HasPrefix(msg.Content, ":") || msg.Type == shared.AdminCommandType {
-			log.Printf("Command received from %s: %s (admin=%v, type=%s)", c.username, msg.Content, c.isAdmin, msg.Type)
+			AdminLogger.Info("Command received", map[string]interface{}{
+				"user":    c.username,
+				"command": msg.Content,
+				"admin":   c.isAdmin,
+				"type":    msg.Type,
+			})
 			if c.isAdmin {
 				c.handleAdminCommand(msg.Content)
 			} else {
-				log.Printf("Unauthorized admin command attempt by %s: %s", c.username, msg.Content)
+				SecurityLogger.Warn("Unauthorized admin command attempt", map[string]interface{}{
+					"user":    c.username,
+					"command": msg.Content,
+				})
 			}
 			continue // Don't insert admin commands as normal messages
 		}
@@ -124,6 +134,45 @@ func parseCommandWithQuotes(command string) []string {
 	return parts
 }
 
+// handleFilterCommand handles filter commands
+func (c *Client) handleFilterCommand(command string) {
+	if c.filterEngine == nil {
+		c.filterEngine = NewFilterEngine()
+	}
+
+	// Parse the filter command
+	filters, err := c.filterEngine.ParseFilterCommand(command)
+	if err != nil {
+		c.send <- shared.Message{
+			Sender:    "System",
+			Content:   "❌ Filter error: " + err.Error(),
+			CreatedAt: time.Now(),
+			Type:      shared.TextMessage,
+		}
+		return
+	}
+
+	// Set the active filters
+	c.filterEngine.SetActiveFilters(filters)
+
+	// Get filter description
+	description := c.filterEngine.GetFilterDescription()
+
+	// Send confirmation
+	c.send <- shared.Message{
+		Sender:    "System",
+		Content:   "✅ " + description,
+		CreatedAt: time.Now(),
+		Type:      shared.TextMessage,
+	}
+
+	FilterLogger.Info("Filter applied", map[string]interface{}{
+		"user":        c.username,
+		"filters":     len(filters),
+		"description": description,
+	})
+}
+
 // handleAdminCommand processes admin commands
 func (c *Client) handleAdminCommand(command string) {
 	// Parse command with proper quote handling
@@ -132,16 +181,45 @@ func (c *Client) handleAdminCommand(command string) {
 		return
 	}
 
+	// Handle filter commands
+	if parts[0] == ":filter" {
+		c.handleFilterCommand(command)
+		return
+	}
+
+	// Handle security-confirmed commands first
+	if c.securityManager != nil {
+		handled, response := c.securityManager.HandleAdminCommandWithConfirmation(c, command, parts)
+		if handled {
+			if response != "" {
+				c.send <- shared.Message{
+					Sender:    "System",
+					Content:   response,
+					CreatedAt: time.Now(),
+					Type:      shared.TextMessage,
+				}
+			}
+			return
+		}
+	}
+
 	// First, try to handle plugin commands
 	if c.pluginCommandHandler != nil {
 		cmd := strings.TrimPrefix(parts[0], ":")
 		args := parts[1:]
 
-		log.Printf("[DEBUG] Trying plugin command: %s with args: %v", cmd, args)
+		AdminLogger.Debug("Trying plugin command", map[string]interface{}{
+			"user":    c.username,
+			"command": cmd,
+			"args":    args,
+		})
 		response, err := c.pluginCommandHandler.HandlePluginCommand(cmd, args, c.isAdmin)
 		if err == nil {
 			// Plugin command was handled successfully
-			log.Printf("[DEBUG] Plugin command handled successfully: %s", response)
+			AdminLogger.Debug("Plugin command handled successfully", map[string]interface{}{
+				"user":     c.username,
+				"response": response,
+			})
 			c.send <- shared.Message{
 				Sender:    "System",
 				Content:   response,
@@ -150,10 +228,15 @@ func (c *Client) handleAdminCommand(command string) {
 			}
 			return
 		} else {
-			log.Printf("[DEBUG] Plugin command failed: %v", err)
+			AdminLogger.Debug("Plugin command failed", map[string]interface{}{
+				"user":  c.username,
+				"error": err.Error(),
+			})
 		}
 	} else {
-		log.Printf("[DEBUG] No plugin command handler available")
+		AdminLogger.Debug("No plugin command handler available", map[string]interface{}{
+			"user": c.username,
+		})
 	}
 
 	// Fall back to built-in admin commands

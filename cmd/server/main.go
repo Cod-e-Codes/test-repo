@@ -188,6 +188,11 @@ func main() {
 
 	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, key, cfg.BanGapsHistory))
 
+	// Initialize health checker
+	healthChecker := server.NewHealthChecker(hub, db, shared.GetServerVersionInfo())
+	http.HandleFunc("/health", healthChecker.HealthCheckHandler)
+	http.HandleFunc("/health/simple", healthChecker.SimpleHealthHandler)
+
 	addr := fmt.Sprintf(":%d", listenPort)
 	serverAddr := fmt.Sprintf("localhost:%d", listenPort)
 	scheme := cfg.GetWebSocketScheme()
