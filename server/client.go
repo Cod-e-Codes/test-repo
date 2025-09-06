@@ -25,7 +25,6 @@ type Client struct {
 	isAdmin              bool
 	ipAddr               string // Store IP address for logging and ban enforcement
 	pluginCommandHandler *PluginCommandHandler
-	filterEngine         *FilterEngine
 	securityManager      *AdminSecurityManager
 }
 
@@ -134,56 +133,11 @@ func parseCommandWithQuotes(command string) []string {
 	return parts
 }
 
-// handleFilterCommand handles filter commands
-func (c *Client) handleFilterCommand(command string) {
-	if c.filterEngine == nil {
-		c.filterEngine = NewFilterEngine()
-	}
-
-	// Parse the filter command
-	filters, err := c.filterEngine.ParseFilterCommand(command)
-	if err != nil {
-		c.send <- shared.Message{
-			Sender:    "System",
-			Content:   "❌ Filter error: " + err.Error(),
-			CreatedAt: time.Now(),
-			Type:      shared.TextMessage,
-		}
-		return
-	}
-
-	// Set the active filters
-	c.filterEngine.SetActiveFilters(filters)
-
-	// Get filter description
-	description := c.filterEngine.GetFilterDescription()
-
-	// Send confirmation
-	c.send <- shared.Message{
-		Sender:    "System",
-		Content:   "✅ " + description,
-		CreatedAt: time.Now(),
-		Type:      shared.TextMessage,
-	}
-
-	FilterLogger.Info("Filter applied", map[string]interface{}{
-		"user":        c.username,
-		"filters":     len(filters),
-		"description": description,
-	})
-}
-
 // handleAdminCommand processes admin commands
 func (c *Client) handleAdminCommand(command string) {
 	// Parse command with proper quote handling
 	parts := parseCommandWithQuotes(command)
 	if len(parts) == 0 {
-		return
-	}
-
-	// Handle filter commands
-	if parts[0] == ":filter" {
-		c.handleFilterCommand(command)
 		return
 	}
 

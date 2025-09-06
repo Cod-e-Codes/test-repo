@@ -632,7 +632,6 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string, banGapsH
 			isAdmin:              isAdmin,
 			ipAddr:               ipAddr,
 			pluginCommandHandler: hub.pluginCommandHandler,
-			filterEngine:         NewFilterEngine(),
 			securityManager:      NewAdminSecurityManager(),
 		}
 		log.Printf("Client %s connected (admin=%v, IP: %s)", username, isAdmin, ipAddr)

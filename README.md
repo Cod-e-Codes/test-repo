@@ -63,7 +63,6 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 | **Bell Notifications** | Audio alerts for new messages with `:bell` and `:bell-mention` commands |
 | **Themes** | Choose from system (default), patriot, retro, or modern themes |
 | **Docker Support** | Containerized deployment with security features |
-| **Advanced Filtering** | Powerful `:filter` commands for user, time, content type, and date filtering |
 | **Enhanced Security** | Confirmation prompts for destructive admin operations with audit logging |
 | **Health Monitoring** | Comprehensive health check endpoints (`/health`, `/health/simple`) with system metrics |
 | **Structured Logging** | JSON-structured logging with component separation and user tracking |
@@ -76,36 +75,6 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 
 ## Advanced Features
 
-### 🔍 Advanced Filtering System
-
-Filter messages using powerful `:filter` commands:
-
-```bash
-# User filtering
-:filter @username          # Messages from specific user
-:filter @alice @bob        # Messages from multiple users
-
-# Time-based filtering  
-:filter today              # Today's messages
-:filter >5min              # Last 5 minutes
-:filter >1h                # Last 1 hour
-:filter >30s               # Last 30 seconds
-:filter >2d                # Last 2 days
-
-# Content type filtering
-:filter #file              # File shares only
-:filter admin              # Admin messages only
-
-# Date/time filtering
-:filter 2024-01-15         # Messages from specific date
-:filter 15:30              # Messages from specific time today
-:filter 2024-01-15 15:30   # Messages from specific date and time
-
-# Combined filters
-:filter @alice today       # Alice's messages from today
-:filter #file >1h          # File messages from last hour
-:filter admin >5min        # Admin messages from last 5 minutes
-```
 
 ### 🔒 Enhanced Admin Security
 
@@ -175,7 +144,6 @@ Component loggers:
 ## Changelog
 
 ### v0.6.0-beta.3 (Latest)
-- **Advanced Filtering System**: Powerful `:filter` commands for user, time, content type, and date filtering with multiple filter combinations
 - **Enhanced Admin Security**: Confirmation prompts for destructive operations (`:cleardb`, `:ban`, `:kick`, `:backup`) with 5-minute timeout protection
 - **Health Check Endpoints**: Comprehensive `/health` and `/health/simple` endpoints with system metrics, component health monitoring, and performance tracking
 - **Structured Logging**: JSON-structured logging with component separation, user tracking, and comprehensive audit trails
