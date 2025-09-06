@@ -174,15 +174,16 @@ Component loggers:
 
 ## Changelog
 
-### v0.6.0-beta.3 (Upcoming)
+### v0.6.0-beta.3 (Latest)
 - **Advanced Filtering System**: Powerful `:filter` commands for user, time, content type, and date filtering with multiple filter combinations
 - **Enhanced Admin Security**: Confirmation prompts for destructive operations (`:cleardb`, `:ban`, `:kick`, `:backup`) with 5-minute timeout protection
 - **Health Check Endpoints**: Comprehensive `/health` and `/health/simple` endpoints with system metrics, component health monitoring, and performance tracking
 - **Structured Logging**: JSON-structured logging with component separation, user tracking, and comprehensive audit trails
 - **Interactive File Picker**: New file browser interface for `:sendfile` command with directory navigation and file type filtering
 - **Bell Notifications**: New `:bell` and `:bell-mention` commands for audio alerts with rate limiting and config persistence
+- **Improved Admin Panel**: Fixed scrolling and UI display issues with responsive layout and clean text display across all tabs
 
-### v0.6.0-beta.2 (Latest)
+### v0.6.0-beta.2
 - **Server Admin Panel**: New `--admin-panel` flag enables built-in terminal admin panel with Ctrl+A hotkey access
 - **Fixed Allow Command**: Resolved `:allow` command issues with E2E encryption by implementing hotkey alternatives
 - **Key Binding Improvements**: Changed allow command hotkey from Ctrl+A to Ctrl+Shift+A to resolve conflicts
@@ -233,17 +234,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.6.0-beta.2:**
+**Download pre-built binaries for v0.6.0-beta.3:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.2/marchat-v0.6.0-beta.2-linux-amd64.zip
-unzip marchat-v0.6.0-beta.2-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.3/marchat-v0.6.0-beta.3-linux-amd64.zip
+unzip marchat-v0.6.0-beta.3-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.2/marchat-v0.6.0-beta.2-darwin-amd64.zip
-unzip marchat-v0.6.0-beta.2-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.3/marchat-v0.6.0-beta.3-darwin-amd64.zip
+unzip marchat-v0.6.0-beta.3-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -252,8 +253,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.2/marchat-v0.6.0-beta.2-android-arm64.zip
-unzip marchat-v0.6.0-beta.2-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.3/marchat-v0.6.0-beta.3-android-arm64.zip
+unzip marchat-v0.6.0-beta.3-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -264,14 +265,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.6.0-beta.2
+docker pull codecodesxyz/marchat:v0.6.0-beta.3
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.6.0-beta.2
+  codecodesxyz/marchat:v0.6.0-beta.3
 ```
 
 ### Source Installation
