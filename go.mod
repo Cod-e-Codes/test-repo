@@ -1,6 +1,6 @@
 module github.com/Cod-e-Codes/marchat
 
-go 1.23.0
+go 1.24.0
 
 toolchain go1.24.4
 
@@ -15,7 +15,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	golang.org/x/crypto v0.41.0
-	golang.org/x/term v0.34.0
+	golang.org/x/term v0.35.0
 	modernc.org/sqlite v1.38.2
 )
 
@@ -41,7 +41,7 @@ require (
 	github.com/sahilm/fuzzy v0.1.1 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	modernc.org/libc v1.66.3 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
