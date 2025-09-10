@@ -823,7 +823,6 @@ When enabled, E2E encryption provides:
 | **TLS certificate errors** | Ensure certificate and key files are readable and valid |
 | **Admin commands not working** | Ensure `--admin` flag and correct `--admin-key` |
 | **Clipboard not working (Linux)** | Install `xclip`: `sudo apt install xclip` |
-| **Permission denied (Docker)** | Rebuild with correct UID/GID: `docker-compose build --build-arg USER_ID=$(id -u)` |
 | **Port already in use** | Change port: `export MARCHAT_PORT=8081` |
 | **Database migration fails** | Ensure proper database file permissions and backup before building from source |
 | **Message history missing after update** | Expected behavior - user message states reset for improved ban/unban experience |
