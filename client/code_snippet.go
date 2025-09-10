@@ -34,11 +34,17 @@ type codeSnippetModel struct {
 	lines     []string
 	cursorX   int
 	cursorY   int
-	langList  list.Model
-	highlight string
-	styles    themeStyles
-	width     int
-	height    int
+	// Text selection
+	selectionStartX int
+	selectionStartY int
+	selectionEndX   int
+	selectionEndY   int
+	hasSelection    bool
+	langList        list.Model
+	highlight       string
+	styles          themeStyles
+	width           int
+	height          int
 	// Integration with main model
 	onSend   func(string) // Callback to send the highlighted code
 	onCancel func()       // Callback to cancel
@@ -77,6 +83,160 @@ func newCodeSnippetModel(styles themeStyles, width, height int, onSend func(stri
 		onSend:      onSend,
 		onCancel:    onCancel,
 		initialized: true,
+	}
+}
+
+// Helper functions for text selection and clipboard operations
+func (m *codeSnippetModel) clearSelection() {
+	m.hasSelection = false
+	m.selectionStartX = 0
+	m.selectionStartY = 0
+	m.selectionEndX = 0
+	m.selectionEndY = 0
+}
+
+func (m *codeSnippetModel) startSelection() {
+	m.selectionStartX = m.cursorX
+	m.selectionStartY = m.cursorY
+	m.selectionEndX = m.cursorX
+	m.selectionEndY = m.cursorY
+	m.hasSelection = true
+}
+
+func (m *codeSnippetModel) updateSelection() {
+	if m.hasSelection {
+		m.selectionEndX = m.cursorX
+		m.selectionEndY = m.cursorY
+	}
+}
+
+func (m *codeSnippetModel) getSelectedText() string {
+	if !m.hasSelection {
+		return ""
+	}
+
+	startX, startY, endX, endY := m.getSelectionBounds()
+
+	if startY == endY {
+		// Single line selection
+		return m.lines[startY][startX:endX]
+	}
+
+	var result strings.Builder
+	// First line
+	result.WriteString(m.lines[startY][startX:])
+	result.WriteString("\n")
+
+	// Middle lines
+	for i := startY + 1; i < endY; i++ {
+		result.WriteString(m.lines[i])
+		result.WriteString("\n")
+	}
+
+	// Last line
+	result.WriteString(m.lines[endY][:endX])
+
+	return result.String()
+}
+
+func (m *codeSnippetModel) getSelectionBounds() (startX, startY, endX, endY int) {
+	if !m.hasSelection {
+		return 0, 0, 0, 0
+	}
+
+	startX, startY = m.selectionStartX, m.selectionStartY
+	endX, endY = m.selectionEndX, m.selectionEndY
+
+	// Ensure start is before end
+	if startY > endY || (startY == endY && startX > endX) {
+		startX, startY, endX, endY = endX, endY, startX, startY
+	}
+
+	return startX, startY, endX, endY
+}
+
+func (m *codeSnippetModel) deleteSelection() {
+	if !m.hasSelection {
+		return
+	}
+
+	startX, startY, endX, endY := m.getSelectionBounds()
+
+	if startY == endY {
+		// Single line selection
+		line := m.lines[startY]
+		m.lines[startY] = line[:startX] + line[endX:]
+		m.cursorX = startX
+	} else {
+		// Multi-line selection
+		// Keep the part before selection on first line
+		firstLine := m.lines[startY][:startX]
+		// Keep the part after selection on last line
+		lastLine := m.lines[endY][endX:]
+		// Combine them
+		m.lines[startY] = firstLine + lastLine
+
+		// Remove the lines in between
+		m.lines = append(m.lines[:startY+1], m.lines[endY+1:]...)
+		m.cursorX = startX
+		m.cursorY = startY
+	}
+
+	m.clearSelection()
+}
+
+func (m *codeSnippetModel) selectAll() {
+	if len(m.lines) == 0 {
+		return
+	}
+
+	m.selectionStartX = 0
+	m.selectionStartY = 0
+	m.selectionEndX = len(m.lines[len(m.lines)-1])
+	m.selectionEndY = len(m.lines) - 1
+	m.hasSelection = true
+}
+
+func (m *codeSnippetModel) pasteText(text string) {
+	if m.hasSelection {
+		m.deleteSelection()
+	}
+
+	// Split text into lines
+	lines := strings.Split(text, "\n")
+
+	if len(lines) == 1 {
+		// Single line paste
+		currentLine := m.lines[m.cursorY]
+		m.lines[m.cursorY] = currentLine[:m.cursorX] + lines[0] + currentLine[m.cursorX:]
+		m.cursorX += len(lines[0])
+	} else {
+		// Multi-line paste
+		currentLine := m.lines[m.cursorY]
+		beforeCursor := currentLine[:m.cursorX]
+		afterCursor := currentLine[m.cursorX:]
+
+		// Create new lines array
+		newLines := make([]string, len(m.lines)+len(lines)-1)
+		copy(newLines, m.lines[:m.cursorY])
+
+		// First line of paste
+		newLines[m.cursorY] = beforeCursor + lines[0]
+
+		// Middle lines of paste
+		for i := 1; i < len(lines)-1; i++ {
+			newLines[m.cursorY+i] = lines[i]
+		}
+
+		// Last line of paste
+		newLines[m.cursorY+len(lines)-1] = lines[len(lines)-1] + afterCursor
+
+		// Remaining original lines
+		copy(newLines[m.cursorY+len(lines):], m.lines[m.cursorY+1:])
+
+		m.lines = newLines
+		m.cursorX = len(lines[len(lines)-1])
+		m.cursorY = m.cursorY + len(lines) - 1
 	}
 }
 
@@ -121,7 +281,39 @@ func (m codeSnippetModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.highlight = sb.String()
 				}
 				m.state = stateConfirmSend
-			case "esc", "ctrl+c":
+			case "ctrl+c":
+				// Copy selected text to clipboard
+				if m.hasSelection {
+					selectedText := m.getSelectedText()
+					if err := clipboard.WriteAll(selectedText); err != nil {
+						log.Printf("Failed to copy to clipboard: %v", err)
+					}
+				}
+				return m, nil
+			case "ctrl+x":
+				// Cut selected text to clipboard
+				if m.hasSelection {
+					selectedText := m.getSelectedText()
+					if err := clipboard.WriteAll(selectedText); err != nil {
+						log.Printf("Failed to copy to clipboard: %v", err)
+					}
+					m.deleteSelection()
+				}
+				return m, nil
+			case "ctrl+v":
+				// Paste from clipboard
+				clipboardText, err := clipboard.ReadAll()
+				if err != nil {
+					log.Printf("Failed to read from clipboard: %v", err)
+				} else {
+					m.pasteText(clipboardText)
+				}
+				return m, nil
+			case "ctrl+a":
+				// Select all text
+				m.selectAll()
+				return m, nil
+			case "esc":
 				m.onCancel()
 				return m, nil
 			case "enter":
@@ -144,7 +336,9 @@ func (m codeSnippetModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursorY++
 				m.cursorX = 0
 			case "backspace":
-				if m.cursorX > 0 {
+				if m.hasSelection {
+					m.deleteSelection()
+				} else if m.cursorX > 0 {
 					// Delete character before cursor
 					currentLine := m.lines[m.cursorY]
 					m.lines[m.cursorY] = currentLine[:m.cursorX-1] + currentLine[m.cursorX:]
@@ -161,7 +355,9 @@ func (m codeSnippetModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursorX = len(prevLine)
 				}
 			case "delete":
-				if m.cursorX < len(m.lines[m.cursorY]) {
+				if m.hasSelection {
+					m.deleteSelection()
+				} else if m.cursorX < len(m.lines[m.cursorY]) {
 					// Delete character at cursor
 					currentLine := m.lines[m.cursorY]
 					m.lines[m.cursorY] = currentLine[:m.cursorX] + currentLine[m.cursorX+1:]
@@ -181,6 +377,7 @@ func (m codeSnippetModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursorY--
 					m.cursorX = len(m.lines[m.cursorY])
 				}
+				m.updateSelection()
 			case "right":
 				if m.cursorX < len(m.lines[m.cursorY]) {
 					m.cursorX++
@@ -188,6 +385,7 @@ func (m codeSnippetModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursorY++
 					m.cursorX = 0
 				}
+				m.updateSelection()
 			case "up":
 				if m.cursorY > 0 {
 					m.cursorY--
@@ -195,6 +393,7 @@ func (m codeSnippetModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.cursorX = len(m.lines[m.cursorY])
 					}
 				}
+				m.updateSelection()
 			case "down":
 				if m.cursorY < len(m.lines)-1 {
 					m.cursorY++
@@ -202,6 +401,51 @@ func (m codeSnippetModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.cursorX = len(m.lines[m.cursorY])
 					}
 				}
+				m.updateSelection()
+			case "shift+left":
+				if !m.hasSelection {
+					m.startSelection()
+				}
+				if m.cursorX > 0 {
+					m.cursorX--
+				} else if m.cursorY > 0 {
+					m.cursorY--
+					m.cursorX = len(m.lines[m.cursorY])
+				}
+				m.updateSelection()
+			case "shift+right":
+				if !m.hasSelection {
+					m.startSelection()
+				}
+				if m.cursorX < len(m.lines[m.cursorY]) {
+					m.cursorX++
+				} else if m.cursorY < len(m.lines)-1 {
+					m.cursorY++
+					m.cursorX = 0
+				}
+				m.updateSelection()
+			case "shift+up":
+				if !m.hasSelection {
+					m.startSelection()
+				}
+				if m.cursorY > 0 {
+					m.cursorY--
+					if m.cursorX > len(m.lines[m.cursorY]) {
+						m.cursorX = len(m.lines[m.cursorY])
+					}
+				}
+				m.updateSelection()
+			case "shift+down":
+				if !m.hasSelection {
+					m.startSelection()
+				}
+				if m.cursorY < len(m.lines)-1 {
+					m.cursorY++
+					if m.cursorX > len(m.lines[m.cursorY]) {
+						m.cursorX = len(m.lines[m.cursorY])
+					}
+				}
+				m.updateSelection()
 			case "home":
 				m.cursorX = 0
 			case "end":
@@ -209,6 +453,11 @@ func (m codeSnippetModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				// Handle regular character input
 				if len(msg.String()) == 1 {
+					// Clear selection if any
+					if m.hasSelection {
+						m.deleteSelection()
+					}
+
 					char := msg.String()
 					currentLine := m.lines[m.cursorY]
 					m.lines[m.cursorY] = currentLine[:m.cursorX] + char + currentLine[m.cursorX:]
@@ -260,20 +509,80 @@ func (m codeSnippetModel) View() string {
 		var sb strings.Builder
 		sb.WriteString(m.styles.User.Render(fmt.Sprintf("Language: %s", m.selected)) + "\n\n")
 
-		// Display all lines with cursor
+		// Display all lines with cursor and selection
 		for i, line := range m.lines {
 			if i == m.cursorY {
 				// Current line with cursor
 				beforeCursor := line[:m.cursorX]
 				afterCursor := line[m.cursorX:]
-				sb.WriteString(m.styles.Msg.Render(fmt.Sprintf("> %s|%s", beforeCursor, afterCursor)) + "\n")
+
+				// Check if this line has selection
+				if m.hasSelection {
+					startX, startY, endX, endY := m.getSelectionBounds()
+					if i >= startY && i <= endY {
+						// This line is part of the selection
+						lineStart := 0
+						lineEnd := len(line)
+
+						if i == startY {
+							lineStart = startX
+						}
+						if i == endY {
+							lineEnd = endX
+						}
+
+						// Render with selection highlighting
+						beforeSelection := line[:lineStart]
+						selection := line[lineStart:lineEnd]
+						afterSelection := line[lineEnd:]
+
+						// Use different style for selected text
+						selectedStyle := m.styles.Banner // Use banner style for selection
+						sb.WriteString(m.styles.Msg.Render(fmt.Sprintf("> %s", beforeSelection)))
+						sb.WriteString(selectedStyle.Render(selection))
+						sb.WriteString(m.styles.Msg.Render(fmt.Sprintf("%s|%s", afterSelection, afterCursor)) + "\n")
+					} else {
+						sb.WriteString(m.styles.Msg.Render(fmt.Sprintf("> %s|%s", beforeCursor, afterCursor)) + "\n")
+					}
+				} else {
+					sb.WriteString(m.styles.Msg.Render(fmt.Sprintf("> %s|%s", beforeCursor, afterCursor)) + "\n")
+				}
 			} else {
-				// Other lines
-				sb.WriteString(m.styles.Msg.Render(fmt.Sprintf("  %s", line)) + "\n")
+				// Other lines - check if they have selection
+				if m.hasSelection {
+					startX, startY, endX, endY := m.getSelectionBounds()
+					if i >= startY && i <= endY {
+						// This line is part of the selection
+						lineStart := 0
+						lineEnd := len(line)
+
+						if i == startY {
+							lineStart = startX
+						}
+						if i == endY {
+							lineEnd = endX
+						}
+
+						// Render with selection highlighting
+						beforeSelection := line[:lineStart]
+						selection := line[lineStart:lineEnd]
+						afterSelection := line[lineEnd:]
+
+						// Use different style for selected text
+						selectedStyle := m.styles.Banner // Use banner style for selection
+						sb.WriteString(m.styles.Msg.Render(fmt.Sprintf("  %s", beforeSelection)))
+						sb.WriteString(selectedStyle.Render(selection))
+						sb.WriteString(m.styles.Msg.Render(afterSelection) + "\n")
+					} else {
+						sb.WriteString(m.styles.Msg.Render(fmt.Sprintf("  %s", line)) + "\n")
+					}
+				} else {
+					sb.WriteString(m.styles.Msg.Render(fmt.Sprintf("  %s", line)) + "\n")
+				}
 			}
 		}
 
-		sb.WriteString("\n" + m.styles.Time.Render("Press Ctrl+S to preview, Enter for new line, Esc to cancel."))
+		sb.WriteString("\n" + m.styles.Time.Render("Press Ctrl+S to preview, Ctrl+C/V/X/A for copy/paste/cut/select all, Esc to cancel."))
 		return sb.String()
 	case stateConfirmSend:
 		return m.formatCodeBlock(m.selected, m.code, false)
