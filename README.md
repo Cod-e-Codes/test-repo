@@ -132,7 +132,8 @@ Component loggers:
 
 ## Changelog
 
-### v0.6.0-beta.3 (Latest)
+### v0.6.0-beta.4 (Latest)
+- **Enhanced Code Editor**: Added copy, paste, cut, and select all keybinds to `:code` mode with visual text selection
 - **Enhanced Admin Security**: Improved admin user management system with ban/kick functionality and security logging
 - **Health Check Endpoints**: Comprehensive `/health` and `/health/simple` endpoints with system metrics, component health monitoring, and performance tracking
 - **Structured Logging**: JSON-structured logging with component separation, user tracking, and comprehensive audit trails
@@ -191,17 +192,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.6.0-beta.3:**
+**Download pre-built binaries for v0.6.0-beta.4:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.3/marchat-v0.6.0-beta.3-linux-amd64.zip
-unzip marchat-v0.6.0-beta.3-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.4/marchat-v0.6.0-beta.4-linux-amd64.zip
+unzip marchat-v0.6.0-beta.4-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.3/marchat-v0.6.0-beta.3-darwin-amd64.zip
-unzip marchat-v0.6.0-beta.3-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.4/marchat-v0.6.0-beta.4-darwin-amd64.zip
+unzip marchat-v0.6.0-beta.4-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -210,8 +211,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.3/marchat-v0.6.0-beta.3-android-arm64.zip
-unzip marchat-v0.6.0-beta.3-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.4/marchat-v0.6.0-beta.4-android-arm64.zip
+unzip marchat-v0.6.0-beta.4-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -222,14 +223,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.6.0-beta.3
+docker pull codecodesxyz/marchat:v0.6.0-beta.4
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.6.0-beta.3
+  codecodesxyz/marchat:v0.6.0-beta.4
 ```
 
 ### Source Installation
