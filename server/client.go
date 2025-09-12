@@ -26,6 +26,7 @@ type Client struct {
 	ipAddr               string // Store IP address for logging and ban enforcement
 	pluginCommandHandler *PluginCommandHandler
 	securityManager      *AdminSecurityManager
+	maxFileBytes         int64
 }
 
 func (c *Client) readPump() {
@@ -33,7 +34,12 @@ func (c *Client) readPump() {
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
-	c.conn.SetReadLimit(1024*1024 + 512) // allow up to 1MB+ for file messages
+	// Allow up to configured max file size (+ small overhead for JSON framing)
+	limit := int64(1024*1024) + 512
+	if c.maxFileBytes > 0 {
+		limit = c.maxFileBytes + 512
+	}
+	c.conn.SetReadLimit(limit)
 	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
 		log.Printf("SetReadDeadline error: %v", err)
 	}
@@ -55,8 +61,12 @@ func (c *Client) readPump() {
 			break
 		}
 		if msg.Type == shared.FileMessageType && msg.File != nil {
-			// File message: enforce 1MB limit
-			if msg.File.Size > 1024*1024 {
+			// File message: enforce configured limit
+			maxBytes := c.maxFileBytes
+			if maxBytes <= 0 {
+				maxBytes = 1024 * 1024
+			}
+			if msg.File.Size > maxBytes {
 				log.Printf("Rejected file from %s: too large (%d bytes)", c.username, msg.File.Size)
 				continue
 			}

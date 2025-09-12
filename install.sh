@@ -5,7 +5,7 @@
 
 set -e  # Exit on any error
 
-VERSION="v0.6.0-beta.4"
+VERSION="v0.7.0-beta.1"
 
 # Detect OS and architecture
 OS=$(uname | tr '[:upper:]' '[:lower:]')
@@ -25,7 +25,7 @@ if [[ "$OS" == *"msys"* ]] || [[ "$OS" == *"mingw"* ]] || [[ "$OS" == *"cygwin"*
 fi
 
 # Construct GitHub release URL
-URL="https://github.com/Cod-e-Codes/marchat/releases/download/v$VERSION/marchat-v$VERSION-$OS-$ARCH.zip"
+URL="https://github.com/Cod-e-Codes/marchat/releases/download/$VERSION/marchat-$VERSION-$OS-$ARCH.zip"
 
 # Create temporary directories
 TEMP_DIR=$(mktemp -d)

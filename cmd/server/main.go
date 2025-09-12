@@ -186,7 +186,7 @@ func main() {
 		adminPanelReady = true
 	}
 
-	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, key, cfg.BanGapsHistory))
+	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, key, cfg.BanGapsHistory, cfg.MaxFileBytes))
 
 	// Initialize health checker
 	healthChecker := server.NewHealthChecker(hub, db, shared.GetServerVersionInfo())

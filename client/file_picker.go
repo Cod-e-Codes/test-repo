@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -185,10 +186,25 @@ func (m filePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.list.SetItems(items)
 						m.list.Select(0) // Select first item
 					} else {
-						// Check file size
+						// Check file size (configurable; default 1MB)
 						if info, err := os.Stat(selectedItem.path); err == nil {
-							if info.Size() > 1024*1024 { // 1MB limit
-								m.err = fmt.Errorf("file too large (max 1MB)")
+							var maxBytes int64 = 1024 * 1024
+							if envBytes := os.Getenv("MARCHAT_MAX_FILE_BYTES"); envBytes != "" {
+								if v, err := strconv.ParseInt(envBytes, 10, 64); err == nil && v > 0 {
+									maxBytes = v
+								}
+							} else if envMB := os.Getenv("MARCHAT_MAX_FILE_MB"); envMB != "" {
+								if v, err := strconv.ParseInt(envMB, 10, 64); err == nil && v > 0 {
+									maxBytes = v * 1024 * 1024
+								}
+							}
+							if info.Size() > maxBytes {
+								// Build friendly limit message
+								limitMsg := fmt.Sprintf("%d bytes", maxBytes)
+								if maxBytes%(1024*1024) == 0 {
+									limitMsg = fmt.Sprintf("%dMB", maxBytes/(1024*1024))
+								}
+								m.err = fmt.Errorf("file too large (max %s)", limitMsg)
 								return m, clearErrorAfter(2 * time.Second)
 							}
 							m.selectedFile = selectedItem.path

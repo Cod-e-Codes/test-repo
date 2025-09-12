@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1104,9 +1105,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			// Check file size (1MB limit)
-			if len(data) > 1024*1024 {
-				m.banner = "❌ File too large (max 1MB)"
+			// Check file size (configurable limit; default 1MB)
+			var maxBytes int64 = 1024 * 1024
+			if envBytes := os.Getenv("MARCHAT_MAX_FILE_BYTES"); envBytes != "" {
+				if v, err := strconv.ParseInt(envBytes, 10, 64); err == nil && v > 0 {
+					maxBytes = v
+				}
+			} else if envMB := os.Getenv("MARCHAT_MAX_FILE_MB"); envMB != "" {
+				if v, err := strconv.ParseInt(envMB, 10, 64); err == nil && v > 0 {
+					maxBytes = v * 1024 * 1024
+				}
+			}
+			if int64(len(data)) > maxBytes {
+				// Try to format friendly message in MB when divisible, else show bytes
+				limitMsg := fmt.Sprintf("%d bytes", maxBytes)
+				if maxBytes%(1024*1024) == 0 {
+					limitMsg = fmt.Sprintf("%dMB", maxBytes/(1024*1024))
+				}
+				m.banner = "❌ File too large (max " + limitMsg + ")"
 				m.sending = false
 				m.showFilePicker = false
 				return m, nil
@@ -1416,8 +1432,23 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.textarea.SetValue("")
 							return m, nil
 						}
-						if len(data) > 1024*1024 {
-							m.banner = "❌ File too large (max 1MB)"
+						// Enforce configurable file size limit (default 1MB)
+						var maxBytes int64 = 1024 * 1024
+						if envBytes := os.Getenv("MARCHAT_MAX_FILE_BYTES"); envBytes != "" {
+							if v, err := strconv.ParseInt(envBytes, 10, 64); err == nil && v > 0 {
+								maxBytes = v
+							}
+						} else if envMB := os.Getenv("MARCHAT_MAX_FILE_MB"); envMB != "" {
+							if v, err := strconv.ParseInt(envMB, 10, 64); err == nil && v > 0 {
+								maxBytes = v * 1024 * 1024
+							}
+						}
+						if int64(len(data)) > maxBytes {
+							limitMsg := fmt.Sprintf("%d bytes", maxBytes)
+							if maxBytes%(1024*1024) == 0 {
+								limitMsg = fmt.Sprintf("%dMB", maxBytes/(1024*1024))
+							}
+							m.banner = "❌ File too large (max " + limitMsg + ")"
 							m.textarea.SetValue("")
 							return m, nil
 						}

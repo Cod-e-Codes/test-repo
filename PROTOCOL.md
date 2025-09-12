@@ -80,7 +80,13 @@ All messages exchanged after handshake use JSON.
 }
 ```
 
-Maximum file size is 1MB. Files exceeding this size are rejected.
+Maximum file size is configurable (default 1MB). Files exceeding this size are rejected.
+Configure via environment variables on the server:
+
+- `MARCHAT_MAX_FILE_BYTES`: exact byte limit (takes precedence)
+- `MARCHAT_MAX_FILE_MB`: size in megabytes
+
+If neither is set, the default is 1MB.
 
 ### Server Events
 

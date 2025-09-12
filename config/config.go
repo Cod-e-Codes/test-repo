@@ -38,6 +38,9 @@ type Config struct {
 
 	// Plugin settings
 	PluginRegistryURL string `json:"plugin_registry_url"`
+
+	// File transfer settings
+	MaxFileBytes int64 `json:"max_file_bytes"`
 }
 
 // LoadConfig loads configuration from environment variables, .env files, and config files
@@ -145,6 +148,25 @@ func (c *Config) loadFromEnv() error {
 		c.PluginRegistryURL = pluginRegistryURL
 	} else {
 		c.PluginRegistryURL = "https://raw.githubusercontent.com/Cod-e-Codes/marchat-plugins/main/registry.json"
+	}
+
+	// Max file size configuration (bytes or MB)
+	// Priority: MARCHAT_MAX_FILE_BYTES > MARCHAT_MAX_FILE_MB > default 1MB
+	const oneMB int64 = 1024 * 1024
+	if bytesStr := os.Getenv("MARCHAT_MAX_FILE_BYTES"); bytesStr != "" {
+		val, err := strconv.ParseInt(bytesStr, 10, 64)
+		if err != nil || val <= 0 {
+			return fmt.Errorf("invalid MARCHAT_MAX_FILE_BYTES: %s", bytesStr)
+		}
+		c.MaxFileBytes = val
+	} else if mbStr := os.Getenv("MARCHAT_MAX_FILE_MB"); mbStr != "" {
+		val, err := strconv.ParseInt(mbStr, 10, 64)
+		if err != nil || val <= 0 {
+			return fmt.Errorf("invalid MARCHAT_MAX_FILE_MB: %s", mbStr)
+		}
+		c.MaxFileBytes = val * oneMB
+	} else {
+		c.MaxFileBytes = oneMB
 	}
 
 	return nil

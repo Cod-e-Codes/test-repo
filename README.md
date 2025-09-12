@@ -58,7 +58,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 | **Real-time Chat** | Fast WebSocket-based messaging with a lightweight SQLite backend |
 | **Plugin System** | Install and manage plugins via remote registry with `:store` and `:plugin` commands |
 | **E2E Encryption** | Optional X25519 key exchange with ChaCha20-Poly1305, global encryption for public channels |
-| **File Sharing** | Send files up to 1MB with `:sendfile` command and interactive file picker |
+| **File Sharing** | Send files (configurable max; default 1MB) with `:sendfile` and interactive picker |
 | **Admin Controls** | User management, bans, and database operations with improved ban/unban experience |
 | **Bell Notifications** | Audio alerts for new messages with `:bell` and `:bell-mention` commands |
 | **Themes** | Choose from system (default), patriot, retro, or modern themes |
@@ -132,7 +132,7 @@ Component loggers:
 
 ## Changelog
 
-### v0.6.0-beta.4 (Latest)
+### v0.7.0-beta.1 (Latest)
 - **Enhanced Code Editor**: Added copy, paste, cut, and select all keybinds to `:code` mode with visual text selection
 - **Enhanced Admin Security**: Improved admin user management system with ban/kick functionality and security logging
 - **Health Check Endpoints**: Comprehensive `/health` and `/health/simple` endpoints with system metrics, component health monitoring, and performance tracking
@@ -192,17 +192,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.6.0-beta.4:**
+**Download pre-built binaries for v0.7.0-beta.1:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.4/marchat-v0.6.0-beta.4-linux-amd64.zip
-unzip marchat-v0.6.0-beta.4-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.1/marchat-v0.7.0-beta.1-linux-amd64.zip
+unzip marchat-v0.7.0-beta.1-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.4/marchat-v0.6.0-beta.4-darwin-amd64.zip
-unzip marchat-v0.6.0-beta.4-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.1/marchat-v0.7.0-beta.1-darwin-amd64.zip
+unzip marchat-v0.7.0-beta.1-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -211,8 +211,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.6.0-beta.4/marchat-v0.6.0-beta.4-android-arm64.zip
-unzip marchat-v0.6.0-beta.4-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.1/marchat-v0.7.0-beta.1-android-arm64.zip
+unzip marchat-v0.7.0-beta.1-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -223,14 +223,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.6.0-beta.4
+docker pull codecodesxyz/marchat:v0.7.0-beta.1
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.6.0-beta.4
+  codecodesxyz/marchat:v0.7.0-beta.1
 ```
 
 ### Source Installation
@@ -301,6 +301,8 @@ export MARCHAT_USERS="admin1,admin2"
 | `MARCHAT_BAN_HISTORY_GAPS` | No | `true` | Enable ban history gaps (prevents banned users from seeing messages during ban periods) |
 | `MARCHAT_PLUGIN_REGISTRY_URL` | No | GitHub registry | URL for plugin registry (default: https://raw.githubusercontent.com/Cod-e-Codes/marchat-plugins/main/registry.json) |
 | `MARCHAT_GLOBAL_E2E_KEY` | No | - | Base64-encoded 32-byte global encryption key for public channels |
+| `MARCHAT_MAX_FILE_BYTES` | No | `1048576` | Maximum file size in bytes for file messages (takes precedence) |
+| `MARCHAT_MAX_FILE_MB` | No | - | Maximum file size in megabytes (used if bytes unset) |
 
 ### Configuration File
 
@@ -560,7 +562,7 @@ marchat includes audio notification support to alert you when new messages arriv
 | `:theme <name>` | Switch theme | `:theme system` |
 | `:time` | Toggle 12/24-hour format | `:time` |
 | `:clear` | Clear chat buffer | `:clear` |
-| `:sendfile [path]` | Send file (<1MB) - use without path for file picker | `:sendfile document.txt` or `:sendfile` |
+| `:sendfile [path]` | Send file (configurable; default 1MB). Use without path for file picker | `:sendfile document.txt` or `:sendfile` |
 | `:savefile <name>` | Save received file | `:savefile received.txt` |
 | `:code` | Open code snippet composer | `:code` |
 | `:bell` | Toggle message bell notifications | `:bell` |
@@ -586,7 +588,7 @@ This opens a file browser where you can:
 - Go up one level using the ".. (Parent Directory)" option
 - View file sizes and types
 - Filter by allowed file types (text, code, images, documents, archives)
-- Send files up to 1MB
+- Send files up to the configured maximum (default 1MB)
 
 **Supported File Types:**
 - Text: `.txt`, `.md`, `.json`, `.yaml`, `.xml`, `.csv`, `.log`, `.conf`

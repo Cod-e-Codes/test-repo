@@ -73,18 +73,26 @@ func (h *PluginHost) LoadPlugin(name string) error {
 		return fmt.Errorf("invalid plugin manifest: %w", err)
 	}
 
-	// Check if plugin binary exists (with .exe extension on Windows)
-	binaryName := name
-	if filepath.Ext(name) == "" {
-		binaryName = name + ".exe"
-	}
-	binaryPath := filepath.Join(pluginPath, binaryName)
-	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
-		// Try without .exe extension as fallback
-		binaryPath = filepath.Join(pluginPath, name)
-		if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
-			return fmt.Errorf("plugin binary not found: %s", binaryPath)
+	// Resolve plugin binary path respecting host OS
+	var binaryPath string
+	if runtime.GOOS == "windows" {
+		// Prefer .exe on Windows when no extension is provided
+		if filepath.Ext(name) == "" {
+			candidateExe := filepath.Join(pluginPath, name+".exe")
+			if _, err := os.Stat(candidateExe); err == nil {
+				binaryPath = candidateExe
+			} else {
+				binaryPath = filepath.Join(pluginPath, name)
+			}
+		} else {
+			binaryPath = filepath.Join(pluginPath, name)
 		}
+	} else {
+		// Non-Windows: use name as-is; do not append .exe
+		binaryPath = filepath.Join(pluginPath, name)
+	}
+	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+		return fmt.Errorf("plugin binary not found: %s", binaryPath)
 	}
 
 	// Create plugin instance
@@ -125,15 +133,20 @@ func (h *PluginHost) StartPlugin(name string) error {
 		return fmt.Errorf("failed to create plugin data directory: %w", err)
 	}
 
-	// Start plugin subprocess
-	binaryName := name
-	if filepath.Ext(name) == "" {
-		binaryName = name + ".exe"
-	}
-	binaryPath := filepath.Join(instance.Config.PluginDir, binaryName)
-
-	// Check if the .exe version exists, otherwise use the original name
-	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+	// Start plugin subprocess - resolve binary path per OS
+	var binaryPath string
+	if runtime.GOOS == "windows" {
+		if filepath.Ext(name) == "" {
+			candidateExe := filepath.Join(instance.Config.PluginDir, name+".exe")
+			if _, err := os.Stat(candidateExe); err == nil {
+				binaryPath = candidateExe
+			} else {
+				binaryPath = filepath.Join(instance.Config.PluginDir, name)
+			}
+		} else {
+			binaryPath = filepath.Join(instance.Config.PluginDir, name)
+		}
+	} else {
 		binaryPath = filepath.Join(instance.Config.PluginDir, name)
 	}
 
