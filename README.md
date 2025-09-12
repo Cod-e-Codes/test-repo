@@ -130,22 +130,34 @@ Component loggers:
 - **DatabaseLogger**: Database operations
 - **PluginLogger**: Plugin management
 
-## Changelog
+## Changelog    
 
-### v0.7.0-beta.1 (Latest)
-- **Enhanced Code Editor**: Added copy, paste, cut, and select all keybinds to `:code` mode with visual text selection
-- **Enhanced Admin Security**: Improved admin user management system with ban/kick functionality and security logging
-- **Health Check Endpoints**: Comprehensive `/health` and `/health/simple` endpoints with system metrics, component health monitoring, and performance tracking
-- **Structured Logging**: JSON-structured logging with component separation, user tracking, and comprehensive audit trails
-- **Interactive File Picker**: New file browser interface for `:sendfile` command with directory navigation and file type filtering
-- **Bell Notifications**: New `:bell` and `:bell-mention` commands for audio alerts with rate limiting and config persistence
-- **Improved Admin Panel**: Fixed scrolling and UI display issues with responsive layout and clean text display across all tabs
+### v0.7.0-beta.1 (Latest)    
+- **Configurable File Size Limit**: File message size can now be configured via `MARCHAT_MAX_FILE_BYTES` or `MARCHAT_MAX_FILE_MB` (default 1MB).  
+- **Aligned WebSocket Read Limit**: Server read limit scales with the configured max file size for consistent behavior.  
+- **Client Enforcement**: Both file picker and `:sendfile <path>` enforce the configured limit.  
+- **Plugin Host Fix**: Improved executable resolution to only use `.exe` on Windows.  
+- **Documentation Updates**: README updated with new environment variables and version references.  
+- **Build & Installer Updates**: Build scripts and installers updated for `v0.7.0-beta.1`.  
+- **Protocol Update**: PROTOCOL file updated to reflect configurable file size.  
 
-### v0.6.0-beta.2
-- **Server Admin Panel**: New `--admin-panel` flag enables built-in terminal admin panel with Ctrl+A hotkey access
-- **Fixed Allow Command**: Resolved `:allow` command issues with E2E encryption by implementing hotkey alternatives
-- **Key Binding Improvements**: Changed allow command hotkey from Ctrl+A to Ctrl+Shift+A to resolve conflicts
-- **Enhanced Documentation**: Updated README with comprehensive admin panel documentation and E2E encryption notes
+### v0.6.0-beta.4    
+- **Enhanced Code Editor**: Added copy, paste, cut, and select all keybinds to `:code` mode with visual text selection.  
+- **Clipboard Integration**: System clipboard support for copy/paste operations.  
+- **Multi-Line Selection**: Added multi-line text selection support with highlighting.  
+- **Documentation Updates**: Version references and install scripts updated for `v0.6.0-beta.4`.  
+
+### v0.6.0-beta.3    
+- **Improved Admin Panel**: Fixed scrolling and UI display issues with a more responsive layout.  
+- **Interactive File Picker**: Added a file browser interface for `:sendfile` with directory navigation and file type filtering.  
+- **Hyperlink Detection**: Messages now auto-detect URLs with clickable links.  
+- **Bell Notifications**: Added `:bell` and `:bell-mention` commands for audio alerts with config persistence.  
+
+### v0.6.0-beta.2    
+- **Server Admin Panel**: New `--admin-panel` flag enables built-in terminal admin panel with Ctrl+A hotkey access.  
+- **Fixed Allow Command**: Resolved `:allow` command issues with E2E encryption by implementing hotkey alternatives.  
+- **Key Binding Improvements**: Changed allow command hotkey from Ctrl+A to Ctrl+Shift+A to resolve conflicts.  
+- **Enhanced Documentation**: Updated README with comprehensive admin panel documentation and E2E encryption notes.
 
 ### v0.6.0-beta.1
 - **Admin UI with Hotkeys**: New `:admin` command opens full-screen admin panel with hotkey navigation (Tab/Shift+Tab, Enter, Esc)
@@ -917,5 +929,6 @@ For a full list of contributors, see [CONTRIBUTORS.md](CONTRIBUTORS.md).
 ---
 
 **License**: [MIT License](LICENSE)
+
 
 **Commercial Support**: Contact [cod.e.codes.dev@gmail.com](mailto:cod.e.codes.dev@gmail.com)
