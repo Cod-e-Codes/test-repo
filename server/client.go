@@ -152,20 +152,7 @@ func (c *Client) handleAdminCommand(command string) {
 	}
 
 	// Handle security-confirmed commands first
-	if c.securityManager != nil {
-		handled, response := c.securityManager.HandleAdminCommandWithConfirmation(c, command, parts)
-		if handled {
-			if response != "" {
-				c.send <- shared.Message{
-					Sender:    "System",
-					Content:   response,
-					CreatedAt: time.Now(),
-					Type:      shared.TextMessage,
-				}
-			}
-			return
-		}
-	}
+	// Confirmation prompts are disabled; execute admin commands directly via hotkeys/text
 
 	// First, try to handle plugin commands
 	if c.pluginCommandHandler != nil {
