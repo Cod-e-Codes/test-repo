@@ -25,7 +25,6 @@ type Client struct {
 	isAdmin              bool
 	ipAddr               string // Store IP address for logging and ban enforcement
 	pluginCommandHandler *PluginCommandHandler
-	securityManager      *AdminSecurityManager
 	maxFileBytes         int64
 }
 
