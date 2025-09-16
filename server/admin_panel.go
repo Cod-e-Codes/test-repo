@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Cod-e-Codes/marchat/config"
 	"github.com/Cod-e-Codes/marchat/plugin/manager"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -94,20 +95,6 @@ type memoryPoint struct {
 	Memory uint64
 }
 
-// Configuration data
-type configData struct {
-	Port           int
-	AdminKey       string
-	DBPath         string
-	LogLevel       string
-	MaxMessages    int
-	ConfigDir      string
-	TLSEnabled     bool
-	E2EEnabled     bool
-	MaxFileSize    int64
-	MaxConnections int
-}
-
 // Log entry
 type logEntry struct {
 	Timestamp time.Time
@@ -139,7 +126,7 @@ type AdminPanel struct {
 	plugins    []pluginInfo
 	systemInfo systemStats
 	metrics    metricsData
-	config     configData
+	config     *config.Config
 	logs       []logEntry
 
 	// Server integration
@@ -274,7 +261,7 @@ var (
 )
 
 // NewAdminPanel creates a new admin panel instance
-func NewAdminPanel(hub *Hub, db *sql.DB, pluginManager *manager.PluginManager, configDir, dbPath string, port int) *AdminPanel {
+func NewAdminPanel(hub *Hub, db *sql.DB, pluginManager *manager.PluginManager, liveConfig *config.Config) *AdminPanel {
 	// Initialize keybindings
 	keys := keyMap{
 		TabNext: key.NewBinding(
@@ -412,18 +399,7 @@ func NewAdminPanel(hub *Hub, db *sql.DB, pluginManager *manager.PluginManager, c
 		db:            db,
 		pluginManager: pluginManager,
 		startTime:     time.Now(),
-		config: configData{
-			Port:           port,
-			AdminKey:       "***hidden***",
-			DBPath:         dbPath,
-			LogLevel:       "info",
-			MaxMessages:    1000,
-			ConfigDir:      configDir,
-			TLSEnabled:     false,       // Detect from server config
-			E2EEnabled:     false,       // Detect from server config
-			MaxFileSize:    1024 * 1024, // 1MB
-			MaxConnections: 1000,        // Default limit
-		},
+		config:        liveConfig,
 		systemInfo: systemStats{
 			Uptime:       0,
 			MemoryUsage:  0,
@@ -765,8 +741,8 @@ func (ap *AdminPanel) updateUserTable() {
 }
 
 // RunAdminPanel starts the admin panel TUI
-func RunAdminPanel(hub *Hub, db *sql.DB, pluginManager *manager.PluginManager, configDir, dbPath string, port int) error {
-	panel := NewAdminPanel(hub, db, pluginManager, configDir, dbPath, port)
+func RunAdminPanel(hub *Hub, db *sql.DB, pluginManager *manager.PluginManager, liveConfig *config.Config) error {
+	panel := NewAdminPanel(hub, db, pluginManager, liveConfig)
 
 	p := tea.NewProgram(panel, tea.WithAltScreen())
 	_, err := p.Run()
@@ -1104,6 +1080,25 @@ func (ap *AdminPanel) renderOverview() string {
 
 	doc.WriteString("\n")
 
+	// Live Configuration Summary
+	doc.WriteString(subtitleStyle.Width(contentWidth).Render("Live Configuration\n"))
+	doc.WriteString(strings.Repeat("─", min(20, contentWidth-2)) + "\n")
+	doc.WriteString(fmt.Sprintf("Port: %d\n", ap.config.Port))
+
+	// Show TLS status with live detection
+	tlsStatus := "❌ Disabled"
+	if ap.config.IsTLSEnabled() {
+		tlsStatus = "✅ Enabled"
+	}
+	doc.WriteString(fmt.Sprintf("TLS: %s\n", tlsStatus))
+
+	doc.WriteString(fmt.Sprintf("Max File Size: %.1f MB\n", float64(ap.config.MaxFileBytes)/1024/1024))
+	doc.WriteString(fmt.Sprintf("Log Level: %s\n", ap.config.LogLevel))
+	doc.WriteString(fmt.Sprintf("Ban History Gaps: %t\n", ap.config.BanGapsHistory))
+	doc.WriteString(fmt.Sprintf("Admin Users: %d\n", len(ap.config.Admins)))
+
+	doc.WriteString("\n")
+
 	// Database info
 	doc.WriteString(subtitleStyle.Width(contentWidth).Render("Database Information\n"))
 	doc.WriteString(strings.Repeat("─", min(20, contentWidth-2)) + "\n")
@@ -1171,21 +1166,39 @@ func (ap *AdminPanel) renderSystem() string {
 
 	doc.WriteString(infoStylePanel.Render("Use [c] Clear Database, [b] Backup Database, [s] Show Stats\n\n"))
 
-	doc.WriteString(subtitleStyle.Render("Configuration:\n"))
+	// Live Configuration Details
+	doc.WriteString(subtitleStyle.Render("Live Configuration:\n"))
 	doc.WriteString(fmt.Sprintf("  Server Port: %d\n", ap.config.Port))
 	doc.WriteString(fmt.Sprintf("  Database: %s\n", ap.config.DBPath))
 	doc.WriteString(fmt.Sprintf("  Config Directory: %s\n", ap.config.ConfigDir))
 	doc.WriteString(fmt.Sprintf("  Log Level: %s\n", ap.config.LogLevel))
-	doc.WriteString(fmt.Sprintf("  Max Messages: %d\n", ap.config.MaxMessages))
-	doc.WriteString(fmt.Sprintf("  Max Connections: %d\n", ap.config.MaxConnections))
-	doc.WriteString(fmt.Sprintf("  Max File Size: %.1f MB\n", float64(ap.config.MaxFileSize)/1024/1024))
-	doc.WriteString(fmt.Sprintf("  TLS Enabled: %t\n", ap.config.TLSEnabled))
-	doc.WriteString(fmt.Sprintf("  E2E Enabled: %t\n", ap.config.E2EEnabled))
+	doc.WriteString(fmt.Sprintf("  Max File Size: %.1f MB\n", float64(ap.config.MaxFileBytes)/1024/1024))
+	doc.WriteString(fmt.Sprintf("  Admin Users: %s\n", strings.Join(ap.config.Admins, ", ")))
+
+	// TLS Configuration with live detection
+	tlsStatusText := "Disabled"
+	var tlsStyle lipgloss.Style
+	if ap.config.IsTLSEnabled() {
+		tlsStatusText = "Enabled"
+		tlsStyle = lipgloss.NewStyle().Foreground(successColor).Bold(true)
+		doc.WriteString(fmt.Sprintf("  TLS Status: %s\n", tlsStyle.Render(tlsStatusText)))
+		doc.WriteString(fmt.Sprintf("  TLS Cert File: %s\n", ap.config.TLSCertFile))
+		doc.WriteString(fmt.Sprintf("  TLS Key File: %s\n", ap.config.TLSKeyFile))
+	} else {
+		tlsStyle = lipgloss.NewStyle().Foreground(warningColor).Bold(true)
+		doc.WriteString(fmt.Sprintf("  TLS Status: %s\n", tlsStyle.Render(tlsStatusText)))
+	}
+
+	doc.WriteString(fmt.Sprintf("  JWT Secret: %s\n", maskSecret(ap.config.JWTSecret)))
+	doc.WriteString(fmt.Sprintf("  Admin Key: %s\n", maskSecret(ap.config.AdminKey)))
+	doc.WriteString(fmt.Sprintf("  Ban History Gaps: %t\n", ap.config.BanGapsHistory))
+	doc.WriteString(fmt.Sprintf("  Plugin Registry: %s\n", ap.config.PluginRegistryURL))
 
 	doc.WriteString("\n")
 	doc.WriteString(subtitleStyle.Render("Database Statistics:\n"))
 	doc.WriteString(fmt.Sprintf("  Total Messages: %d\n", ap.systemInfo.MessagesSent))
 	doc.WriteString(fmt.Sprintf("  Total Users: %d\n", ap.systemInfo.TotalUsers))
+	doc.WriteString(fmt.Sprintf("  Active Connections: %d\n", ap.systemInfo.ActiveUsers))
 	doc.WriteString(fmt.Sprintf("  Active Plugins: %d\n", ap.systemInfo.PluginsActive))
 
 	return ap.renderScrollableContent(doc.String(), ap.systemScroll)
@@ -1507,4 +1520,11 @@ func formatDuration(d time.Duration) string {
 	hours := int(d.Hours())
 	minutes := int(d.Minutes()) % 60
 	return fmt.Sprintf("%dh %dm", hours, minutes)
+}
+
+func maskSecret(secret string) string {
+	if len(secret) <= 8 {
+		return "***hidden***"
+	}
+	return secret[:4] + "***" + secret[len(secret)-4:]
 }

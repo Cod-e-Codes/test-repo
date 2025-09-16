@@ -282,7 +282,7 @@ func main() {
 
 					// Launch admin panel
 					pluginManager := hub.GetPluginManager()
-					panel := server.NewAdminPanel(hub, db, pluginManager, cfg.ConfigDir, cfg.DBPath, listenPort)
+					panel := server.NewAdminPanel(hub, db, pluginManager, cfg)
 					p := tea.NewProgram(panel, tea.WithAltScreen())
 					if _, err := p.Run(); err != nil {
 						log.Printf("Admin panel error: %v", err)
