@@ -132,7 +132,13 @@ Component loggers:
 
 ## Changelog    
 
-### v0.7.0-beta.1 (Latest)    
+### v0.7.0-beta.2 (Latest)    
+- **Removed Confirmation Prompts**: Simplified admin command flow; hotkeys/text work consistently with E2E enabled.  
+- **Admin Panel Live Config**: Panel reads live `*config.Config` with improved TLS/status display.  
+- **Hotkey Launch Update**: Admin panel launched using live config; safer terminal raw-mode handling.  
+- **Security Cleanup**: Removed `server/admin_security.go` and all confirmation wiring.  
+
+### v0.7.0-beta.1    
 - **Configurable File Size Limit**: File message size can now be configured via `MARCHAT_MAX_FILE_BYTES` or `MARCHAT_MAX_FILE_MB` (default 1MB).  
 - **Aligned WebSocket Read Limit**: Server read limit scales with the configured max file size for consistent behavior.  
 - **Client Enforcement**: Both file picker and `:sendfile <path>` enforce the configured limit.  
@@ -204,17 +210,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.7.0-beta.1:**
+**Download pre-built binaries for v0.7.0-beta.2:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.1/marchat-v0.7.0-beta.1-linux-amd64.zip
-unzip marchat-v0.7.0-beta.1-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.2/marchat-v0.7.0-beta.2-linux-amd64.zip
+unzip marchat-v0.7.0-beta.2-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.1/marchat-v0.7.0-beta.1-darwin-amd64.zip
-unzip marchat-v0.7.0-beta.1-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.2/marchat-v0.7.0-beta.2-darwin-amd64.zip
+unzip marchat-v0.7.0-beta.2-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -223,8 +229,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.1/marchat-v0.7.0-beta.1-android-arm64.zip
-unzip marchat-v0.7.0-beta.1-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.2/marchat-v0.7.0-beta.2-android-arm64.zip
+unzip marchat-v0.7.0-beta.2-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -235,14 +241,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.7.0-beta.1
+docker pull codecodesxyz/marchat:v0.7.0-beta.2
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.7.0-beta.1
+  codecodesxyz/marchat:v0.7.0-beta.2
 ```
 
 ### Source Installation
