@@ -132,7 +132,14 @@ Component loggers:
 
 ## Changelog    
 
-### v0.7.0-beta.3 (Latest)    
+### v0.7.0-beta.4 (Latest)    
+- **Secure Login System**: Replaced URL-based admin key authentication with secure session-based login
+- **Session Cookies**: HMAC-signed session tokens with 2-hour expiration and secure cookie settings
+- **Login Page**: Clean, modern login interface that eliminates admin key exposure in URLs
+- **Enhanced Security**: HttpOnly cookies, SameSite protection, and HTTPS-only secure flags
+- **Backward Compatibility**: Legacy `?key=` parameter authentication still supported as fallback
+
+### v0.7.0-beta.3    
 - **Web Admin Panel**: New browser-based admin interface accessible at `/admin` with `--web-panel` flag
 - **Embedded HTML**: Admin panel HTML embedded using `go:embed` for single-binary deployment
 - **Real-time Dashboard**: Live system stats, user management, plugin controls, and metrics visualization
@@ -217,17 +224,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.7.0-beta.3:**
+**Download pre-built binaries for v0.7.0-beta.4:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.3/marchat-v0.7.0-beta.3-linux-amd64.zip
-unzip marchat-v0.7.0-beta.3-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.4/marchat-v0.7.0-beta.4-linux-amd64.zip
+unzip marchat-v0.7.0-beta.4-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.3/marchat-v0.7.0-beta.3-darwin-amd64.zip
-unzip marchat-v0.7.0-beta.3-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.4/marchat-v0.7.0-beta.4-darwin-amd64.zip
+unzip marchat-v0.7.0-beta.4-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -236,8 +243,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.3/marchat-v0.7.0-beta.3-android-arm64.zip
-unzip marchat-v0.7.0-beta.3-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.4/marchat-v0.7.0-beta.4-android-arm64.zip
+unzip marchat-v0.7.0-beta.4-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -248,7 +255,7 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.7.0-beta.3
+docker pull codecodesxyz/marchat:v0.7.0-beta.4
 
 # Run with environment variables
 docker run -d \

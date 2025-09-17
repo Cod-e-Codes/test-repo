@@ -1,8 +1,13 @@
 package server
 
 import (
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	_ "embed"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -27,6 +32,83 @@ type WebAdminServer struct {
 	pluginManager *manager.PluginManager
 	startTime     time.Time
 	metrics       *webMetricsData
+	sessionSecret []byte
+}
+
+// Session data structure
+type sessionData struct {
+	IsAdmin bool      `json:"isAdmin"`
+	Expires time.Time `json:"expires"`
+}
+
+// Login request structure
+type loginRequest struct {
+	Key string `json:"key"`
+}
+
+// Session management functions
+func (w *WebAdminServer) generateSessionSecret() error {
+	secret := make([]byte, 32)
+	_, err := rand.Read(secret)
+	if err != nil {
+		return err
+	}
+	w.sessionSecret = secret
+	return nil
+}
+
+func (w *WebAdminServer) createSession() (string, error) {
+	session := sessionData{
+		IsAdmin: true,
+		Expires: time.Now().Add(2 * time.Hour), // 2 hour session
+	}
+
+	sessionJSON, err := json.Marshal(session)
+	if err != nil {
+		return "", err
+	}
+
+	// Create HMAC signature
+	h := hmac.New(sha256.New, w.sessionSecret)
+	h.Write(sessionJSON)
+	signature := hex.EncodeToString(h.Sum(nil))
+
+	// Combine session data and signature
+	sessionDataB64 := base64.StdEncoding.EncodeToString(sessionJSON)
+	return sessionDataB64 + "." + signature, nil
+}
+
+func (w *WebAdminServer) validateSession(sessionToken string) bool {
+	parts := strings.Split(sessionToken, ".")
+	if len(parts) != 2 {
+		return false
+	}
+
+	sessionDataB64, signature := parts[0], parts[1]
+
+	// Decode session data
+	sessionJSON, err := base64.StdEncoding.DecodeString(sessionDataB64)
+	if err != nil {
+		return false
+	}
+
+	// Verify signature
+	h := hmac.New(sha256.New, w.sessionSecret)
+	h.Write(sessionJSON)
+	expectedSignature := hex.EncodeToString(h.Sum(nil))
+
+	if !hmac.Equal([]byte(signature), []byte(expectedSignature)) {
+		return false
+	}
+
+	// Parse and validate session
+	var session sessionData
+	if err := json.Unmarshal(sessionJSON, &session); err != nil {
+		return false
+	}
+
+	// Check expiration
+	return session.IsAdmin && time.Now().Before(session.Expires)
 }
 
 // Web-specific data structures matching the TUI panel
@@ -107,7 +189,7 @@ type webDatabaseInfo struct {
 
 // NewWebAdminServer creates a new web admin server with full functionality
 func NewWebAdminServer(hub *Hub, db *sql.DB, cfg *config.Config) *WebAdminServer {
-	return &WebAdminServer{
+	server := &WebAdminServer{
 		hub:           hub,
 		db:            db,
 		cfg:           cfg,
@@ -120,13 +202,23 @@ func NewWebAdminServer(hub *Hub, db *sql.DB, cfg *config.Config) *WebAdminServer
 			LastUpdated:       time.Now(),
 		},
 	}
+
+	// Generate session secret
+	if err := server.generateSessionSecret(); err != nil {
+		log.Printf("Warning: Failed to generate session secret: %v", err)
+	}
+
+	return server
 }
 
 // RegisterRoutes attaches all web admin routes to mux
 func (w *WebAdminServer) RegisterRoutes(mux *http.ServeMux) {
-	// Main panel route
-	mux.HandleFunc("/admin", w.auth(w.serveIndex))
-	mux.HandleFunc("/admin/", w.auth(w.serveIndex)) // Handle sub-paths
+	// Login route (no auth required)
+	mux.HandleFunc("/admin/api/login", w.handleLogin)
+
+	// Main panel route (no auth required - serves login page or admin panel based on session)
+	mux.HandleFunc("/admin", w.serveIndex)
+	mux.HandleFunc("/admin/", w.serveIndex) // Handle sub-paths
 
 	// API endpoints matching TUI functionality
 	mux.HandleFunc("/admin/api/overview", w.auth(w.handleOverview))
@@ -148,20 +240,72 @@ func (w *WebAdminServer) RegisterRoutes(mux *http.ServeMux) {
 
 func (w *WebAdminServer) auth(next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		key := r.Header.Get("X-Admin-Key")
-		if key == "" {
-			key = r.URL.Query().Get("key")
-		}
-		if key == "" || !strings.EqualFold(key, w.cfg.AdminKey) {
-			rw.WriteHeader(http.StatusUnauthorized)
-			writeJSON(rw, map[string]string{"error": "Unauthorized"})
-			return
+		// Check for session cookie
+		cookie, err := r.Cookie("admin_session")
+		if err != nil || !w.validateSession(cookie.Value) {
+			// Fallback to legacy admin key for backward compatibility
+			key := r.Header.Get("X-Admin-Key")
+			if key == "" {
+				key = r.URL.Query().Get("key")
+			}
+			if key == "" || !strings.EqualFold(key, w.cfg.AdminKey) {
+				rw.WriteHeader(http.StatusUnauthorized)
+				writeJSON(rw, map[string]string{"error": "Unauthorized"})
+				return
+			}
 		}
 		next(rw, r)
 	}
 }
 
+func (w *WebAdminServer) handleLogin(rw http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(rw, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req loginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(rw, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// Validate admin key
+	if req.Key == "" || !strings.EqualFold(req.Key, w.cfg.AdminKey) {
+		writeJSON(rw, map[string]interface{}{
+			"success": false,
+			"message": "Invalid admin key",
+		})
+		return
+	}
+
+	// Create session
+	sessionToken, err := w.createSession()
+	if err != nil {
+		log.Printf("Error creating session: %v", err)
+		http.Error(rw, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Set secure cookie
+	http.SetCookie(rw, &http.Cookie{
+		Name:     "admin_session",
+		Value:    sessionToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   w.cfg.IsTLSEnabled(), // Only secure over HTTPS
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   7200, // 2 hours
+	})
+
+	writeJSON(rw, map[string]interface{}{
+		"success": true,
+		"message": "Login successful",
+	})
+}
+
 func (w *WebAdminServer) serveIndex(rw http.ResponseWriter, r *http.Request) {
+	// Always serve the HTML - the JavaScript will handle showing login vs admin panel
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if _, err := rw.Write([]byte(adminWebHTML)); err != nil {
 		log.Printf("Error writing HTML response: %v", err)

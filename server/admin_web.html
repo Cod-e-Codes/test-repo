@@ -106,6 +106,124 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
+        /* Login Page Styles */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+        }
+        
+        .login-box {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 40px;
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .login-header h1 {
+            color: var(--primary-color);
+            margin-bottom: 8px;
+            font-size: 2rem;
+        }
+        
+        .login-header p {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+        
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-group label {
+            color: var(--text-light);
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-light);
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(125, 86, 244, 0.2);
+        }
+        
+        .login-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(125, 86, 244, 0.4);
+        }
+        
+        .login-btn:active {
+            transform: translateY(0);
+        }
+        
+        .error-message {
+            color: var(--error-color);
+            text-align: center;
+            padding: 8px;
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid var(--error-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            background: rgba(255, 68, 68, 0.2);
+            color: var(--error-color);
+            border: 1px solid var(--error-color);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.3s ease;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 68, 68, 0.3);
+        }
+        
         .card {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
@@ -469,10 +587,31 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Login Page -->
+    <div id="loginPage" class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <h1>Marchat Admin Panel</h1>
+                <p>Enter admin key to continue</p>
+            </div>
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="adminKey">Admin Key:</label>
+                    <input type="password" id="adminKey" name="adminKey" required 
+                           placeholder="Enter your admin key" autocomplete="off">
+                </div>
+                <button type="submit" class="login-btn">Login</button>
+                <div id="loginError" class="error-message" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Admin Panel -->
+    <div id="adminPanel" class="container" style="display: none;">
         <div class="header">
-            <h1>🧃 Marchat Admin Panel</h1>
+            <h1>Marchat Admin Panel</h1>
             <div class="subtitle">Real-time server management and monitoring</div>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
         </div>
         
         <div class="tabs">
@@ -627,29 +766,83 @@
         
         // Initialize the admin panel
         document.addEventListener('DOMContentLoaded', function() {
-            // Get admin key from query parameter or prompt user
-            const urlParams = new URLSearchParams(window.location.search);
-            adminKey = urlParams.get('key');
-            
-            if (!adminKey) {
-                adminKey = prompt('Enter admin key:');
-                if (!adminKey) {
-                    showMessage('Admin key required', 'error');
-                    return;
-                }
+            // Check if user is already authenticated
+            if (checkAuth()) {
+                showAdminPanel();
+            } else {
+                showLoginPage();
             }
+            
+            // Set up login form
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            
+            // Set up logout button
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
             
             // Set up tab switching
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => switchTab(tab.dataset.tab));
             });
+        });
+        
+        function checkAuth() {
+            // Check if we have a valid session cookie
+            return document.cookie.includes('admin_session=');
+        }
+        
+        function showLoginPage() {
+            document.getElementById('loginPage').style.display = 'flex';
+            document.getElementById('adminPanel').style.display = 'none';
+        }
+        
+        function showAdminPanel() {
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
             
             // Initial data load
             refreshData();
             
             // Set up auto-refresh every 5 seconds
             refreshInterval = setInterval(refreshData, 5000);
-        });
+        }
+        
+        async function handleLogin(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const key = formData.get('adminKey');
+            
+            try {
+                const response = await fetch('/admin/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ key: key })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAdminPanel();
+                } else {
+                    showLoginError(result.message || 'Invalid admin key');
+                }
+            } catch (error) {
+                showLoginError('Login failed. Please try again.');
+            }
+        }
+        
+        function handleLogout() {
+            // Clear session cookie
+            document.cookie = 'admin_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            showLoginPage();
+        }
+        
+        function showLoginError(message) {
+            const errorEl = document.getElementById('loginError');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+        }
         
         function switchTab(tabName) {
             currentTab = tabName;
@@ -672,9 +865,9 @@
             const options = {
                 method: method,
                 headers: {
-                    'X-Admin-Key': adminKey,
                     'Content-Type': 'application/json'
-                }
+                },
+                credentials: 'include' // Include cookies for session auth
             };
             
             if (data) {
@@ -1097,5 +1290,6 @@
             setTimeout(() => { el.classList.remove('show'); }, 3000);
         }
     </script>
+    </div> <!-- End adminPanel -->
 </body>
 </html>
