@@ -76,7 +76,7 @@ marchat started as a fun weekend project for father-son coding sessions and has 
 ## Advanced Features
 
 
-### 🔒 Enhanced Admin Security
+### Enhanced Admin Security
 
 Admin commands for user management and system operations:
 
@@ -88,7 +88,7 @@ Admin commands for user management and system operations:
 :allow username            # Override kick early
 ```
 
-### 🏥 Health Check Endpoints
+### Health Check Endpoints
 
 Monitor system health with comprehensive endpoints:
 
@@ -106,7 +106,7 @@ Health check includes:
 - Performance metrics (memory usage, goroutines, active users)
 - Uptime and version information
 
-### 📊 Structured Logging
+### Structured Logging
 
 All logs are now in JSON format with component separation:
 
