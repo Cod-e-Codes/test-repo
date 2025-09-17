@@ -132,7 +132,13 @@ Component loggers:
 
 ## Changelog    
 
-### v0.7.0-beta.4 (Latest)    
+### v0.7.0-beta.5 (Latest)    
+- **Comprehensive Security Fixes**: Removed legacy URL parameter authentication and implemented CSRF protection
+- **CSRF Protection**: All state-changing operations now require valid CSRF tokens for security
+- **Enhanced Session Security**: Server-side session validation with 1-hour expiration and restricted cookie paths
+- **Secure Authentication Flow**: Proper session-based authentication with no admin key exposure
+
+### v0.7.0-beta.4    
 - **Secure Login System**: Replaced URL-based admin key authentication with secure session-based login
 - **Session Cookies**: HMAC-signed session tokens with 2-hour expiration and secure cookie settings
 - **Login Page**: Clean, modern login interface that eliminates admin key exposure in URLs
@@ -224,17 +230,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.7.0-beta.4:**
+**Download pre-built binaries for v0.7.0-beta.5:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.4/marchat-v0.7.0-beta.4-linux-amd64.zip
-unzip marchat-v0.7.0-beta.4-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.5/marchat-v0.7.0-beta.5-linux-amd64.zip
+unzip marchat-v0.7.0-beta.5-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.4/marchat-v0.7.0-beta.4-darwin-amd64.zip
-unzip marchat-v0.7.0-beta.4-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.5/marchat-v0.7.0-beta.5-darwin-amd64.zip
+unzip marchat-v0.7.0-beta.5-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -243,8 +249,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.4/marchat-v0.7.0-beta.4-android-arm64.zip
-unzip marchat-v0.7.0-beta.4-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.5/marchat-v0.7.0-beta.5-android-arm64.zip
+unzip marchat-v0.7.0-beta.5-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -255,7 +261,7 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.7.0-beta.4
+docker pull codecodesxyz/marchat:v0.7.0-beta.5
 
 # Run with environment variables
 docker run -d \
@@ -404,11 +410,11 @@ A browser-based admin panel is also available with secure session-based authenti
   - Custom port: `http://localhost:YOUR_PORT/admin`
   - TLS enabled: `https://localhost:YOUR_PORT/admin`
 - **Authentication**: enter your admin key on the login page for secure session-based access
-- **Session security**: 2-hour expiration with HttpOnly cookies and HTTPS-only secure flags
-- **Legacy support**: `?key=YOUR_ADMIN_KEY` parameter and `X-Admin-Key` header still work as fallback
+- **Session security**: 1-hour expiration with HttpOnly cookies and HTTPS-only secure flags
+- **CSRF protection**: all admin actions protected against cross-site request forgery
 - **Health/API check**:
   ```bash
-  curl -H "X-Admin-Key: YOUR_ADMIN_KEY" http://localhost:8080/admin/api/overview
+  curl -H "Cookie: admin_session=YOUR_SESSION_TOKEN" http://localhost:8080/admin/api/overview
   ```
 
 ## TLS Support
