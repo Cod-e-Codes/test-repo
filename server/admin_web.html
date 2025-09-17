@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marchat Admin Panel</title>
+    <style>
+        :root {
+            --primary-color: #7D56F4;
+            --secondary-color: #FF75B7;
+            --success-color: #00FFA3;
+            --warning-color: #FFA500;
+            --error-color: #FF4444;
+            --accent-color: #FFD700;
+            --bg-dark: #1a1a1a;
+            --bg-darker: #0d0d0d;
+            --text-light: #ffffff;
+            --text-muted: #888;
+            --border-color: #333;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(125, 86, 244, 0.1);
+            border-radius: 12px;
+            border: 1px solid var(--primary-color);
+        }
+        
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(125, 86, 244, 0.5);
+        }
+        
+        .header .subtitle {
+            color: var(--secondary-color);
+            font-style: italic;
+        }
+        
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            background: var(--bg-darker);
+            border-radius: 8px;
+            padding: 4px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .tab:hover {
+            color: var(--primary-color);
+            background: rgba(125, 86, 244, 0.1);
+        }
+        
+        .tab.active {
+            color: var(--primary-color);
+            background: rgba(125, 86, 244, 0.2);
+            font-weight: 700;
+        }
+        
+        .content {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        .content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+        }
+        
+        .card h3 {
+            color: var(--accent-color);
+            margin-bottom: 16px;
+            font-size: 1.4rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-item {
+            background: rgba(125, 86, 244, 0.1);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--primary-color);
+        }
+        
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+        
+        .stat-value {
+            color: var(--text-light);
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: rgba(125, 86, 244, 0.1);
+            color: var(--accent-color);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .status-online {
+            color: var(--success-color);
+            font-weight: bold;
+        }
+        
+        .status-offline {
+            color: var(--text-muted);
+        }
+        
+        .status-banned {
+            color: var(--error-color);
+            font-weight: bold;
+        }
+        
+        .status-kicked {
+            color: var(--warning-color);
+            font-weight: bold;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin: 2px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-success {
+            background: var(--success-color);
+            color: var(--bg-dark);
+        }
+        
+        .btn-warning {
+            background: var(--warning-color);
+            color: var(--bg-dark);
+        }
+        
+        .btn-danger {
+            background: var(--error-color);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: var(--text-muted);
+            color: white;
+        }
+        
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-level-error {
+            color: var(--error-color);
+        }
+        
+        .log-level-warn {
+            color: var(--warning-color);
+        }
+        
+        .log-level-info {
+            color: var(--success-color);
+        }
+        
+        .message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+        
+        .message.show {
+            transform: translateX(0);
+        }
+        
+        .message-success {
+            background: var(--success-color);
+            color: var(--bg-dark);
+        }
+        
+        .message-error {
+            background: var(--error-color);
+        }
+        
+        .message-info {
+            background: var(--primary-color);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+        
+        .spinner {
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .chart-container {
+            height: 200px;
+            margin: 16px 0;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+        
+        .config-section {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .config-section h4 {
+            color: var(--secondary-color);
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+        }
+        
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .config-item:last-child {
+            border-bottom: none;
+        }
+        
+        .config-label {
+            color: var(--text-muted);
+        }
+        
+        .config-value {
+            color: var(--text-light);
+            font-weight: 500;
+        }
+        
+        .plugin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .plugin-info {
+            flex-grow: 1;
+        }
+        
+        .plugin-name {
+            font-weight: 600;
+            color: var(--text-light);
+        }
+        
+        .plugin-version {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        
+        .plugin-status {
+            margin: 0 16px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .plugin-status.active {
+            background: var(--success-color);
+            color: var(--bg-dark);
+        }
+        
+        .plugin-status.inactive {
+            background: var(--warning-color);
+            color: var(--bg-dark);
+        }
+        
+        .plugin-actions {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .refresh-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(125, 86, 244, 0.3);
+            transition: all 0.3s ease;
+            z-index: 999;
+        }
+        
+        .refresh-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(125, 86, 244, 0.4);
+        }
+        
+        .refresh-btn.spinning {
+            animation: spin 1s linear infinite;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                flex: 1;
+                min-width: 100px;
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .metric-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            table {
+                font-size: 0.8rem;
+            }
+            
+            th, td {
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧃 Marchat Admin Panel</h1>
+            <div class="subtitle">Real-time server management and monitoring</div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" data-tab="overview">Overview</button>
+            <button class="tab" data-tab="users">Users</button>
+            <button class="tab" data-tab="system">System</button>
+            <button class="tab" data-tab="logs">Logs</button>
+            <button class="tab" data-tab="plugins">Plugins</button>
+            <button class="tab" data-tab="metrics">Metrics</button>
+        </div>
+        
+        <!-- Overview Tab -->
+        <div id="overview-content" class="content active">
+            <div class="card">
+                <h3>System Status</h3>
+                <div class="stats-grid" id="overview-stats">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading system data...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Live Configuration</h3>
+                <div id="overview-config">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading configuration...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Database Information</h3>
+                <div id="overview-database">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading database info...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Users Tab -->
+        <div id="users-content" class="content">
+            <div class="card">
+                <h3>User Management</h3>
+                <div class="table-container">
+                    <table id="users-table">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Status</th>
+                                <th>IP Address</th>
+                                <th>Messages</th>
+                                <th>Admin</th>
+                                <th>Last Seen</th>
+                                <th>Connected</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="8">
+                                    <div class="loading">
+                                        <div class="spinner"></div>
+                                        Loading users...
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Tab -->
+        <div id="system-content" class="content">
+            <div class="card">
+                <h3>System Management</h3>
+                <div class="btn-group" style="margin-bottom: 20px;">
+                    <button class="btn btn-warning" onclick="performSystemAction('clear_db')">Clear Database</button>
+                    <button class="btn btn-primary" onclick="performSystemAction('backup_db')">Backup Database</button>
+                    <button class="btn btn-secondary" onclick="performSystemAction('show_stats')">Show Stats</button>
+                    <button class="btn btn-success" onclick="performSystemAction('force_gc')">Force GC</button>
+                </div>
+                <div id="system-details">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading system details...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Logs Tab -->
+        <div id="logs-content" class="content">
+            <div class="card">
+                <h3>System Logs</h3>
+                <div class="btn-group" style="margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="exportLogs()">Export Logs</button>
+                </div>
+                <div id="logs-container" style="max-height: 500px; overflow-y: auto;">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading logs...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Plugins Tab -->
+        <div id="plugins-content" class="content">
+            <div class="card">
+                <h3>Plugin Management</h3>
+                <div id="plugins-container">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading plugins...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Metrics Tab -->
+        <div id="metrics-content" class="content">
+            <div class="card">
+                <h3>Performance Metrics</h3>
+                <div class="btn-group" style="margin-bottom: 20px;">
+                    <button class="btn btn-warning" onclick="performMetricsAction('reset')">Reset Metrics</button>
+                    <button class="btn btn-primary" onclick="performMetricsAction('export_logs')">Export Logs</button>
+                </div>
+                <div id="metrics-data">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading metrics...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <button class="refresh-btn" onclick="refreshData()" id="refresh-btn">🔄</button>
+    
+    <div id="message" class="message"></div>
+    
+    <script>
+        let adminKey = '';
+        let refreshInterval;
+        let currentTab = 'overview';
+        
+        // Initialize the admin panel
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get admin key from query parameter or prompt user
+            const urlParams = new URLSearchParams(window.location.search);
+            adminKey = urlParams.get('key');
+            
+            if (!adminKey) {
+                adminKey = prompt('Enter admin key:');
+                if (!adminKey) {
+                    showMessage('Admin key required', 'error');
+                    return;
+                }
+            }
+            
+            // Set up tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
+            
+            // Initial data load
+            refreshData();
+            
+            // Set up auto-refresh every 5 seconds
+            refreshInterval = setInterval(refreshData, 5000);
+        });
+        
+        function switchTab(tabName) {
+            currentTab = tabName;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.tab === tabName);
+            });
+            
+            // Update content
+            document.querySelectorAll('.content').forEach(content => {
+                content.classList.toggle('active', content.id === tabName + '-content');
+            });
+            
+            // Load data for the active tab
+            loadTabData(tabName);
+        }
+        
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            const options = {
+                method: method,
+                headers: {
+                    'X-Admin-Key': adminKey,
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            
+            try {
+                const response = await fetch('/admin/api/' + endpoint, options);
+                if (!response.ok) {
+                    throw new Error('HTTP error! status: ' + response.status);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('API call failed:', error);
+                showMessage('API call failed: ' + error.message, 'error');
+                throw error;
+            }
+        }
+        
+        async function refreshData() {
+            const refreshBtn = document.getElementById('refresh-btn');
+            refreshBtn.classList.add('spinning');
+            
+            try {
+                await loadTabData(currentTab);
+                await apiCall('refresh');
+            } catch (error) {
+                console.error('Refresh failed:', error);
+            } finally {
+                refreshBtn.classList.remove('spinning');
+            }
+        }
+        
+        async function loadTabData(tabName) {
+            switch (tabName) {
+                case 'overview':
+                    await loadOverview();
+                    break;
+                case 'users':
+                    await loadUsers();
+                    break;
+                case 'system':
+                    await loadSystem();
+                    break;
+                case 'logs':
+                    await loadLogs();
+                    break;
+                case 'plugins':
+                    await loadPlugins();
+                    break;
+                case 'metrics':
+                    await loadMetrics();
+                    break;
+            }
+        }
+        
+        async function loadOverview() {
+            try {
+                const data = await apiCall('overview');
+                displayOverview(data);
+            } catch (error) {
+                document.getElementById('overview-stats').innerHTML = '<div class="error">Failed to load overview data</div>';
+            }
+        }
+        
+        function displayOverview(data) {
+            const stats = data.system_stats;
+            const config = data.config;
+            const database = data.database;
+            
+            // System stats
+            document.getElementById('overview-stats').innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-label">Status</div>
+                    <div class="stat-value status-online">${stats.server_status}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Uptime</div>
+                    <div class="stat-value">${stats.uptime}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Active Users</div>
+                    <div class="stat-value">${stats.active_users}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Users</div>
+                    <div class="stat-value">${stats.total_users}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Messages Sent</div>
+                    <div class="stat-value">${stats.messages_sent}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Active Plugins</div>
+                    <div class="stat-value">${stats.plugins_active}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Memory Usage</div>
+                    <div class="stat-value">${stats.memory_usage.toFixed(1)} MB</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Goroutines</div>
+                    <div class="stat-value">${stats.goroutine_count}</div>
+                </div>
+            `;
+            
+            // Configuration
+            document.getElementById('overview-config').innerHTML = `
+                <div class="config-section">
+                    <div class="config-item">
+                        <span class="config-label">Port:</span>
+                        <span class="config-value">${config.port}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">TLS:</span>
+                        <span class="config-value ${config.tls_enabled ? 'status-online' : 'status-offline'}">
+                            ${config.tls_enabled ? '✅ Enabled' : '❌ Disabled'}
+                        </span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Max File Size:</span>
+                        <span class="config-value">${config.max_file_size}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Log Level:</span>
+                        <span class="config-value">${config.log_level}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Ban History Gaps:</span>
+                        <span class="config-value">${config.ban_history_gaps}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Admin Users:</span>
+                        <span class="config-value">${config.admin_count}</span>
+                    </div>
+                </div>
+            `;
+            
+            // Database
+            document.getElementById('overview-database').innerHTML = `
+                <div class="config-section">
+                    <div class="config-item">
+                        <span class="config-label">Database Path:</span>
+                        <span class="config-value">${database.path}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Config Directory:</span>
+                        <span class="config-value">${database.config_dir}</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function loadUsers() {
+            try {
+                const users = await apiCall('users');
+                displayUsers(users);
+            } catch (error) {
+                document.querySelector('#users-table tbody').innerHTML = '<tr><td colspan="8">Failed to load users</td></tr>';
+            }
+        }
+        
+        function displayUsers(users) {
+            const tbody = document.querySelector('#users-table tbody');
+            
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8">No users found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>${user.username}</td>
+                    <td><span class="status-${user.status.toLowerCase()}">${user.status}</span></td>
+                    <td>${user.ip}</td>
+                    <td>${user.messages}</td>
+                    <td>${user.is_admin ? 'Yes' : 'No'}</td>
+                    <td>${user.last_seen ? new Date(user.last_seen).toLocaleString() : 'N/A'}</td>
+                    <td>${user.connected_at && user.status === 'Online' ? new Date(user.connected_at).toLocaleString() : 'N/A'}</td>
+                    <td>
+                        ${!user.is_banned ? 
+                            `<button class="btn btn-danger" onclick="performUserAction('ban', '${user.username}')">Ban</button>` :
+                            `<button class="btn btn-success" onclick="performUserAction('unban', '${user.username}')">Unban</button>`
+                        }
+                        ${!user.is_kicked ?
+                            `<button class="btn btn-warning" onclick="performUserAction('kick', '${user.username}')">Kick</button>` :
+                            `<button class="btn btn-success" onclick="performUserAction('allow', '${user.username}')">Allow</button>`
+                        }
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        async function loadSystem() {
+            try {
+                const data = await apiCall('system');
+                displaySystem(data);
+            } catch (error) {
+                document.getElementById('system-details').innerHTML = '<div class="error">Failed to load system data</div>';
+            }
+        }
+        
+        function displaySystem(data) {
+            const stats = data.stats;
+            const config = data.config;
+            
+            document.getElementById('system-details').innerHTML = `
+                <div class="config-section">
+                    <h4>Live Configuration</h4>
+                    <div class="config-item">
+                        <span class="config-label">Server Port:</span>
+                        <span class="config-value">${config.port}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Database:</span>
+                        <span class="config-value">${config.database}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Config Directory:</span>
+                        <span class="config-value">${config.config_dir}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Log Level:</span>
+                        <span class="config-value">${config.log_level}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Max File Size:</span>
+                        <span class="config-value">${config.max_file_size}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Admin Users:</span>
+                        <span class="config-value">${config.admin_users}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">TLS Status:</span>
+                        <span class="config-value ${config.tls_enabled ? 'status-online' : 'status-offline'}">
+                            ${config.tls_enabled ? '✅ Enabled' : '❌ Disabled'}
+                        </span>
+                    </div>
+                    ${config.tls_enabled ? `
+                    <div class="config-item">
+                        <span class="config-label">TLS Cert File:</span>
+                        <span class="config-value">${config.tls_cert_file}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">TLS Key File:</span>
+                        <span class="config-value">${config.tls_key_file}</span>
+                    </div>
+                    ` : ''}
+                    <div class="config-item">
+                        <span class="config-label">JWT Secret:</span>
+                        <span class="config-value">${config.jwt_secret}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Admin Key:</span>
+                        <span class="config-value">${config.admin_key}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Ban History Gaps:</span>
+                        <span class="config-value">${config.ban_history_gaps}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Plugin Registry:</span>
+                        <span class="config-value">${config.plugin_registry}</span>
+                    </div>
+                </div>
+                
+                <div class="config-section">
+                    <h4>Database Statistics</h4>
+                    <div class="config-item">
+                        <span class="config-label">Total Messages:</span>
+                        <span class="config-value">${stats.messages_sent}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Total Users:</span>
+                        <span class="config-value">${stats.total_users}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Active Connections:</span>
+                        <span class="config-value">${stats.active_users}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function performUserAction(action, username) {
+            try {
+                const res = await apiCall('action/user', 'POST', { action, username });
+                showMessage(res.message, res.success ? 'success' : 'error');
+                await loadUsers();
+            } catch (e) {}
+        }
+
+        async function performSystemAction(action) {
+            try {
+                const res = await apiCall('action/system', 'POST', { action });
+                showMessage(res.message, res.success ? 'success' : 'error');
+                await loadSystem();
+            } catch (e) {}
+        }
+
+        async function performMetricsAction(action) {
+            try {
+                const res = await apiCall('action/metrics', 'POST', { action });
+                showMessage(res.message, res.success ? 'success' : 'error');
+                await loadMetrics();
+            } catch (e) {}
+        }
+
+        async function exportLogs() {
+            try {
+                const res = await apiCall('action/metrics', 'POST', { action: 'export_logs' });
+                showMessage(res.message, res.success ? 'success' : 'error');
+            } catch (e) {}
+        }
+
+        async function loadLogs() {
+            try {
+                const logs = await apiCall('logs');
+                displayLogs(logs);
+            } catch (error) {
+                document.getElementById('logs-container').innerHTML = '<div class="error">Failed to load logs</div>';
+            }
+        }
+
+        function displayLogs(logs) {
+            if (!logs || logs.length === 0) {
+                document.getElementById('logs-container').innerHTML = '<div>No logs available</div>';
+                return;
+            }
+            const html = logs.map(l => `
+                <div class="log-entry">
+                    <span class="log-level-${l.level.toLowerCase()}">[${l.level}]</span>
+                    ${new Date(l.timestamp).toLocaleTimeString()} ${l.component}: ${l.message}
+                </div>
+            `).join('');
+            document.getElementById('logs-container').innerHTML = html;
+        }
+
+        async function loadPlugins() {
+            try {
+                const plugins = await apiCall('plugins');
+                displayPlugins(plugins);
+            } catch (error) {
+                document.getElementById('plugins-container').innerHTML = '<div class="error">Failed to load plugins</div>';
+            }
+        }
+
+        function displayPlugins(plugins) {
+            if (!plugins || plugins.length === 0) {
+                document.getElementById('plugins-container').innerHTML = '<div>No plugins found</div>';
+                return;
+            }
+            const html = plugins.map(p => `
+                <div class="plugin-item">
+                    <div class="plugin-info">
+                        <div class="plugin-name">${p.name}</div>
+                        <div class="plugin-version">v${p.version}</div>
+                    </div>
+                    <div class="plugin-status ${p.status.toLowerCase() === 'active' ? 'active' : 'inactive'}">${p.status}</div>
+                    <div class="plugin-actions">
+                        <button class="btn btn-success" onclick="pluginAction('enable','${p.name}')">Enable</button>
+                        <button class="btn btn-warning" onclick="pluginAction('disable','${p.name}')">Disable</button>
+                        <button class="btn btn-primary" onclick="pluginAction('install','${p.name}')">Install</button>
+                        <button class="btn btn-danger" onclick="pluginAction('uninstall','${p.name}')">Uninstall</button>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('plugins-container').innerHTML = html;
+        }
+
+        async function pluginAction(action, plugin) {
+            try {
+                const res = await apiCall('action/plugin', 'POST', { action, plugin });
+                showMessage(res.message, res.success ? 'success' : 'error');
+                await loadPlugins();
+            } catch (e) {}
+        }
+
+        async function loadMetrics() {
+            try {
+                const data = await apiCall('metrics');
+                displayMetrics(data);
+            } catch (error) {
+                document.getElementById('metrics-data').innerHTML = '<div class="error">Failed to load metrics</div>';
+            }
+        }
+
+        function displayMetrics(data) {
+            const memHistory = (data.memory_history || []).slice(-10).map(p => `${new Date(p.time).toLocaleTimeString()} - ${(p.memory/1024/1024).toFixed(1)} MB`).join('<br>');
+            const msgHistory = (data.message_history || []).slice(-10).map(p => `${new Date(p.time).toLocaleTimeString()} - ${p.count}`).join('<br>');
+            const connHistory = (data.connection_history || []).slice(-10).map(p => `${new Date(p.time).toLocaleTimeString()} - ${p.count}`).join('<br>');
+            const html = `
+                <div class="metric-grid">
+                    <div class="config-section">
+                        <h4>Connections</h4>
+                        <div>Peak Users: ${data.peak_users || 0}</div>
+                        <div>Total Connections: ${data.total_connections || 0}</div>
+                        <div>Total Disconnects: ${data.total_disconnects || 0}</div>
+                        <div style="margin-top:8px;" class="chart-container">${connHistory || 'No data'}</div>
+                    </div>
+                    <div class="config-section">
+                        <h4>Messages</h4>
+                        <div style="margin-top:8px;" class="chart-container">${msgHistory || 'No data'}</div>
+                    </div>
+                    <div class="config-section">
+                        <h4>Memory</h4>
+                        <div>Peak Memory: ${(data.peak_memory ? (data.peak_memory/1024/1024).toFixed(1) : 0)} MB</div>
+                        <div style="margin-top:8px;" class="chart-container">${memHistory || 'No data'}</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('metrics-data').innerHTML = html;
+        }
+
+        function showMessage(text, type = 'info') {
+            const el = document.getElementById('message');
+            el.textContent = text;
+            el.className = `message message-${type} show`;
+            setTimeout(() => { el.classList.remove('show'); }, 3000);
+        }
+    </script>
+</body>
+</html>

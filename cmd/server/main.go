@@ -35,6 +35,7 @@ var port = flag.Int("port", 0, "Port to listen on (deprecated, use MARCHAT_PORT)
 var configPath = flag.String("config", "", "Path to server config file (JSON, deprecated)")
 var configDir = flag.String("config-dir", "", "Configuration directory (default: ./config in dev, $XDG_CONFIG_HOME/marchat in prod)")
 var enableAdminPanel = flag.Bool("admin-panel", false, "Enable the built-in admin panel TUI")
+var enableWebPanel = flag.Bool("web-panel", false, "Enable the built-in web admin panel (served at /admin)")
 
 func printBanner(addr string, admins []string, scheme string) {
 	fmt.Println(`
@@ -187,6 +188,14 @@ func main() {
 	}
 
 	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, key, cfg.BanGapsHistory, cfg.MaxFileBytes))
+
+	// Web admin panel routes (optional)
+	if *enableWebPanel {
+		web := server.NewWebAdminServer(hub, db, cfg)
+		mux := http.DefaultServeMux
+		web.RegisterRoutes(mux)
+		log.Printf("Web admin panel enabled at /admin (use X-Admin-Key header)")
+	}
 
 	// Initialize health checker
 	healthChecker := server.NewHealthChecker(hub, db, shared.GetServerVersionInfo())

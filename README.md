@@ -377,6 +377,24 @@ The admin panel provides access to:
 - If running in a non-terminal environment (like systemd services), the admin panel will be automatically disabled with a warning message
 - The admin panel uses terminal raw mode for hotkey detection, which is automatically restored when exiting
 
+### Web Admin Panel
+
+A browser-based admin panel is also available.
+
+- **Enable**: start the server with `--web-panel`.
+  ```bash
+  ./marchat-server --web-panel
+  ```
+- **Access**: open your browser to:
+  - Default HTTP: `http://localhost:8080/admin?key=YOUR_ADMIN_KEY`
+  - Custom port: `http://localhost:YOUR_PORT/admin?key=YOUR_ADMIN_KEY`
+  - TLS enabled: `https://localhost:YOUR_PORT/admin?key=YOUR_ADMIN_KEY`
+- **Key delivery**: you may omit the `?key=` query and enter the key when prompted, or send it via `X-Admin-Key` header.
+- **Health/API check**:
+  ```bash
+  curl -H "X-Admin-Key: YOUR_ADMIN_KEY" http://localhost:8080/admin/api/overview
+  ```
+
 ## TLS Support
 
 TLS (Transport Layer Security) enables secure WebSocket connections using `wss://` instead of `ws://`. This is essential for production deployments and when exposing the server over the internet.
