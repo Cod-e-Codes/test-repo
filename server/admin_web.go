@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Cod-e-Codes/marchat/config"
@@ -24,7 +25,12 @@ import (
 //go:embed admin_web.html
 var adminWebHTML string
 
-// WebAdminServer provides a full-featured web admin panel with JSON APIs
+// Rate limiting structures
+type loginAttempt struct {
+	count       int
+	lastAttempt time.Time
+}
+
 type WebAdminServer struct {
 	hub           *Hub
 	db            *sql.DB
@@ -33,6 +39,8 @@ type WebAdminServer struct {
 	startTime     time.Time
 	metrics       *webMetricsData
 	sessionSecret []byte
+	loginAttempts map[string]*loginAttempt
+	attemptsMutex sync.RWMutex
 }
 
 // Session data structure
@@ -125,6 +133,92 @@ func (w *WebAdminServer) generateCSRFToken() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(token), nil
+}
+
+// Rate limiting functions
+func (w *WebAdminServer) isRateLimited(ip string) bool {
+	w.attemptsMutex.RLock()
+	defer w.attemptsMutex.RUnlock()
+
+	attempt, exists := w.loginAttempts[ip]
+	if !exists {
+		return false
+	}
+
+	// Reset counter if last attempt was more than 15 minutes ago
+	if time.Since(attempt.lastAttempt) > 15*time.Minute {
+		return false
+	}
+
+	// Allow max 5 attempts per 15 minutes
+	return attempt.count >= 5
+}
+
+func (w *WebAdminServer) recordFailedAttempt(ip string) {
+	w.attemptsMutex.Lock()
+	defer w.attemptsMutex.Unlock()
+
+	attempt, exists := w.loginAttempts[ip]
+	if !exists {
+		w.loginAttempts[ip] = &loginAttempt{
+			count:       1,
+			lastAttempt: time.Now(),
+		}
+	} else {
+		// Reset counter if last attempt was more than 15 minutes ago
+		if time.Since(attempt.lastAttempt) > 15*time.Minute {
+			attempt.count = 1
+		} else {
+			attempt.count++
+		}
+		attempt.lastAttempt = time.Now()
+	}
+}
+
+func (w *WebAdminServer) clearFailedAttempts(ip string) {
+	w.attemptsMutex.Lock()
+	defer w.attemptsMutex.Unlock()
+
+	delete(w.loginAttempts, ip)
+}
+
+func (w *WebAdminServer) cleanupRateLimiting() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		w.attemptsMutex.Lock()
+		now := time.Now()
+		for ip, attempt := range w.loginAttempts {
+			if now.Sub(attempt.lastAttempt) > 15*time.Minute {
+				delete(w.loginAttempts, ip)
+			}
+		}
+		w.attemptsMutex.Unlock()
+	}
+}
+
+func (w *WebAdminServer) cleanupExpiredSessions() {
+	ticker := time.NewTicker(10 * time.Minute)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		// Since we use stateless HMAC-signed sessions, we don't need to clean up
+		// session storage. However, we can log session validation statistics
+		// and monitor for potential issues.
+
+		// Log session cleanup activity (useful for monitoring)
+		log.Printf("Session cleanup: Checking for expired sessions (stateless validation)")
+
+		// In a future implementation, if we add session storage, we would:
+		// 1. Iterate through stored sessions
+		// 2. Validate each session token
+		// 3. Remove expired or invalid sessions
+		// 4. Log cleanup statistics
+
+		// For now, the session validation happens on-demand in validateSession()
+		// which is more efficient for stateless sessions
+	}
 }
 
 func (w *WebAdminServer) getCSRFTokenFromSession(sessionToken string) (string, error) {
@@ -277,12 +371,17 @@ func NewWebAdminServer(hub *Hub, db *sql.DB, cfg *config.Config) *WebAdminServer
 			MemoryHistory:     make([]memoryPoint, 0),
 			LastUpdated:       time.Now(),
 		},
+		loginAttempts: make(map[string]*loginAttempt),
 	}
 
 	// Generate session secret
 	if err := server.generateSessionSecret(); err != nil {
 		log.Printf("Warning: Failed to generate session secret: %v", err)
 	}
+
+	// Start cleanup goroutines
+	go server.cleanupRateLimiting()
+	go server.cleanupExpiredSessions()
 
 	return server
 }
@@ -358,20 +457,39 @@ func (w *WebAdminServer) handleLogin(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get client IP for rate limiting
+	clientIP := r.RemoteAddr
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		clientIP = strings.Split(forwarded, ",")[0]
+	}
+
+	// Check rate limiting
+	if w.isRateLimited(clientIP) {
+		log.Printf("Security: Rate limited login attempt from IP %s", clientIP)
+		http.Error(rw, "Too many login attempts. Please try again later.", http.StatusTooManyRequests)
+		return
+	}
+
 	var req loginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(rw, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	// Validate admin key
-	if req.Key == "" || !strings.EqualFold(req.Key, w.cfg.AdminKey) {
+	// Validate admin key with constant-time comparison
+	if req.Key == "" || !hmac.Equal([]byte(req.Key), []byte(w.cfg.AdminKey)) {
+		w.recordFailedAttempt(clientIP)
+		log.Printf("Security: Failed login attempt from IP %s", clientIP)
 		writeJSON(rw, map[string]interface{}{
 			"success": false,
 			"message": "Invalid admin key",
 		})
 		return
 	}
+
+	// Clear failed attempts on successful login
+	w.clearFailedAttempts(clientIP)
+	log.Printf("Security: Successful admin login from IP %s", clientIP)
 
 	// Create session
 	sessionToken, err := w.createSession()
