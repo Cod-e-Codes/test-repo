@@ -37,8 +37,9 @@ type WebAdminServer struct {
 
 // Session data structure
 type sessionData struct {
-	IsAdmin bool      `json:"isAdmin"`
-	Expires time.Time `json:"expires"`
+	IsAdmin   bool      `json:"isAdmin"`
+	Expires   time.Time `json:"expires"`
+	CSRFToken string    `json:"csrfToken"`
 }
 
 // Login request structure
@@ -58,9 +59,15 @@ func (w *WebAdminServer) generateSessionSecret() error {
 }
 
 func (w *WebAdminServer) createSession() (string, error) {
+	csrfToken, err := w.generateCSRFToken()
+	if err != nil {
+		return "", err
+	}
+
 	session := sessionData{
-		IsAdmin: true,
-		Expires: time.Now().Add(2 * time.Hour), // 2 hour session
+		IsAdmin:   true,
+		Expires:   time.Now().Add(1 * time.Hour), // 1 hour session
+		CSRFToken: csrfToken,
 	}
 
 	sessionJSON, err := json.Marshal(session)
@@ -109,6 +116,75 @@ func (w *WebAdminServer) validateSession(sessionToken string) bool {
 
 	// Check expiration
 	return session.IsAdmin && time.Now().Before(session.Expires)
+}
+
+func (w *WebAdminServer) generateCSRFToken() (string, error) {
+	token := make([]byte, 32)
+	_, err := rand.Read(token)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(token), nil
+}
+
+func (w *WebAdminServer) getCSRFTokenFromSession(sessionToken string) (string, error) {
+	parts := strings.Split(sessionToken, ".")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid session token format")
+	}
+
+	sessionDataB64, signature := parts[0], parts[1]
+
+	// Decode session data
+	sessionJSON, err := base64.StdEncoding.DecodeString(sessionDataB64)
+	if err != nil {
+		return "", err
+	}
+
+	// Verify signature
+	h := hmac.New(sha256.New, w.sessionSecret)
+	h.Write(sessionJSON)
+	expectedSignature := hex.EncodeToString(h.Sum(nil))
+
+	if !hmac.Equal([]byte(signature), []byte(expectedSignature)) {
+		return "", fmt.Errorf("invalid session signature")
+	}
+
+	// Parse session
+	var session sessionData
+	if err := json.Unmarshal(sessionJSON, &session); err != nil {
+		return "", err
+	}
+
+	// Check expiration
+	if time.Now().After(session.Expires) {
+		return "", fmt.Errorf("session expired")
+	}
+
+	return session.CSRFToken, nil
+}
+
+func (w *WebAdminServer) validateCSRF(r *http.Request) bool {
+	// Get CSRF token from header
+	csrfToken := r.Header.Get("X-CSRF-Token")
+	if csrfToken == "" {
+		return false
+	}
+
+	// Get session cookie
+	cookie, err := r.Cookie("admin_session")
+	if err != nil {
+		return false
+	}
+
+	// Extract CSRF token from session
+	sessionCSRFToken, err := w.getCSRFTokenFromSession(cookie.Value)
+	if err != nil {
+		return false
+	}
+
+	// Compare tokens
+	return csrfToken == sessionCSRFToken
 }
 
 // Web-specific data structures matching the TUI panel
@@ -213,8 +289,10 @@ func NewWebAdminServer(hub *Hub, db *sql.DB, cfg *config.Config) *WebAdminServer
 
 // RegisterRoutes attaches all web admin routes to mux
 func (w *WebAdminServer) RegisterRoutes(mux *http.ServeMux) {
-	// Login route (no auth required)
+	// Login and session routes (no auth required)
 	mux.HandleFunc("/admin/api/login", w.handleLogin)
+	mux.HandleFunc("/admin/api/check-session", w.handleSessionCheck)
+	mux.HandleFunc("/admin/api/csrf-token", w.auth(w.handleCSRFToken))
 
 	// Main panel route (no auth required - serves login page or admin panel based on session)
 	mux.HandleFunc("/admin", w.serveIndex)
@@ -228,11 +306,11 @@ func (w *WebAdminServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/admin/api/plugins", w.auth(w.handlePlugins))
 	mux.HandleFunc("/admin/api/metrics", w.auth(w.handleMetrics))
 
-	// Action endpoints
-	mux.HandleFunc("/admin/api/action/user", w.auth(w.handleUserAction))
-	mux.HandleFunc("/admin/api/action/system", w.auth(w.handleSystemAction))
-	mux.HandleFunc("/admin/api/action/plugin", w.auth(w.handlePluginAction))
-	mux.HandleFunc("/admin/api/action/metrics", w.auth(w.handleMetricsAction))
+	// Action endpoints (CSRF protected)
+	mux.HandleFunc("/admin/api/action/user", w.authWithCSRF(w.handleUserAction))
+	mux.HandleFunc("/admin/api/action/system", w.authWithCSRF(w.handleSystemAction))
+	mux.HandleFunc("/admin/api/action/plugin", w.authWithCSRF(w.handlePluginAction))
+	mux.HandleFunc("/admin/api/action/metrics", w.authWithCSRF(w.handleMetricsAction))
 
 	// Utility endpoints
 	mux.HandleFunc("/admin/api/refresh", w.auth(w.handleRefresh))
@@ -240,20 +318,36 @@ func (w *WebAdminServer) RegisterRoutes(mux *http.ServeMux) {
 
 func (w *WebAdminServer) auth(next http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		// Check for session cookie
+		// Only accept session-based authentication
 		cookie, err := r.Cookie("admin_session")
 		if err != nil || !w.validateSession(cookie.Value) {
-			// Fallback to legacy admin key for backward compatibility
-			key := r.Header.Get("X-Admin-Key")
-			if key == "" {
-				key = r.URL.Query().Get("key")
-			}
-			if key == "" || !strings.EqualFold(key, w.cfg.AdminKey) {
-				rw.WriteHeader(http.StatusUnauthorized)
-				writeJSON(rw, map[string]string{"error": "Unauthorized"})
+			rw.WriteHeader(http.StatusUnauthorized)
+			writeJSON(rw, map[string]string{"error": "Unauthorized"})
+			return
+		}
+		next(rw, r)
+	}
+}
+
+func (w *WebAdminServer) authWithCSRF(next http.HandlerFunc) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		// Check session authentication
+		cookie, err := r.Cookie("admin_session")
+		if err != nil || !w.validateSession(cookie.Value) {
+			rw.WriteHeader(http.StatusUnauthorized)
+			writeJSON(rw, map[string]string{"error": "Unauthorized"})
+			return
+		}
+
+		// Check CSRF protection for state-changing methods
+		if r.Method == "POST" || r.Method == "PUT" || r.Method == "DELETE" {
+			if !w.validateCSRF(r) {
+				rw.WriteHeader(http.StatusForbidden)
+				writeJSON(rw, map[string]string{"error": "CSRF token validation failed"})
 				return
 			}
 		}
+
 		next(rw, r)
 	}
 }
@@ -291,17 +385,54 @@ func (w *WebAdminServer) handleLogin(rw http.ResponseWriter, r *http.Request) {
 	http.SetCookie(rw, &http.Cookie{
 		Name:     "admin_session",
 		Value:    sessionToken,
-		Path:     "/",
+		Path:     "/admin", // Restrict to admin paths only
 		HttpOnly: true,
 		Secure:   w.cfg.IsTLSEnabled(), // Only secure over HTTPS
 		SameSite: http.SameSiteStrictMode,
-		MaxAge:   7200, // 2 hours
+		MaxAge:   3600, // 1 hour (reduced from 2 hours)
 	})
 
 	writeJSON(rw, map[string]interface{}{
 		"success": true,
 		"message": "Login successful",
 	})
+}
+
+func (w *WebAdminServer) handleSessionCheck(rw http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(rw, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	cookie, err := r.Cookie("admin_session")
+	if err != nil || !w.validateSession(cookie.Value) {
+		rw.WriteHeader(http.StatusUnauthorized)
+		writeJSON(rw, map[string]bool{"authenticated": false})
+		return
+	}
+
+	writeJSON(rw, map[string]bool{"authenticated": true})
+}
+
+func (w *WebAdminServer) handleCSRFToken(rw http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(rw, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	cookie, err := r.Cookie("admin_session")
+	if err != nil {
+		http.Error(rw, "No session found", http.StatusUnauthorized)
+		return
+	}
+
+	csrfToken, err := w.getCSRFTokenFromSession(cookie.Value)
+	if err != nil {
+		http.Error(rw, "Invalid session", http.StatusUnauthorized)
+		return
+	}
+
+	writeJSON(rw, map[string]string{"csrfToken": csrfToken})
 }
 
 func (w *WebAdminServer) serveIndex(rw http.ResponseWriter, r *http.Request) {
