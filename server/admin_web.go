@@ -163,7 +163,9 @@ func (w *WebAdminServer) auth(next http.HandlerFunc) http.HandlerFunc {
 
 func (w *WebAdminServer) serveIndex(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
-	rw.Write([]byte(adminWebHTML))
+	if _, err := rw.Write([]byte(adminWebHTML)); err != nil {
+		log.Printf("Error writing HTML response: %v", err)
+	}
 }
 
 func (w *WebAdminServer) handleOverview(rw http.ResponseWriter, r *http.Request) {
@@ -687,7 +689,9 @@ func (w *WebAdminServer) updateMetrics() {
 
 	// Get current message count
 	var messageCount int
-	w.db.QueryRow("SELECT COUNT(*) FROM messages").Scan(&messageCount)
+	if err := w.db.QueryRow("SELECT COUNT(*) FROM messages").Scan(&messageCount); err != nil {
+		log.Printf("Error getting message count: %v", err)
+	}
 
 	// Add message point
 	w.metrics.MessageHistory = append(w.metrics.MessageHistory, messagePoint{
