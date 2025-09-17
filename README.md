@@ -393,17 +393,19 @@ The admin panel provides access to:
 
 ### Web Admin Panel
 
-A browser-based admin panel is also available.
+A browser-based admin panel is also available with secure session-based authentication.
 
 - **Enable**: start the server with `--web-panel`.
   ```bash
   ./marchat-server --web-panel
   ```
 - **Access**: open your browser to:
-  - Default HTTP: `http://localhost:8080/admin?key=YOUR_ADMIN_KEY`
-  - Custom port: `http://localhost:YOUR_PORT/admin?key=YOUR_ADMIN_KEY`
-  - TLS enabled: `https://localhost:YOUR_PORT/admin?key=YOUR_ADMIN_KEY`
-- **Key delivery**: you may omit the `?key=` query and enter the key when prompted, or send it via `X-Admin-Key` header.
+  - Default HTTP: `http://localhost:8080/admin`
+  - Custom port: `http://localhost:YOUR_PORT/admin`
+  - TLS enabled: `https://localhost:YOUR_PORT/admin`
+- **Authentication**: enter your admin key on the login page for secure session-based access
+- **Session security**: 2-hour expiration with HttpOnly cookies and HTTPS-only secure flags
+- **Legacy support**: `?key=YOUR_ADMIN_KEY` parameter and `X-Admin-Key` header still work as fallback
 - **Health/API check**:
   ```bash
   curl -H "X-Admin-Key: YOUR_ADMIN_KEY" http://localhost:8080/admin/api/overview
