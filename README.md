@@ -132,7 +132,14 @@ Component loggers:
 
 ## Changelog    
 
-### v0.7.0-beta.6 (Latest)    
+### v0.7.0-beta.7 (Latest)    
+- **Advanced Security Hardening**: Implemented comprehensive rate limiting and session cleanup mechanisms
+- **Session Management**: Automatic cleanup of expired sessions and failed login attempt tracking
+- **Enhanced Monitoring**: Detailed security event logging with IP-based attempt tracking
+- **Production Security**: Constant-time admin key validation and robust session lifecycle management
+- **Performance Optimization**: Efficient session cleanup with configurable intervals
+
+### v0.7.0-beta.6    
 - **Enhanced Authentication Security**: Added rate limiting and constant-time validation for admin login
 - **Brute Force Protection**: Maximum 5 login attempts per 15 minutes per IP address
 - **Security Monitoring**: Comprehensive logging of authentication events and failed attempts
@@ -237,17 +244,17 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.7.0-beta.6:**
+**Download pre-built binaries for v0.7.0-beta.7:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.6/marchat-v0.7.0-beta.6-linux-amd64.zip
-unzip marchat-v0.7.0-beta.6-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.7/marchat-v0.7.0-beta.7-linux-amd64.zip
+unzip marchat-v0.7.0-beta.7-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.6/marchat-v0.7.0-beta.6-darwin-amd64.zip
-unzip marchat-v0.7.0-beta.6-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.7/marchat-v0.7.0-beta.7-darwin-amd64.zip
+unzip marchat-v0.7.0-beta.7-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows
@@ -256,8 +263,8 @@ chmod +x marchat-server marchat-client
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.6/marchat-v0.7.0-beta.6-android-arm64.zip
-unzip marchat-v0.7.0-beta.6-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.7/marchat-v0.7.0-beta.7-android-arm64.zip
+unzip marchat-v0.7.0-beta.7-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -268,7 +275,7 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.7.0-beta.6
+docker pull codecodesxyz/marchat:v0.7.0-beta.7
 
 # Run with environment variables
 docker run -d \
