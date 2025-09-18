@@ -81,27 +81,27 @@ type metricsData struct {
 }
 
 type connectionPoint struct {
-	Time  time.Time
-	Count int
+	Time  time.Time `json:"time"`
+	Count int       `json:"count"`
 }
 
 type messagePoint struct {
-	Time  time.Time
-	Count int
+	Time  time.Time `json:"time"`
+	Count int       `json:"count"`
 }
 
 type memoryPoint struct {
-	Time   time.Time
-	Memory uint64
+	Time   time.Time `json:"time"`
+	Memory uint64    `json:"memory"`
 }
 
 // Log entry
 type logEntry struct {
-	Timestamp time.Time
-	Level     string
-	Message   string
-	User      string
-	Component string
+	Timestamp time.Time `json:"timestamp"`
+	Level     string    `json:"level"`
+	Message   string    `json:"message"`
+	User      string    `json:"user"`
+	Component string    `json:"component"`
 }
 
 // AdminPanel represents the main admin panel state
