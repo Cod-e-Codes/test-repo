@@ -143,7 +143,11 @@ func TestInstallPluginWithLocalFile(t *testing.T) {
 	}
 
 	// Create plugin manager with local registry
-	manager := NewPluginManager(pluginDir, dataDir, "file://"+registryFile)
+	absPath, err := filepath.Abs(registryFile)
+	if err != nil {
+		t.Fatalf("Failed to get absolute path: %v", err)
+	}
+	manager := NewPluginManager(pluginDir, dataDir, "file://"+absPath)
 
 	// Load the registry
 	store := manager.GetStore()

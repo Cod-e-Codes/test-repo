@@ -275,7 +275,11 @@ func TestPluginStoreIntegration(t *testing.T) {
 	}
 
 	// Create store
-	store := store.NewStore("file://"+registryFile, cacheDir)
+	absPath, err := filepath.Abs(registryFile)
+	if err != nil {
+		t.Fatalf("Failed to get absolute path: %v", err)
+	}
+	store := store.NewStore("file://"+absPath, cacheDir)
 
 	// Test 1: Refresh store
 	err = store.Refresh()

@@ -78,7 +78,11 @@ func TestRefreshWithLocalFile(t *testing.T) {
 	}
 
 	// Create store with local file URL
-	store := NewStore("file://"+registryFile, t.TempDir())
+	absPath, err := filepath.Abs(registryFile)
+	if err != nil {
+		t.Fatalf("Failed to get absolute path: %v", err)
+	}
+	store := NewStore("file://"+absPath, t.TempDir())
 
 	// Test refresh
 	err = store.Refresh()
@@ -156,7 +160,11 @@ func TestRefreshWithNewFormat(t *testing.T) {
 	}
 
 	// Create store with local file URL
-	store := NewStore("file://"+registryFile, t.TempDir())
+	absPath, err := filepath.Abs(registryFile)
+	if err != nil {
+		t.Fatalf("Failed to get absolute path: %v", err)
+	}
+	store := NewStore("file://"+absPath, t.TempDir())
 
 	// Test refresh
 	err = store.Refresh()
