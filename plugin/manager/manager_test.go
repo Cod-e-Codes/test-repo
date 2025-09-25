@@ -156,7 +156,7 @@ func TestInstallPluginWithLocalFile(t *testing.T) {
 	}
 
 	// Manually set the plugins in the store for testing
-	store.Refresh()
+	_ = store.Refresh()
 
 	// Test installing the plugin (but skip the start part to avoid hanging)
 	// We'll test the store resolution instead
@@ -253,10 +253,10 @@ func TestInstallPluginWithHTTP(t *testing.T) {
 
 			registryData, _ := json.Marshal(registry)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write(registryData)
+			_, _ = w.Write(registryData)
 		case "/plugin.zip":
 			// Return plugin ZIP file
-			w.Write(zipData)
+			_, _ = w.Write(zipData)
 		}
 	}))
 	defer server.Close()

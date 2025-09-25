@@ -115,10 +115,10 @@ func TestPluginSystemIntegration(t *testing.T) {
 
 			registryData, _ := json.Marshal(registry)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write(registryData)
+			_, _ = w.Write(registryData)
 		case "/plugin.zip":
 			// Return plugin ZIP file
-			w.Write(zipData)
+			_, _ = w.Write(zipData)
 		}
 	}))
 	defer server.Close()
