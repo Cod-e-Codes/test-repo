@@ -132,7 +132,16 @@ Component loggers:
 
 ## Changelog    
 
-### v0.7.0-beta.7 (Latest)    
+### v0.8.0-beta.1 (Latest)
+- **Test Suite Foundation**: Added comprehensive test suite covering core packages and plugin system
+- **Cross-Platform Testing**: Fixed Windows file path handling and cross-platform compatibility issues
+- **Plugin System Testing**: Enhanced plugin store, manager, and host testing with proper error handling
+- **Documentation Updates**: Updated testing documentation with realistic coverage metrics (~15% overall)
+- **Admin Panel Improvements**: Enhanced web panel metrics display with proper alignment and formatting
+- **Dependency Updates**: Updated SQLite dependency to v1.39.0 for improved performance and security
+- **Community Recognition**: Added Terminal Trove to appreciation section
+
+### v0.7.0-beta.7    
 - **Advanced Security Hardening**: Implemented comprehensive rate limiting and session cleanup mechanisms
 - **Session Management**: Automatic cleanup of expired sessions and failed login attempt tracking
 - **Enhanced Monitoring**: Detailed security event logging with IP-based attempt tracking
@@ -244,27 +253,30 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.7.0-beta.7:**
+**Download pre-built binaries for v0.8.0-beta.1:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.7/marchat-v0.7.0-beta.7-linux-amd64.zip
-unzip marchat-v0.7.0-beta.7-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.1/marchat-v0.8.0-beta.1-linux-amd64.zip
+unzip marchat-v0.8.0-beta.1-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.7/marchat-v0.7.0-beta.7-darwin-amd64.zip
-unzip marchat-v0.7.0-beta.7-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.1/marchat-v0.8.0-beta.1-darwin-amd64.zip
+unzip marchat-v0.8.0-beta.1-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
-# Windows
-# Download from GitHub releases page, extract the ZIP,
-# and run marchat-server.exe and marchat-client.exe from PowerShell or CMD.
+# Windows (amd64)
+# PowerShell (recommended):
+iwr -useb https://raw.githubusercontent.com/Cod-e-Codes/marchat/main/install.ps1 | iex
+# Or manual download:
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.1/marchat-v0.8.0-beta.1-windows-amd64.zip
+# Extract and run marchat-server.exe and marchat-client.exe from PowerShell or CMD
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.7.0-beta.7/marchat-v0.7.0-beta.7-android-arm64.zip
-unzip marchat-v0.7.0-beta.7-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.1/marchat-v0.8.0-beta.1-android-arm64.zip
+unzip marchat-v0.8.0-beta.1-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -275,7 +287,7 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.7.0-beta.7
+docker pull codecodesxyz/marchat:v0.8.0-beta.1
 
 # Run with environment variables
 docker run -d \
