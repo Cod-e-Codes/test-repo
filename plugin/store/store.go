@@ -65,8 +65,10 @@ func (s *Store) Refresh() error {
 	if strings.HasPrefix(s.registryURL, "file://") {
 		// Handle local file URLs
 		filePath := strings.TrimPrefix(s.registryURL, "file://")
-		filePath = strings.TrimPrefix(filePath, "/")
-		filePath = strings.ReplaceAll(filePath, "/", "\\")
+		// Remove leading slash on Unix systems, but preserve Windows drive letters
+		if len(filePath) > 0 && filePath[0] == '/' && (len(filePath) < 2 || filePath[1] != ':') {
+			filePath = filePath[1:]
+		}
 		data, err = os.ReadFile(filePath)
 		if err != nil {
 			return fmt.Errorf("failed to read local registry: %w", err)
