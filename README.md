@@ -35,6 +35,7 @@ A lightweight terminal chat with separate server and client binaries, real-time 
 - [Troubleshooting](#troubleshooting)  
 - [Roadmap](#roadmap)
 - [Getting Help](#getting-help)
+- [Testing](#testing)
 - [Contributing](#contributing)
 - [Appreciation](#appreciation)
 
@@ -958,6 +959,46 @@ See the [project roadmap](ROADMAP.md) for planned features, performance enhancem
 - **GitHub Discussions**: [Ask questions](https://github.com/Cod-e-Codes/marchat/discussions)
 - **Documentation**: [Plugin Ecosystem](PLUGIN_ECOSYSTEM.md)
 - **Security**: [Security Policy](SECURITY.md)
+
+## Testing
+
+marchat includes a test suite covering core functionality, cryptographic operations, and the plugin system.
+
+### Running Tests
+
+```bash
+# Run all tests
+go test ./...
+
+# Run tests with coverage
+go test -cover ./...
+
+# Run tests for specific package
+go test ./server -v
+
+# Run tests with timeout (recommended for CI)
+go test ./... -timeout 10s
+```
+
+### Test Coverage
+
+| Package | Coverage | Status |
+|---------|----------|--------|
+| `shared` | 79.4% | High |
+| `config` | 78.3% | High |
+| `plugin/store` | 47.1% | Medium |
+| `plugin/host` | 22.3% | Low |
+| `plugin/manager` | 12.4% | Low |
+| `server` | 11.9% | Low |
+| `client` | 0% | None |
+| `plugin/license` | 0% | None |
+
+### Test Scripts
+
+- **Linux/macOS**: `./test.sh`
+- **Windows**: `.\test.ps1`
+
+For detailed testing information, see [TESTING.md](TESTING.md).
 
 ## Contributing
 
