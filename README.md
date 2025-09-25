@@ -962,7 +962,7 @@ See the [project roadmap](ROADMAP.md) for planned features, performance enhancem
 
 ## Testing
 
-marchat includes a test suite covering core functionality, cryptographic operations, and the plugin system.
+marchat includes a foundational test suite covering core functionality, cryptographic operations, and the plugin system. The test suite provides good coverage for smaller utility packages but limited coverage for the main application components.
 
 ### Running Tests
 
@@ -982,16 +982,18 @@ go test ./... -timeout 10s
 
 ### Test Coverage
 
-| Package | Coverage | Status |
-|---------|----------|--------|
-| `shared` | 79.4% | High |
-| `config` | 78.3% | High |
-| `plugin/store` | 47.1% | Medium |
-| `plugin/host` | 22.3% | Low |
-| `plugin/manager` | 12.4% | Low |
-| `server` | 11.9% | Low |
-| `client` | 0% | None |
-| `plugin/license` | 0% | None |
+| Package | Coverage | Status | Notes |
+|---------|----------|--------|-------|
+| `shared` | 79.4% | High | Small utility package (~235 LOC) |
+| `config` | 78.3% | High | Small utility package (~523 LOC) |
+| `plugin/store` | 47.1% | Medium | Medium-sized package (~494 LOC) |
+| `plugin/host` | 22.3% | Low | Medium-sized package (~412 LOC) |
+| `plugin/manager` | 12.4% | Low | Medium-sized package (~383 LOC) |
+| `server` | 11.9% | Low | Large package (~4300 LOC) |
+| `client` | 0% | None | Large package (~4500 LOC) |
+| `plugin/license` | 0% | None | Small package (~188 LOC) |
+
+**Overall estimated coverage: ~15%** (weighted by lines of code)
 
 ### Test Scripts
 

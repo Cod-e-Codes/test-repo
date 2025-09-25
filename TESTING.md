@@ -4,13 +4,15 @@ This document describes the test suite for the Marchat chat application.
 
 ## Overview
 
-The Marchat test suite provides coverage of the application's core functionality, including:
+The Marchat test suite provides foundational coverage of the application's core functionality, including:
 
 - **Unit Tests**: Testing individual components and functions in isolation
 - **Integration Tests**: Testing the interaction between different components
 - **Crypto Tests**: Testing cryptographic functions and E2E encryption
 - **Database Tests**: Testing database operations and schema management
 - **Server Tests**: Testing WebSocket handling, message routing, and user management
+
+**Note**: This is a foundational test suite with good coverage for smaller utility packages but limited coverage for the main application components. Overall estimated coverage is ~15% when weighted by lines of code.
 
 ## Test Structure
 
@@ -117,16 +119,18 @@ go test -cover ./...
 
 ### Current Coverage Status
 
-| Package | Coverage | Status |
-|---------|----------|--------|
-| `shared` | 79.4% | High |
-| `config` | 78.3% | High |
-| `plugin/store` | 47.1% | Medium |
-| `plugin/host` | 22.3% | Low |
-| `plugin/manager` | 12.4% | Low |
-| `server` | 11.9% | Low |
-| `client` | 0% | None |
-| `plugin/license` | 0% | None |
+| Package | Coverage | Status | Lines of Code | Weighted Impact |
+|---------|----------|--------|---------------|-----------------|
+| `shared` | 79.4% | High | ~235 | Small |
+| `config` | 78.3% | High | ~523 | Small |
+| `plugin/store` | 47.1% | Medium | ~494 | Medium |
+| `plugin/host` | 22.3% | Low | ~412 | Medium |
+| `plugin/manager` | 12.4% | Low | ~383 | Medium |
+| `server` | 11.9% | Low | ~4300 | Large |
+| `client` | 0% | None | ~4500 | Large |
+| `plugin/license` | 0% | None | ~188 | Small |
+
+**Overall estimated coverage: ~15%** (weighted by lines of code)
 
 ### High Coverage (70%+)
 - **Shared Package**: Cryptographic operations, data types, message handling
@@ -270,8 +274,9 @@ When adding new functionality to Marchat:
 
 - **Total Tests**: 80+ individual test cases across 8 packages
 - **Coverage**: 79.4% (shared), 78.3% (config), 47.1% (plugin/store), 22.3% (plugin/host), 12.4% (plugin/manager), 11.9% (server), 0% (client, plugin/license)
+- **Overall Coverage**: ~15% (weighted by lines of code)
 - **Execution Time**: <5 seconds for full suite
 - **Reliability**: 100% deterministic, no flaky tests, no hanging tests
 - **Test Files**: 11 test files covering core functionality and plugin system
 
-This test suite ensures that Marchat maintains high quality and reliability as it evolves.
+This foundational test suite provides a solid base for testing core functionality, with room for significant expansion in the main application components.
