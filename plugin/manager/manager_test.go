@@ -498,7 +498,7 @@ func TestRefreshStore(t *testing.T) {
 
 		registryData, _ := json.Marshal(registry)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(registryData)
+		_, _ = w.Write(registryData)
 	}))
 	defer server.Close()
 
