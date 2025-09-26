@@ -23,6 +23,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 | `config/config_test.go` | Configuration loading and validation | Environment variables, validation rules |
 | `shared/crypto_test.go` | Cryptographic operations | Key generation, encryption, decryption, session keys |
 | `shared/types_test.go` | Data structures and serialization | Message types, JSON marshaling/unmarshaling |
+| `cmd/server/main_test.go` | Server main function and startup | Flag parsing, configuration validation, TLS setup, admin management |
 | `server/handlers_test.go` | Server-side request handling | Database operations, message insertion, IP extraction |
 | `server/hub_test.go` | WebSocket hub management | User bans, kicks, connection management |
 | `server/integration_test.go` | End-to-end workflows | Message flow, ban flow, concurrent operations |
@@ -39,6 +40,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Data Types**: Message structures, JSON serialization, validation
 - **Utility Functions**: IP extraction, message sorting, database stats
 - **Configuration**: Environment variable parsing, validation rules
+- **Server Main**: Flag parsing, multi-flag handling, banner display, admin username normalization
 
 #### 2. Integration Tests
 - **Message Flow**: Complete message lifecycle from insertion to retrieval
@@ -50,6 +52,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **WebSocket Handling**: Connection management, authentication, message routing
 - **Hub Management**: User registration, broadcasting, cleanup operations
 - **Admin Functions**: Ban management, user administration, system commands
+- **Server Main Function**: Flag parsing, configuration validation, TLS setup, admin username normalization, banner display
 
 ## Running Tests
 
@@ -123,7 +126,8 @@ go test -cover ./...
 |---------|----------|--------|---------------|-----------------|
 | `shared` | 79.4% | High | ~235 | Small |
 | `config` | 78.3% | High | ~523 | Small |
-| `plugin/store` | 47.1% | Medium | ~494 | Medium |
+| `cmd/server` | 5.5% | Low | ~342 | Small |
+| `plugin/store` | 46.8% | Medium | ~494 | Medium |
 | `plugin/host` | 22.3% | Low | ~412 | Medium |
 | `plugin/manager` | 12.4% | Low | ~383 | Medium |
 | `server` | 11.9% | Low | ~4300 | Large |
@@ -151,6 +155,7 @@ go test -cover ./...
 - **Client Package**: Configuration loading, crypto operations, file picker (0% coverage)
 - **Plugin Host**: Live plugin execution, WebSocket communication (22.3% coverage)
 - **Plugin Manager**: Installation, uninstallation, command execution (12.4% coverage)
+- **Server Main**: Full main function execution, server startup, admin panel integration (5.5% coverage)
 - **File Transfer**: File upload/download functionality
 - **Plugin License**: License validation and enforcement (0% coverage)
 
@@ -173,6 +178,15 @@ go test -cover ./...
 - Verifies JSON serialization/deserialization
 - Tests message ordering and timestamp handling
 - Validates encrypted message handling
+
+### Server Main Tests
+- Tests command-line flag parsing and validation
+- Verifies multi-flag functionality for admin users
+- Tests configuration loading and environment variable handling
+- Validates TLS configuration and WebSocket scheme selection
+- Tests admin username normalization and duplicate detection
+- Verifies banner display functionality
+- Tests deprecated flag warnings and backward compatibility
 
 ## Continuous Integration
 
@@ -272,11 +286,11 @@ When adding new functionality to Marchat:
 
 ## Test Metrics
 
-- **Total Tests**: 80+ individual test cases across 8 packages
-- **Coverage**: 79.4% (shared), 78.3% (config), 47.1% (plugin/store), 22.3% (plugin/host), 12.4% (plugin/manager), 11.9% (server), 0% (client, plugin/license)
+- **Total Tests**: 90+ individual test cases across 9 packages
+- **Coverage**: 79.4% (shared), 78.3% (config), 46.8% (plugin/store), 22.3% (plugin/host), 12.4% (plugin/manager), 11.9% (server), 5.5% (cmd/server), 0% (client, plugin/license)
 - **Overall Coverage**: ~15% (weighted by lines of code)
 - **Execution Time**: <5 seconds for full suite
 - **Reliability**: 100% deterministic, no flaky tests, no hanging tests
-- **Test Files**: 11 test files covering core functionality and plugin system
+- **Test Files**: 12 test files covering core functionality, plugin system, and server startup
 
 This foundational test suite provides a solid base for testing core functionality, with room for significant expansion in the main application components.
