@@ -9,6 +9,9 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# HTML coverage report generate by Go tests
+coverage.html
+
 # SQLite database
 chat.db
 marchat.db
