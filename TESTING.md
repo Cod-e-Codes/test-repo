@@ -265,6 +265,7 @@ func TestDatabaseOperation(t *testing.T) {
 4. **Memory Leaks**: Tests properly close database connections and channels
 5. **PowerShell Execution Policy**: May need to enable script execution: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
 6. **Coverage Tool Syntax**: Use `go tool cover -func coverage.out` (without equals sign)
+7. **Environment Variables Affecting Tests**: If you have `MARCHAT_*` variables (e.g., `MARCHAT_ADMIN_KEY`, `MARCHAT_USERS`) set in your shell, some tests like `TestConfigurationValidation` may fail unexpectedly. To avoid this, either unset those variables before running tests, or use a clean environment (e.g., `env -i go test ./...`). Future improvements may isolate test environments automatically.
 
 ### Debug Mode
 
