@@ -81,9 +81,6 @@ go test ./plugin/sdk
 
 #### Linux/macOS
 ```bash
-# Make the script executable
-chmod +x test.sh
-
 # Run the test suite
 ./test.sh
 ```
