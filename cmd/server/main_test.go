@@ -396,21 +396,37 @@ func TestConfigurationValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Save original environment
+			// Save original environment and clear all MARCHAT_* variables
 			originalEnv := make(map[string]string)
+			allEnvVars := os.Environ()
+
+			// First, save and clear all MARCHAT_* environment variables
+			for _, envVar := range allEnvVars {
+				if strings.HasPrefix(envVar, "MARCHAT_") {
+					parts := strings.SplitN(envVar, "=", 2)
+					if len(parts) == 2 {
+						key := parts[0]
+						originalEnv[key] = parts[1]
+						os.Unsetenv(key)
+					}
+				}
+			}
+
+			// Then set the test-specific environment variables
 			for key, value := range tt.envVars {
-				originalEnv[key] = os.Getenv(key)
 				os.Setenv(key, value)
 			}
 
 			// Clean up environment after test
 			defer func() {
+				// Clear all MARCHAT_* variables first
 				for key := range tt.envVars {
-					if originalValue, exists := originalEnv[key]; exists {
-						os.Setenv(key, originalValue)
-					} else {
-						os.Unsetenv(key)
-					}
+					os.Unsetenv(key)
+				}
+
+				// Restore original environment
+				for key, originalValue := range originalEnv {
+					os.Setenv(key, originalValue)
 				}
 			}()
 
@@ -497,21 +513,37 @@ func TestTLSConfiguration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Save original environment
+			// Save original environment and clear all MARCHAT_* variables
 			originalEnv := make(map[string]string)
+			allEnvVars := os.Environ()
+
+			// First, save and clear all MARCHAT_* environment variables
+			for _, envVar := range allEnvVars {
+				if strings.HasPrefix(envVar, "MARCHAT_") {
+					parts := strings.SplitN(envVar, "=", 2)
+					if len(parts) == 2 {
+						key := parts[0]
+						originalEnv[key] = parts[1]
+						os.Unsetenv(key)
+					}
+				}
+			}
+
+			// Then set the test-specific environment variables
 			for key, value := range tt.envVars {
-				originalEnv[key] = os.Getenv(key)
 				os.Setenv(key, value)
 			}
 
 			// Clean up environment after test
 			defer func() {
+				// Clear all MARCHAT_* variables first
 				for key := range tt.envVars {
-					if originalValue, exists := originalEnv[key]; exists {
-						os.Setenv(key, originalValue)
-					} else {
-						os.Unsetenv(key)
-					}
+					os.Unsetenv(key)
+				}
+
+				// Restore original environment
+				for key, originalValue := range originalEnv {
+					os.Setenv(key, originalValue)
 				}
 			}()
 
@@ -596,19 +628,36 @@ func TestMainFunctionIntegration(t *testing.T) {
 			"MARCHAT_USERS":     "testadmin",
 		}
 
+		// Save original environment and clear all MARCHAT_* variables
+		allEnvVars := os.Environ()
+
+		// First, save and clear all MARCHAT_* environment variables
+		for _, envVar := range allEnvVars {
+			if strings.HasPrefix(envVar, "MARCHAT_") {
+				parts := strings.SplitN(envVar, "=", 2)
+				if len(parts) == 2 {
+					key := parts[0]
+					originalEnv[key] = parts[1]
+					os.Unsetenv(key)
+				}
+			}
+		}
+
+		// Then set the test-specific environment variables
 		for key, value := range testEnv {
-			originalEnv[key] = os.Getenv(key)
 			os.Setenv(key, value)
 		}
 
 		// Clean up environment after test
 		defer func() {
+			// Clear all MARCHAT_* variables first
 			for key := range testEnv {
-				if originalValue, exists := originalEnv[key]; exists {
-					os.Setenv(key, originalValue)
-				} else {
-					os.Unsetenv(key)
-				}
+				os.Unsetenv(key)
+			}
+
+			// Restore original environment
+			for key, originalValue := range originalEnv {
+				os.Setenv(key, originalValue)
 			}
 		}()
 
