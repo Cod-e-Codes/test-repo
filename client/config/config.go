@@ -98,29 +98,33 @@ func (icl *InteractiveConfigLoader) LoadOrPromptConfig(overrides map[string]inte
 
 	// Check if user wants to use a profile or create new connection
 	if len(profiles.Profiles) > 0 {
-		fmt.Println("Available connection profiles:")
-		for i, profile := range profiles.Profiles {
-			status := ""
-			if profile.IsAdmin {
-				status += " [Admin]"
-			}
-			if profile.UseE2E {
-				status += " [E2E]"
-			}
-			fmt.Printf("  %d. %s (%s@%s)%s\n", i+1, profile.Name, profile.Username, profile.ServerURL, status)
-		}
-		fmt.Printf("  %d. Create new connection\n", len(profiles.Profiles)+1)
-		fmt.Println()
-
-		choice, err := icl.promptChoice("Select an option", 1, len(profiles.Profiles)+1)
+		// Use enhanced profile selection with management features
+		choice, isCreateNew, err := RunEnhancedProfileSelectionWithNew(profiles.Profiles, icl)
 		if err != nil {
 			return nil, "", "", "", err
 		}
 
-		if choice <= len(profiles.Profiles) {
+		if !isCreateNew {
+			// Reload profiles in case they were modified during selection
+			profiles, err = icl.LoadProfiles()
+			if err != nil {
+				return nil, "", "", "", fmt.Errorf("error reloading profiles: %w", err)
+			}
+
+			if choice >= len(profiles.Profiles) {
+				return nil, "", "", "", fmt.Errorf("invalid profile selection")
+			}
+
 			// User selected existing profile
-			profile := profiles.Profiles[choice-1]
+			profile := profiles.Profiles[choice]
 			cfg = icl.profileToConfig(profile)
+
+			// Update last used timestamp
+			profile.LastUsed = time.Now().Unix()
+			profiles.Profiles[choice] = profile
+			if err := icl.SaveProfiles(profiles); err != nil {
+				fmt.Printf("Warning: Could not update profile usage: %v\n", err)
+			}
 
 			// Still need to prompt for sensitive data
 			adminKey, keystorePass, err := icl.promptSensitiveData(cfg.IsAdmin, cfg.UseE2E)
@@ -130,6 +134,7 @@ func (icl *InteractiveConfigLoader) LoadOrPromptConfig(overrides map[string]inte
 
 			return &cfg, icl.formatLaunchCommand(&cfg, adminKey, keystorePass), adminKey, keystorePass, nil
 		}
+		// If isCreateNew is true, continue to create new configuration below
 	}
 
 	// Create new configuration interactively
@@ -303,32 +308,6 @@ func (icl *InteractiveConfigLoader) promptYesNo(prompt string, defaultValue bool
 	}
 
 	return response == "y" || response == "yes"
-}
-
-func (icl *InteractiveConfigLoader) promptChoice(prompt string, min, max int) (int, error) {
-	for {
-		fmt.Printf("%s [%d-%d]: ", prompt, min, max)
-
-		// Use a more reliable method for reading input on Windows
-		var response string
-		_, err := fmt.Scanln(&response)
-		if err != nil {
-			// If Scanln fails, try the original method as fallback
-			response, err = icl.reader.ReadString('\n')
-			if err != nil {
-				return 0, err
-			}
-		}
-
-		response = strings.TrimSpace(response)
-		var choice int
-		if _, err := fmt.Sscanf(response, "%d", &choice); err != nil || choice < min || choice > max {
-			fmt.Printf("Please enter a number between %d and %d\n", min, max)
-			continue
-		}
-
-		return choice, nil
-	}
 }
 
 func (icl *InteractiveConfigLoader) LoadProfiles() (*Profiles, error) {
@@ -525,7 +504,7 @@ func (icl *InteractiveConfigLoader) AutoConnect() (*Config, error) {
 	return &cfg, nil
 }
 
-// QuickStartConnect shows profiles and connects to selected one
+// QuickStartConnect shows profiles with management features and connects to selected one
 func (icl *InteractiveConfigLoader) QuickStartConnect() (*Config, error) {
 	profiles, err := icl.LoadProfiles()
 	if err != nil {
@@ -543,10 +522,20 @@ func (icl *InteractiveConfigLoader) QuickStartConnect() (*Config, error) {
 		return profiles.Profiles[i].LastUsed > profiles.Profiles[j].LastUsed
 	})
 
-	// Use Bubble Tea UI for profile selection
-	choice, err := RunProfileSelection(profiles.Profiles)
+	// Use enhanced Bubble Tea UI for profile selection with management features
+	choice, err := RunEnhancedProfileSelection(profiles.Profiles, icl)
 	if err != nil {
 		return nil, err
+	}
+
+	// Reload profiles in case they were modified
+	profiles, err = icl.LoadProfiles()
+	if err != nil {
+		return nil, err
+	}
+
+	if choice >= len(profiles.Profiles) {
+		return nil, fmt.Errorf("invalid profile selection")
 	}
 
 	profile := &profiles.Profiles[choice]

@@ -771,6 +771,15 @@ The client automatically saves connection profiles in platform-appropriate locat
 
 Profiles store non-sensitive connection settings like server URL, username, and preferences. Sensitive data (admin keys, keystore passphrases) are prompted for each session.
 
+**Profile Management:**
+
+During profile selection, you can manage your saved profiles using keyboard shortcuts:
+- Press `i` or `v` to view detailed profile information
+- Press `r` to rename a profile
+- Press `d` to delete a profile (with confirmation)
+
+These management features are available when using `--quick-start` or during interactive configuration when selecting from existing profiles.
+
 ### Traditional Flag-Based Configuration
 
 For automation and scripts, you can still use traditional command-line flags:

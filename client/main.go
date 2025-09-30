@@ -2391,7 +2391,7 @@ func main() {
 				return profiles.Profiles[i].LastUsed > profiles.Profiles[j].LastUsed
 			})
 
-			choice, isCreateNew, err := config.RunProfileSelectionWithNew(profiles.Profiles)
+			choice, isCreateNew, err := config.RunProfileSelectionWithNew(profiles.Profiles, loader)
 			if err != nil {
 				fmt.Printf("Profile selection error: %v\n", err)
 				os.Exit(1)
@@ -2428,6 +2428,18 @@ func main() {
 				fmt.Printf("✅ Configuration saved as '%s'! You can use --auto or --quick-start for faster connections.\n", profileName)
 
 			} else {
+				// Reload profiles in case they were modified (renamed/deleted) during selection
+				profiles, err = loader.LoadProfiles()
+				if err != nil {
+					fmt.Printf("Error reloading profiles: %v\n", err)
+					os.Exit(1)
+				}
+
+				if choice >= len(profiles.Profiles) {
+					fmt.Println("Error: Invalid profile selection")
+					os.Exit(1)
+				}
+
 				// User selected an existing profile
 				profile := &profiles.Profiles[choice]
 				fmt.Printf("Selected: %s\n", profile.Name)

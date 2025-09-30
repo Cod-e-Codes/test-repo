@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,6 +18,10 @@ var (
 	helpStyle    = blurredStyle
 	titleStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFEAA7")).Bold(true)
 	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6B6B"))
+	successStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#4CAF50"))
+	warningStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500"))
+	infoStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#00BCD4"))
+	dimStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#444444"))
 
 	focusedButton = focusedStyle.Render("[ Connect ]")
 	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Connect"))
@@ -382,7 +387,17 @@ func (m ConfigUIModel) GetKeystorePassphrase() string {
 	return m.inputs[keystorePassField].Value()
 }
 
-// ProfileSelectionModel handles profile selection UI
+// ProfileOperation represents different operations that can be performed
+type ProfileOperation int
+
+const (
+	ProfileOpNone ProfileOperation = iota
+	ProfileOpView
+	ProfileOpRename
+	ProfileOpDelete
+)
+
+// ProfileSelectionModel handles profile selection UI with management features
 type ProfileSelectionModel struct {
 	profiles      []ConnectionProfile
 	cursor        int
@@ -390,6 +405,13 @@ type ProfileSelectionModel struct {
 	cancelled     bool
 	choice        int
 	showNewOption bool // Whether to show "Create New Profile" option
+	operation     ProfileOperation
+	renameInput   textinput.Model
+	message       string
+	messageType   string                   // "success", "error", "warning", "info"
+	deleteConfirm string                   // stores the profile name being deleted
+	modified      bool                     // tracks if profiles were modified
+	icl           *InteractiveConfigLoader // for saving profiles
 }
 
 func NewProfileSelectionModel(profiles []ConnectionProfile, showNewOption bool) ProfileSelectionModel {
@@ -397,6 +419,27 @@ func NewProfileSelectionModel(profiles []ConnectionProfile, showNewOption bool) 
 		profiles:      profiles,
 		cursor:        0,
 		showNewOption: showNewOption,
+		operation:     ProfileOpNone,
+	}
+}
+
+func NewEnhancedProfileSelectionModel(profiles []ConnectionProfile, showNewOption bool, icl *InteractiveConfigLoader) ProfileSelectionModel {
+	// Initialize rename input
+	ti := textinput.New()
+	ti.Cursor.Style = cursorStyle
+	ti.CharLimit = 50
+	ti.Width = 40
+	ti.Prompt = "New name: "
+	ti.PromptStyle = focusedStyle
+	ti.TextStyle = focusedStyle
+
+	return ProfileSelectionModel{
+		profiles:      profiles,
+		cursor:        0,
+		showNewOption: showNewOption,
+		operation:     ProfileOpNone,
+		renameInput:   ti,
+		icl:           icl,
 	}
 }
 
@@ -405,34 +448,194 @@ func (m ProfileSelectionModel) Init() tea.Cmd {
 }
 
 func (m ProfileSelectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle operations first
+	switch m.operation {
+	case ProfileOpView:
+		return m.handleViewOperation(msg)
+	case ProfileOpRename:
+		return m.handleRenameOperation(msg)
+	case ProfileOpDelete:
+		return m.handleDeleteOperation(msg)
+	}
+
+	// Handle main selection
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Clear message on any key press if it's been shown
+		if m.message != "" && m.messageType != "error" {
+			m.message = ""
+			m.messageType = ""
+		}
+
 		switch msg.String() {
 		case "ctrl+c", "esc":
 			m.cancelled = true
 			return m, tea.Quit
-		case "up":
+		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
 			}
-		case "down":
+		case "down", "j":
 			maxCursor := len(m.profiles) - 1
 			if m.showNewOption {
-				maxCursor++ // Add one more option for "Create New Profile"
+				maxCursor++
 			}
 			if m.cursor < maxCursor {
 				m.cursor++
 			}
 		case "enter":
-			m.choice = m.cursor
-			m.selected = true
-			return m, tea.Quit
+			if m.showNewOption && m.cursor == len(m.profiles) {
+				// Selected "Create New Profile"
+				m.choice = m.cursor
+				m.selected = true
+				return m, tea.Quit
+			} else if m.cursor < len(m.profiles) {
+				m.choice = m.cursor
+				m.selected = true
+				return m, tea.Quit
+			}
+		case "i", "v": // View details
+			if m.cursor < len(m.profiles) {
+				m.operation = ProfileOpView
+			}
+		case "r": // Rename
+			if m.cursor < len(m.profiles) {
+				m.operation = ProfileOpRename
+				m.renameInput.SetValue(m.profiles[m.cursor].Name)
+				m.renameInput.Focus()
+				return m, textinput.Blink
+			}
+		case "d": // Delete
+			if m.cursor < len(m.profiles) {
+				if len(m.profiles) == 1 {
+					m.message = "Cannot delete the only profile"
+					m.messageType = "error"
+				} else {
+					m.operation = ProfileOpDelete
+					m.deleteConfirm = m.profiles[m.cursor].Name
+				}
+			}
+		}
+	}
+	return m, nil
+}
+
+func (m ProfileSelectionModel) handleViewOperation(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "esc", "q", "i", "v":
+			m.operation = ProfileOpNone
+		}
+	}
+	return m, nil
+}
+
+func (m ProfileSelectionModel) handleRenameOperation(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "esc":
+			m.operation = ProfileOpNone
+			m.renameInput.Blur()
+			return m, nil
+		case "enter":
+			newName := strings.TrimSpace(m.renameInput.Value())
+			if newName == "" {
+				m.message = "Profile name cannot be empty"
+				m.messageType = "error"
+				return m, nil
+			}
+
+			// Check for duplicate names
+			for i, p := range m.profiles {
+				if i != m.cursor && p.Name == newName {
+					m.message = fmt.Sprintf("Profile '%s' already exists", newName)
+					m.messageType = "error"
+					return m, nil
+				}
+			}
+
+			// Rename the profile
+			oldName := m.profiles[m.cursor].Name
+			m.profiles[m.cursor].Name = newName
+
+			// Save profiles
+			if m.icl != nil {
+				profiles := &Profiles{Profiles: m.profiles}
+				if err := m.icl.SaveProfiles(profiles); err != nil {
+					m.message = fmt.Sprintf("Failed to save: %v", err)
+					m.messageType = "error"
+					// Revert the change
+					m.profiles[m.cursor].Name = oldName
+				} else {
+					m.message = fmt.Sprintf("Renamed '%s' to '%s'", oldName, newName)
+					m.messageType = "success"
+					m.modified = true
+				}
+			}
+
+			m.operation = ProfileOpNone
+			m.renameInput.Blur()
+			return m, nil
+		default:
+			var cmd tea.Cmd
+			m.renameInput, cmd = m.renameInput.Update(msg)
+			return m, cmd
+		}
+	}
+	return m, nil
+}
+
+func (m ProfileSelectionModel) handleDeleteOperation(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "esc", "n", "N":
+			m.operation = ProfileOpNone
+			m.deleteConfirm = ""
+		case "y", "Y":
+			// Perform the deletion immediately
+			deletedName := m.profiles[m.cursor].Name
+			m.profiles = append(m.profiles[:m.cursor], m.profiles[m.cursor+1:]...)
+
+			// Adjust cursor if necessary
+			if m.cursor >= len(m.profiles) && m.cursor > 0 {
+				m.cursor--
+			}
+
+			// Save profiles
+			if m.icl != nil {
+				profiles := &Profiles{Profiles: m.profiles}
+				if err := m.icl.SaveProfiles(profiles); err != nil {
+					m.message = fmt.Sprintf("Failed to delete: %v", err)
+					m.messageType = "error"
+				} else {
+					m.message = fmt.Sprintf("Deleted profile '%s'", deletedName)
+					m.messageType = "success"
+					m.modified = true
+				}
+			}
+
+			m.operation = ProfileOpNone
+			m.deleteConfirm = ""
 		}
 	}
 	return m, nil
 }
 
 func (m ProfileSelectionModel) View() string {
+	// Show operation-specific views
+	switch m.operation {
+	case ProfileOpView:
+		return m.viewDetails()
+	case ProfileOpRename:
+		return m.viewRename()
+	case ProfileOpDelete:
+		return m.viewDelete()
+	}
+
+	// Main profile selection view
 	var b strings.Builder
 
 	if m.showNewOption {
@@ -441,6 +644,23 @@ func (m ProfileSelectionModel) View() string {
 		b.WriteString(titleStyle.Render("Quick Start - Select a connection:"))
 	}
 	b.WriteString("\n\n")
+
+	// Show message if any
+	if m.message != "" {
+		switch m.messageType {
+		case "success":
+			b.WriteString(successStyle.Render("✓ " + m.message))
+		case "error":
+			b.WriteString(errorStyle.Render("✗ " + m.message))
+		case "warning":
+			b.WriteString(warningStyle.Render("⚠ " + m.message))
+		case "info":
+			b.WriteString(infoStyle.Render("ℹ " + m.message))
+		default:
+			b.WriteString(m.message)
+		}
+		b.WriteString("\n\n")
+	}
 
 	for i, profile := range m.profiles {
 		status := ""
@@ -476,7 +696,112 @@ func (m ProfileSelectionModel) View() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(helpStyle.Render("↑/↓: Navigate • Enter: Select • Esc: Cancel"))
+	b.WriteString(helpStyle.Render("↑/↓: Navigate • Enter: Select • i: View • r: Rename • d: Delete • Esc: Cancel"))
+
+	return b.String()
+}
+
+func (m ProfileSelectionModel) viewDetails() string {
+	var b strings.Builder
+
+	if m.cursor >= len(m.profiles) {
+		return "No profile selected"
+	}
+
+	profile := m.profiles[m.cursor]
+
+	b.WriteString(titleStyle.Render("Profile Details"))
+	b.WriteString("\n\n")
+
+	b.WriteString(focusedStyle.Render("Name: "))
+	b.WriteString(profile.Name)
+	b.WriteString("\n")
+
+	b.WriteString(focusedStyle.Render("Server: "))
+	b.WriteString(profile.ServerURL)
+	b.WriteString("\n")
+
+	b.WriteString(focusedStyle.Render("Username: "))
+	b.WriteString(profile.Username)
+	b.WriteString("\n")
+
+	b.WriteString(focusedStyle.Render("Admin Access: "))
+	if profile.IsAdmin {
+		b.WriteString(successStyle.Render("Yes"))
+	} else {
+		b.WriteString(dimStyle.Render("No"))
+	}
+	b.WriteString("\n")
+
+	b.WriteString(focusedStyle.Render("E2E Encryption: "))
+	if profile.UseE2E {
+		b.WriteString(successStyle.Render("Enabled"))
+	} else {
+		b.WriteString(dimStyle.Render("Disabled"))
+	}
+	b.WriteString("\n")
+
+	if profile.Theme != "" {
+		b.WriteString(focusedStyle.Render("Theme: "))
+		b.WriteString(profile.Theme)
+		b.WriteString("\n")
+	}
+
+	if profile.LastUsed > 0 {
+		b.WriteString(focusedStyle.Render("Last Used: "))
+		lastUsed := time.Unix(profile.LastUsed, 0)
+		b.WriteString(lastUsed.Format("Jan 2, 2006 at 3:04 PM"))
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render("Press i/v/q/Esc to return"))
+
+	return b.String()
+}
+
+func (m ProfileSelectionModel) viewRename() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("Rename Profile"))
+	b.WriteString("\n\n")
+
+	b.WriteString("Current name: ")
+	b.WriteString(blurredStyle.Render(m.profiles[m.cursor].Name))
+	b.WriteString("\n\n")
+
+	b.WriteString(m.renameInput.View())
+	b.WriteString("\n\n")
+
+	if m.message != "" && m.messageType == "error" {
+		b.WriteString(errorStyle.Render("✗ " + m.message))
+		b.WriteString("\n\n")
+	}
+
+	b.WriteString(helpStyle.Render("Enter: Save • Esc: Cancel"))
+
+	return b.String()
+}
+
+func (m ProfileSelectionModel) viewDelete() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("Delete Profile"))
+	b.WriteString("\n\n")
+
+	b.WriteString(warningStyle.Render("⚠ Warning: This action cannot be undone!"))
+	b.WriteString("\n\n")
+
+	b.WriteString("Delete profile '")
+	b.WriteString(focusedStyle.Render(m.deleteConfirm))
+	b.WriteString("'?\n\n")
+
+	profile := m.profiles[m.cursor]
+	b.WriteString(dimStyle.Render(fmt.Sprintf("  Server: %s\n", profile.ServerURL)))
+	b.WriteString(dimStyle.Render(fmt.Sprintf("  Username: %s\n", profile.Username)))
+
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render("y: Confirm Delete • n/Esc: Cancel"))
 
 	return b.String()
 }
@@ -491,6 +816,10 @@ func (m ProfileSelectionModel) IsCancelled() bool {
 
 func (m ProfileSelectionModel) GetChoice() int {
 	return m.choice
+}
+
+func (m ProfileSelectionModel) IsModified() bool {
+	return m.modified
 }
 
 // IsCreateNew returns true if user selected "Create New Profile"
@@ -522,8 +851,38 @@ func RunProfileSelection(profiles []ConnectionProfile) (int, error) {
 }
 
 // RunProfileSelectionWithNew runs the profile selection UI with "Create New" option
-func RunProfileSelectionWithNew(profiles []ConnectionProfile) (int, bool, error) {
-	model := NewProfileSelectionModel(profiles, true)
+// Deprecated: Use RunEnhancedProfileSelectionWithNew instead
+func RunProfileSelectionWithNew(profiles []ConnectionProfile, icl *InteractiveConfigLoader) (int, bool, error) {
+	// Use the enhanced version with management features
+	return RunEnhancedProfileSelectionWithNew(profiles, icl)
+}
+
+// RunEnhancedProfileSelection runs the enhanced profile selection UI with management features
+func RunEnhancedProfileSelection(profiles []ConnectionProfile, icl *InteractiveConfigLoader) (int, error) {
+	model := NewEnhancedProfileSelectionModel(profiles, false, icl)
+
+	program := tea.NewProgram(model)
+	finalModel, err := program.Run()
+	if err != nil {
+		return -1, fmt.Errorf("failed to run profile selection UI: %w", err)
+	}
+
+	selectionModel := finalModel.(ProfileSelectionModel)
+
+	if selectionModel.IsCancelled() {
+		return -1, fmt.Errorf("profile selection cancelled by user")
+	}
+
+	if !selectionModel.IsSelected() {
+		return -1, fmt.Errorf("no profile selected")
+	}
+
+	return selectionModel.GetChoice(), nil
+}
+
+// RunEnhancedProfileSelectionWithNew runs the enhanced profile selection UI with "Create New" option
+func RunEnhancedProfileSelectionWithNew(profiles []ConnectionProfile, icl *InteractiveConfigLoader) (int, bool, error) {
+	model := NewEnhancedProfileSelectionModel(profiles, true, icl)
 
 	program := tea.NewProgram(model)
 	finalModel, err := program.Run()
