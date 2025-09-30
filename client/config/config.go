@@ -10,10 +10,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
-
-	"golang.org/x/term"
 )
 
 type Config struct {
@@ -226,35 +223,8 @@ func (icl *InteractiveConfigLoader) promptNewConfig() (*Config, error) {
 }
 
 func (icl *InteractiveConfigLoader) promptSensitiveData(isAdmin, useE2E bool) (adminKey, keystorePass string, err error) {
-	if isAdmin {
-		fmt.Print("Admin key: ")
-		adminKeyBytes, err := term.ReadPassword(int(syscall.Stdin))
-		if err != nil {
-			return "", "", fmt.Errorf("failed to read admin key: %w", err)
-		}
-		adminKey = strings.TrimSpace(string(adminKeyBytes))
-		fmt.Println() // New line after password input
-
-		if adminKey == "" {
-			return "", "", fmt.Errorf("admin key is required for admin connections")
-		}
-	}
-
-	if useE2E {
-		fmt.Print("Keystore passphrase: ")
-		passphraseBytes, err := term.ReadPassword(int(syscall.Stdin))
-		if err != nil {
-			return "", "", fmt.Errorf("failed to read passphrase: %w", err)
-		}
-		keystorePass = strings.TrimSpace(string(passphraseBytes))
-		fmt.Println() // New line after password input
-
-		if keystorePass == "" {
-			return "", "", fmt.Errorf("keystore passphrase is required for E2E encryption")
-		}
-	}
-
-	return adminKey, keystorePass, nil
+	// Use Bubble Tea UI for consistent user experience
+	return RunSensitiveDataPrompt(isAdmin, useE2E)
 }
 
 func (icl *InteractiveConfigLoader) promptString(prompt, defaultValue string) (string, error) {

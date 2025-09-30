@@ -903,6 +903,236 @@ func RunEnhancedProfileSelectionWithNew(profiles []ConnectionProfile, icl *Inter
 	return selectionModel.GetChoice(), selectionModel.IsCreateNew(), nil
 }
 
+// SensitiveDataModel handles prompting for admin key and keystore passphrase
+type SensitiveDataModel struct {
+	focusIndex   int
+	inputs       []textinput.Model
+	isAdmin      bool
+	useE2E       bool
+	errorMessage string
+	finished     bool
+	cancelled    bool
+	adminKey     string
+	keystorePass string
+}
+
+func NewSensitiveDataPrompt(isAdmin, useE2E bool) SensitiveDataModel {
+	inputCount := 0
+	if isAdmin {
+		inputCount++
+	}
+	if useE2E {
+		inputCount++
+	}
+
+	m := SensitiveDataModel{
+		inputs:  make([]textinput.Model, inputCount),
+		isAdmin: isAdmin,
+		useE2E:  useE2E,
+	}
+
+	idx := 0
+	if isAdmin {
+		t := textinput.New()
+		t.Placeholder = "Enter admin key"
+		t.Prompt = "Admin Key: "
+		t.CharLimit = 64
+		t.Width = 40
+		t.EchoMode = textinput.EchoPassword
+		t.EchoCharacter = '•'
+		t.Focus()
+		t.PromptStyle = focusedStyle
+		t.TextStyle = focusedStyle
+		t.Cursor.Style = cursorStyle
+		m.inputs[idx] = t
+		idx++
+	}
+
+	if useE2E {
+		t := textinput.New()
+		t.Placeholder = "Enter keystore passphrase"
+		t.Prompt = "Keystore passphrase: "
+		t.CharLimit = 128
+		t.Width = 40
+		t.EchoMode = textinput.EchoPassword
+		t.EchoCharacter = '•'
+		t.Cursor.Style = cursorStyle
+		if !isAdmin {
+			t.Focus()
+			t.PromptStyle = focusedStyle
+			t.TextStyle = focusedStyle
+		}
+		m.inputs[idx] = t
+	}
+
+	return m
+}
+
+func (m SensitiveDataModel) Init() tea.Cmd {
+	return textinput.Blink
+}
+
+func (m SensitiveDataModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "esc":
+			m.cancelled = true
+			return m, tea.Quit
+
+		case "enter":
+			// If there are multiple inputs and we're not on the last one, move to next
+			if len(m.inputs) > 1 && m.focusIndex < len(m.inputs)-1 {
+				m.focusIndex++
+				m.updateFocus()
+				return m, nil
+			}
+
+			// Validate and submit
+			m.errorMessage = "" // Clear any previous errors
+
+			if m.isAdmin {
+				adminKey := strings.TrimSpace(m.inputs[0].Value())
+				if adminKey == "" {
+					m.errorMessage = "Admin key is required"
+					return m, nil
+				}
+				m.adminKey = adminKey
+			}
+
+			if m.useE2E {
+				idx := 0
+				if m.isAdmin {
+					idx = 1
+				}
+				keystorePass := strings.TrimSpace(m.inputs[idx].Value())
+				if keystorePass == "" {
+					m.errorMessage = "Keystore passphrase is required"
+					return m, nil
+				}
+				m.keystorePass = keystorePass
+			}
+
+			m.finished = true
+			return m, tea.Quit
+
+		case "tab", "shift+tab", "up", "down":
+			if len(m.inputs) > 1 {
+				s := msg.String()
+				if s == "up" || s == "shift+tab" {
+					m.focusIndex--
+				} else {
+					m.focusIndex++
+				}
+
+				if m.focusIndex >= len(m.inputs) {
+					m.focusIndex = 0
+				} else if m.focusIndex < 0 {
+					m.focusIndex = len(m.inputs) - 1
+				}
+
+				m.updateFocus()
+				return m, nil
+			}
+		}
+	}
+
+	// Handle character input
+	cmd := m.updateInputs(msg)
+	return m, cmd
+}
+
+func (m *SensitiveDataModel) updateFocus() {
+	for i := 0; i < len(m.inputs); i++ {
+		if i == m.focusIndex {
+			m.inputs[i].Focus()
+			m.inputs[i].PromptStyle = focusedStyle
+			m.inputs[i].TextStyle = focusedStyle
+		} else {
+			m.inputs[i].Blur()
+			m.inputs[i].PromptStyle = noStyle
+			m.inputs[i].TextStyle = noStyle
+		}
+	}
+}
+
+func (m *SensitiveDataModel) updateInputs(msg tea.Msg) tea.Cmd {
+	cmds := make([]tea.Cmd, len(m.inputs))
+
+	for i := range m.inputs {
+		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
+	}
+
+	return tea.Batch(cmds...)
+}
+
+func (m SensitiveDataModel) View() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("Authentication Required"))
+	b.WriteString("\n\n")
+
+	for _, input := range m.inputs {
+		b.WriteString(input.View())
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+
+	if m.errorMessage != "" {
+		b.WriteString(errorStyle.Render("✗ " + m.errorMessage))
+		b.WriteString("\n\n")
+	}
+
+	// Show appropriate help text based on number of fields
+	if len(m.inputs) > 1 {
+		b.WriteString(helpStyle.Render("Tab/Enter: Next • Shift+Tab: Previous • Esc: Cancel"))
+	} else {
+		b.WriteString(helpStyle.Render("Enter: Submit • Esc: Cancel"))
+	}
+
+	return b.String()
+}
+
+func (m SensitiveDataModel) IsFinished() bool {
+	return m.finished
+}
+
+func (m SensitiveDataModel) IsCancelled() bool {
+	return m.cancelled
+}
+
+func (m SensitiveDataModel) GetAdminKey() string {
+	return m.adminKey
+}
+
+func (m SensitiveDataModel) GetKeystorePassphrase() string {
+	return m.keystorePass
+}
+
+// RunSensitiveDataPrompt runs the sensitive data prompt UI
+func RunSensitiveDataPrompt(isAdmin, useE2E bool) (adminKey, keystorePass string, err error) {
+	model := NewSensitiveDataPrompt(isAdmin, useE2E)
+
+	program := tea.NewProgram(model)
+	finalModel, err := program.Run()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to run sensitive data prompt: %w", err)
+	}
+
+	dataModel := finalModel.(SensitiveDataModel)
+
+	if dataModel.IsCancelled() {
+		return "", "", fmt.Errorf("authentication cancelled by user")
+	}
+
+	if !dataModel.IsFinished() {
+		return "", "", fmt.Errorf("authentication not completed")
+	}
+
+	return dataModel.GetAdminKey(), dataModel.GetKeystorePassphrase(), nil
+}
+
 // RunInteractiveConfig runs the interactive configuration UI
 func RunInteractiveConfig() (*Config, string, error) {
 	model := NewConfigUI()
