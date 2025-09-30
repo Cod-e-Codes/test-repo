@@ -142,23 +142,8 @@ func (m ConfigUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 
-			// Handle special logic for conditional fields
-			if s == "enter" {
-				switch configField(m.focusIndex) {
-				case adminField:
-					value := strings.ToLower(strings.TrimSpace(m.inputs[adminField].Value()))
-					m.showAdminKey = value == "y" || value == "yes"
-					if !m.showAdminKey {
-						m.inputs[adminKeyField].SetValue("")
-					}
-				case e2eField:
-					value := strings.ToLower(strings.TrimSpace(m.inputs[e2eField].Value()))
-					m.showE2EFields = value == "y" || value == "yes"
-					if !m.showE2EFields {
-						m.inputs[keystorePassField].SetValue("")
-					}
-				}
-			}
+			// Update conditional field visibility on any navigation
+			m.updateConditionalFields()
 
 			// Navigate between fields
 			if s == "up" || s == "shift+tab" {
@@ -184,6 +169,22 @@ func (m ConfigUIModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle character input
 	cmd := m.updateInputs(msg)
 	return m, cmd
+}
+
+func (m *ConfigUIModel) updateConditionalFields() {
+	// Update admin key field visibility
+	adminValue := strings.ToLower(strings.TrimSpace(m.inputs[adminField].Value()))
+	m.showAdminKey = adminValue == "y" || adminValue == "yes"
+	if !m.showAdminKey {
+		m.inputs[adminKeyField].SetValue("")
+	}
+
+	// Update E2E field visibility
+	e2eValue := strings.ToLower(strings.TrimSpace(m.inputs[e2eField].Value()))
+	m.showE2EFields = e2eValue == "y" || e2eValue == "yes"
+	if !m.showE2EFields {
+		m.inputs[keystorePassField].SetValue("")
+	}
 }
 
 func (m *ConfigUIModel) getNextValidFocus(index int, reverse bool) int {
