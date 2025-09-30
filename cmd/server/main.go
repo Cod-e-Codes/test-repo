@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -109,16 +110,40 @@ func main() {
 
 	// Check if required settings are missing and offer interactive configuration
 	needsInteractiveConfig := false
+	missingRequired := false
+	missingE2E := false
+
 	if cfg.AdminKey == "" {
 		needsInteractiveConfig = true
+		missingRequired = true
 	}
 	if len(cfg.Admins) == 0 {
 		needsInteractiveConfig = true
+		missingRequired = true
+	}
+
+	// Check if E2E configuration is missing when other settings are present
+	// Only prompt for E2E if this is a completely fresh install (no .env file exists)
+	if !missingRequired && cfg.GlobalE2EKey == "" {
+		configDir := cfg.ConfigDir
+		if configDir == "" {
+			configDir = "./config"
+		}
+		envPath := filepath.Join(configDir, ".env")
+		if _, err := os.Stat(envPath); os.IsNotExist(err) {
+			// No .env file exists, this is a fresh install - offer E2E configuration
+			needsInteractiveConfig = true
+			missingE2E = true
+		}
 	}
 
 	if needsInteractiveConfig {
 		fmt.Println("🚀 Welcome to marchat server setup!")
-		fmt.Println("Some required configuration is missing. Let's set it up interactively.")
+		if missingRequired {
+			fmt.Println("Some required configuration is missing. Let's set it up interactively.")
+		} else if missingE2E {
+			fmt.Println("E2E encryption configuration is missing. Let's configure it interactively.")
+		}
 		fmt.Println()
 
 		serverConfig, err := server.RunServerConfig()
