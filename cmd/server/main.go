@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -82,8 +83,8 @@ func main() {
 		configDir = envConfigDir
 	}
 
-	// Load configuration from environment variables and .env files
-	cfg, err := config.LoadConfig(configDir)
+	// Load configuration from environment variables and .env files (without validation)
+	cfg, err := config.LoadConfigWithoutValidation(configDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading configuration: %v\n", err)
 		fmt.Fprintf(os.Stderr, "\nConfiguration options:\n")
@@ -99,8 +100,67 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    MARCHAT_CONFIG_DIR=/path/to/config (optional)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_BAN_HISTORY_GAPS=true (optional, default: true)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_PLUGIN_REGISTRY_URL=url (optional, default: GitHub registry)\n")
-		fmt.Fprintf(os.Stderr, "  .env file: Create %s/.env with the above variables\n", cfg.ConfigDir)
+		fmt.Fprintf(os.Stderr, "    MARCHAT_GLOBAL_E2E_KEY=base64-key (optional, for global E2E encryption)\n")
+		fmt.Fprintf(os.Stderr, "  .env file: Create %s/.env with the above variables\n", configDir)
 		fmt.Fprintf(os.Stderr, "  Config directory: Use --config-dir or MARCHAT_CONFIG_DIR to specify custom location\n")
+		fmt.Fprintf(os.Stderr, "  Interactive setup: Run without required env vars for guided configuration\n")
+		os.Exit(1)
+	}
+
+	// Check if required settings are missing and offer interactive configuration
+	needsInteractiveConfig := false
+	if cfg.AdminKey == "" {
+		needsInteractiveConfig = true
+	}
+	if len(cfg.Admins) == 0 {
+		needsInteractiveConfig = true
+	}
+
+	if needsInteractiveConfig {
+		fmt.Println("🚀 Welcome to marchat server setup!")
+		fmt.Println("Some required configuration is missing. Let's set it up interactively.")
+		fmt.Println()
+
+		serverConfig, err := server.RunServerConfig()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Apply the interactive configuration
+		cfg.AdminKey = serverConfig.AdminKey
+		cfg.Admins = strings.Split(serverConfig.AdminUsers, ",")
+
+		// Parse port as integer
+		if port, err := strconv.Atoi(serverConfig.Port); err == nil {
+			cfg.Port = port
+		} else {
+			fmt.Fprintf(os.Stderr, "Invalid port: %s\n", serverConfig.Port)
+			os.Exit(1)
+		}
+
+		// Handle E2E configuration
+		if serverConfig.EnableE2E {
+			if serverConfig.GlobalE2EKey != "" {
+				cfg.GlobalE2EKey = serverConfig.GlobalE2EKey
+			}
+			// If no key provided, we'll let the server generate one
+		}
+
+		// Clean up admin usernames (trim whitespace)
+		for i, admin := range cfg.Admins {
+			cfg.Admins[i] = strings.TrimSpace(admin)
+		}
+
+		fmt.Println()
+		fmt.Println("✅ Configuration saved! You can now start the server.")
+		fmt.Println("💡 Tip: Set environment variables to avoid this setup next time.")
+		fmt.Println()
+	}
+
+	// Validate final configuration
+	if err := cfg.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "Configuration validation failed: %v\n", err)
 		os.Exit(1)
 	}
 

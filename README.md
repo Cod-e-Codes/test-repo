@@ -334,6 +334,9 @@ export MARCHAT_USERS="admin1,admin2"
 # Start server
 ./marchat-server
 
+# Or run without env vars for interactive setup
+./marchat-server
+
 # Or start with admin panel enabled
 ./marchat-server --admin-panel
 ```

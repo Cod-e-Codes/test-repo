@@ -41,10 +41,28 @@ type Config struct {
 
 	// File transfer settings
 	MaxFileBytes int64 `json:"max_file_bytes"`
+
+	// E2E encryption settings
+	GlobalE2EKey string `json:"global_e2e_key"`
 }
 
 // LoadConfig loads configuration from environment variables, .env files, and config files
 func LoadConfig(configDir string) (*Config, error) {
+	cfg, err := LoadConfigWithoutValidation(configDir)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
+	}
+
+	return cfg, nil
+}
+
+// LoadConfigWithoutValidation loads configuration without validation (for interactive setup)
+func LoadConfigWithoutValidation(configDir string) (*Config, error) {
 	cfg := &Config{}
 
 	// Set config directory - check environment variable first, then parameter, then default
@@ -70,11 +88,6 @@ func LoadConfig(configDir string) (*Config, error) {
 	// Load configuration from environment variables
 	if err := cfg.loadFromEnv(); err != nil {
 		return nil, fmt.Errorf("failed to load environment configuration: %w", err)
-	}
-
-	// Validate configuration
-	if err := cfg.validate(); err != nil {
-		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
 
 	return cfg, nil
@@ -169,11 +182,16 @@ func (c *Config) loadFromEnv() error {
 		c.MaxFileBytes = oneMB
 	}
 
+	// Global E2E key configuration
+	if globalE2EKey := os.Getenv("MARCHAT_GLOBAL_E2E_KEY"); globalE2EKey != "" {
+		c.GlobalE2EKey = globalE2EKey
+	}
+
 	return nil
 }
 
-// validate ensures all required configuration is present
-func (c *Config) validate() error {
+// Validate ensures all required configuration is present
+func (c *Config) Validate() error {
 	if c.Port < 1 || c.Port > 65535 {
 		return fmt.Errorf("port must be between 1 and 65535, got %d", c.Port)
 	}
