@@ -1,4 +1,5 @@
-# Ensure shell scripts always use LF line endings (required for Docker)
+# Ensure shell scripts and Docker files always use LF line endings (required for Docker)
 *.sh text eol=lf
 entrypoint.sh text eol=lf
+Dockerfile text eol=lf
 
