@@ -132,14 +132,20 @@ Component loggers:
 
 ## Changelog    
 
-### v0.8.0-beta.1 (Latest)
-- **Test Suite Foundation**: Added comprehensive test suite covering core packages and plugin system
-- **Cross-Platform Testing**: Fixed Windows file path handling and cross-platform compatibility issues
-- **Plugin System Testing**: Enhanced plugin store, manager, and host testing with proper error handling
-- **Documentation Updates**: Updated testing documentation with realistic coverage metrics (~15% overall)
-- **Admin Panel Improvements**: Enhanced web panel metrics display with proper alignment and formatting
-- **Dependency Updates**: Updated SQLite dependency to v1.39.0 for improved performance and security
-- **Community Recognition**: Added Terminal Trove to appreciation section
+### v0.8.0-beta.2 (Latest)
+- **Interactive Server Configuration**: Bubble Tea UI for server setup when environment variables are missing
+- **Profile Management**: View, rename, and delete connection profiles with keyboard shortcuts (i/v, r, d)
+- **Enhanced Client UI**: Consistent Bubble Tea UI for sensitive data prompts with password masking
+- **Smart Navigation**: Conditional field visibility updates on any navigation method (Tab, Enter, arrows)
+- **Configuration Persistence**: Interactive configurations saved to .env files in OS-appropriate locations
+- **Improved UX**: Color-coded messages, better error handling, and streamlined server startup output
+- **Documentation Updates**: Accurate test coverage metrics (9.3%), consolidated E2E encryption sections
+
+### v0.8.0-beta.1
+- **Test Suite Foundation**: Comprehensive test suite covering core packages and plugin system
+- **Cross-Platform Testing**: Fixed Windows file path handling and compatibility issues
+- **Plugin System Testing**: Enhanced plugin store, manager, and host testing
+- **Documentation Updates**: Updated testing documentation with coverage metrics
 
 ### v0.7.0-beta.7    
 - **Advanced Security Hardening**: Implemented comprehensive rate limiting and session cleanup mechanisms
@@ -176,71 +182,16 @@ Component loggers:
 - **Documentation**: Comprehensive web panel setup and access instructions
 
 ### v0.7.0-beta.2    
-- **Removed Confirmation Prompts**: Simplified admin command flow; hotkeys/text work consistently with E2E enabled.  
-- **Admin Panel Live Config**: Panel reads live `*config.Config` with improved TLS/status display.  
-- **Hotkey Launch Update**: Admin panel launched using live config; safer terminal raw-mode handling.  
-- **Security Cleanup**: Removed `server/admin_security.go` and all confirmation wiring.  
-
-### v0.7.0-beta.1    
-- **Configurable File Size Limit**: File message size can now be configured via `MARCHAT_MAX_FILE_BYTES` or `MARCHAT_MAX_FILE_MB` (default 1MB).  
-- **Aligned WebSocket Read Limit**: Server read limit scales with the configured max file size for consistent behavior.  
-- **Client Enforcement**: Both file picker and `:sendfile <path>` enforce the configured limit.  
-- **Plugin Host Fix**: Improved executable resolution to only use `.exe` on Windows.  
-- **Documentation Updates**: README updated with new environment variables and version references.  
-- **Build & Installer Updates**: Build scripts and installers updated for `v0.7.0-beta.1`.  
-- **Protocol Update**: PROTOCOL file updated to reflect configurable file size.  
-
-### v0.6.0-beta.4    
-- **Enhanced Code Editor**: Added copy, paste, cut, and select all keybinds to `:code` mode with visual text selection.  
-- **Clipboard Integration**: System clipboard support for copy/paste operations.  
-- **Multi-Line Selection**: Added multi-line text selection support with highlighting.  
-- **Documentation Updates**: Version references and install scripts updated for `v0.6.0-beta.4`.  
-
-### v0.6.0-beta.3    
-- **Improved Admin Panel**: Fixed scrolling and UI display issues with a more responsive layout.  
-- **Interactive File Picker**: Added a file browser interface for `:sendfile` with directory navigation and file type filtering.  
-- **Hyperlink Detection**: Messages now auto-detect URLs with clickable links.  
-- **Bell Notifications**: Added `:bell` and `:bell-mention` commands for audio alerts with config persistence.  
-
-### v0.6.0-beta.2    
-- **Server Admin Panel**: New `--admin-panel` flag enables built-in terminal admin panel with Ctrl+A hotkey access.  
-- **Fixed Allow Command**: Resolved `:allow` command issues with E2E encryption by implementing hotkey alternatives.  
-- **Key Binding Improvements**: Changed allow command hotkey from Ctrl+A to Ctrl+Shift+A to resolve conflicts.  
-- **Enhanced Documentation**: Updated README with comprehensive admin panel documentation and E2E encryption notes.
+- **Removed Confirmation Prompts**: Simplified admin command flow with consistent E2E support
+- **Admin Panel Live Config**: Improved TLS/status display
 
 ### v0.6.0-beta.1
-- **Admin UI with Hotkeys**: New `:admin` command opens full-screen admin panel with hotkey navigation (Tab/Shift+Tab, Enter, Esc)
-- **Code Snippet Interface**: New `:code` command opens syntax-highlighted code snippet composer with language selection and live preview
-- **Enhanced Configuration System**: Improved interactive setup with connection profiles, auto-connect, and quick-start options
-- **Optimized Performance**: Removed Glamour dependency for faster syntax highlighting using Chroma directly
-- **Better User Experience**: Full-screen modals for admin and code features, improved navigation and error handling
+- **Admin UI with Hotkeys**: Full-screen admin panel with hotkey navigation
+- **Code Snippet Interface**: Syntax-highlighted code composer
+- **Enhanced Configuration System**: Connection profiles, auto-connect, and quick-start options
 - **Cross-Platform Improvements**: Better Windows compatibility and platform-appropriate configuration directories
 
-### v0.5.0-beta.4
-- **Stale Connection Management**: Automatic cleanup of dead connections every 5 minutes with WebSocket ping health checks
-- **Enhanced Admin Commands**: Added `:cleanup` and `:forcedisconnect <username>` for manual stale connection removal
-- **Restructured Moderation System**: `:ban` now permanent until unban, `:kick` for 24h temp ban, `:allow` to override kicks early
-- **Admin-Only Plugin Installation**: Plugin installation now requires admin privileges for improved security
-- **Windows Terminal Fix**: Fixed `--quick-start` flag freezing on Windows by implementing Bubble Tea UI for profile selection
-- **Improved Documentation**: Comprehensive troubleshooting section and moderation system documentation
-
-### v0.5.0-beta.3
-- **Interactive Configuration UI**: Modern Bubble Tea-based form interface with styled colors, tab navigation, and real-time validation
-- **System Theme as Default**: New "system" theme respects terminal colors for better accessibility and out-of-box experience
-- **Duplicate Username Detection**: Intelligent error handling prevents connection loops when username is already taken
-- **Simplified E2E Encryption**: Removed individual encryption complexity, now supports global encryption only for easier deployment
-- **Enhanced User Experience**: Conditional field visibility, password masking, and helpful prompts in configuration UI
-- **Connection Profile Management**: Save and manage multiple server connections with platform-appropriate storage
-- **Quick Start Options**: `--auto` and `--quick-start` flags for instant connection to saved profiles
-- **Improved Error Handling**: Clear error messages for duplicate usernames, connection failures, and configuration issues
-- **Backward Compatibility**: All existing command-line flags continue to work as before
-
-### v0.5.0-beta.2
-- **Fixed Plugin Checksum Validation**: Corrected plugin installation checksum validation to properly validate downloaded ZIP files instead of extracted binaries
-- **Enhanced Help System**: Improved help overlay formatting with better spacing and removed deprecated individual E2E encryption commands
-- **Backward Compatibility**: Added keystore location compatibility for existing users while supporting platform-appropriate directories
-- **Documentation Updates**: Removed individual E2E encryption references from README, focusing on global encryption only
-- **Bug Fixes**: Fixed linting errors, capitalization issues, and improved overall code quality
+For the complete changelog history, see previous releases on GitHub.
 
 ## Database Schema
 
@@ -253,30 +204,30 @@ The database includes these key tables:
 
 ### Binary Installation
 
-**Download pre-built binaries for v0.8.0-beta.1:**
+**Download pre-built binaries for v0.8.0-beta.2:**
 
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.1/marchat-v0.8.0-beta.1-linux-amd64.zip
-unzip marchat-v0.8.0-beta.1-linux-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.2/marchat-v0.8.0-beta.2-linux-amd64.zip
+unzip marchat-v0.8.0-beta.2-linux-amd64.zip
 chmod +x marchat-server marchat-client
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.1/marchat-v0.8.0-beta.1-darwin-amd64.zip
-unzip marchat-v0.8.0-beta.1-darwin-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.2/marchat-v0.8.0-beta.2-darwin-amd64.zip
+unzip marchat-v0.8.0-beta.2-darwin-amd64.zip
 chmod +x marchat-server marchat-client
 
 # Windows (amd64)
 # PowerShell (recommended):
 iwr -useb https://raw.githubusercontent.com/Cod-e-Codes/marchat/main/install.ps1 | iex
 # Or manual download:
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.1/marchat-v0.8.0-beta.1-windows-amd64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.2/marchat-v0.8.0-beta.2-windows-amd64.zip
 # Extract and run marchat-server.exe and marchat-client.exe from PowerShell or CMD
 
 # Android/Termux (arm64)
 pkg install wget unzip
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.1/marchat-v0.8.0-beta.1-android-arm64.zip
-unzip marchat-v0.8.0-beta.1-android-arm64.zip
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.2/marchat-v0.8.0-beta.2-android-arm64.zip
+unzip marchat-v0.8.0-beta.2-android-arm64.zip
 chmod +x marchat-server marchat-client
 
 ```
@@ -287,14 +238,14 @@ chmod +x marchat-server marchat-client
 
 ```bash
 # Latest release
-docker pull codecodesxyz/marchat:v0.8.0-beta.1
+docker pull codecodesxyz/marchat:v0.8.0-beta.2
 
 # Run with environment variables
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.7.0-beta.2
+  codecodesxyz/marchat:v0.8.0-beta.2
 ```
 
 ### Source Installation
