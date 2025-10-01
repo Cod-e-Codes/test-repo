@@ -803,16 +803,7 @@ For automation and scripts, you can still use traditional command-line flags:
 
 ### E2E Encryption
 
-marchat uses **global E2E encryption** for secure group chat. Individual user-to-user encryption has been simplified in favor of a shared global encryption model that's easier to use and manage.
-
-**Enable E2E encryption:**
-```bash
-./marchat-client --e2e --keystore-passphrase your-passphrase --username alice --server ws://localhost:8080/ws
-```
-
-### Global E2E Encryption
-
-marchat supports global E2E encryption for public channels, allowing secure group chat. This feature uses a shared global encryption key that all clients can use to encrypt and decrypt messages in public channels.
+marchat uses **global E2E encryption** for secure group chat. Individual user-to-user encryption has been simplified in favor of a shared global encryption model that's easier to use and manage. This feature uses a shared global encryption key that all clients can use to encrypt and decrypt messages in public channels.
 
 #### How Global E2E Works
 
@@ -1008,16 +999,17 @@ go test ./... -timeout 10s
 
 | Package | Coverage | Status | Notes |
 |---------|----------|--------|-------|
+| `config` | 79.5% | High | Small utility package (~523 LOC) |
 | `shared` | 79.4% | High | Small utility package (~235 LOC) |
-| `config` | 78.3% | High | Small utility package (~523 LOC) |
-| `plugin/store` | 47.1% | Medium | Medium-sized package (~494 LOC) |
-| `plugin/host` | 22.3% | Low | Medium-sized package (~412 LOC) |
+| `plugin/store` | 46.8% | Medium | Medium-sized package (~494 LOC) |
+| `plugin/host` | 20.9% | Low | Medium-sized package (~412 LOC) |
 | `plugin/manager` | 12.4% | Low | Medium-sized package (~383 LOC) |
-| `server` | 11.9% | Low | Large package (~4300 LOC) |
+| `server` | 10.7% | Low | Large package (~4300 LOC) |
+| `cmd/server` | 4.2% | Low | Small package (~342 LOC) |
 | `client` | 0% | None | Large package (~4500 LOC) |
 | `plugin/license` | 0% | None | Small package (~188 LOC) |
 
-**Overall estimated coverage: ~15%** (weighted by lines of code)
+**Overall coverage: 9.3%** across all packages
 
 ### Test Scripts
 

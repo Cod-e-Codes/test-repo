@@ -12,7 +12,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Database Tests**: Testing database operations and schema management
 - **Server Tests**: Testing WebSocket handling, message routing, and user management
 
-**Note**: This is a foundational test suite with good coverage for smaller utility packages but limited coverage for the main application components. Overall estimated coverage is ~15% when weighted by lines of code.
+**Note**: This is a foundational test suite with good coverage for smaller utility packages but limited coverage for the main application components. Overall coverage is 9.3% across all packages.
 
 ## Test Structure
 
@@ -122,39 +122,40 @@ go test -cover ./...
 | Package | Coverage | Status | Lines of Code | Weighted Impact |
 |---------|----------|--------|---------------|-----------------|
 | `shared` | 79.4% | High | ~235 | Small |
-| `config` | 78.3% | High | ~523 | Small |
-| `cmd/server` | 5.5% | Low | ~342 | Small |
+| `config` | 79.5% | High | ~523 | Small |
+| `cmd/server` | 4.2% | Low | ~342 | Small |
 | `plugin/store` | 46.8% | Medium | ~494 | Medium |
-| `plugin/host` | 22.3% | Low | ~412 | Medium |
+| `plugin/host` | 20.9% | Low | ~412 | Medium |
 | `plugin/manager` | 12.4% | Low | ~383 | Medium |
-| `server` | 11.9% | Low | ~4300 | Large |
+| `server` | 10.7% | Low | ~4300 | Large |
 | `client` | 0% | None | ~4500 | Large |
 | `plugin/license` | 0% | None | ~188 | Small |
 
-**Overall estimated coverage: ~15%** (weighted by lines of code)
+**Overall coverage: 9.3%** (all packages)
 
 ### High Coverage (70%+)
 - **Shared Package**: Cryptographic operations, data types, message handling
 - **Config Package**: Configuration loading, validation, environment variables
 
-### Medium Coverage (50-70%)
-- **Plugin Store**: Registry management, platform resolution, filtering, caching
+### Medium Coverage (40-70%)
+- **Plugin Store**: Registry management, platform resolution, filtering, caching (46.8%)
 
-### Low Coverage (<50%)
-- **Plugin Host**: Plugin lifecycle management, communication, enable/disable
-- **Plugin Manager**: Installation, uninstallation, command execution
-- **Server Package**: Basic database operations, user management
-- **Client Package**: No test files currently exist
-- **Command Packages**: No test files currently exist
+### Low Coverage (<40%)
+- **Plugin Host**: Plugin lifecycle management, communication, enable/disable (20.9%)
+- **Plugin Manager**: Installation, uninstallation, command execution (12.4%)
+- **Server Package**: Basic database operations, user management (10.7%)
+- **Server Main**: Flag parsing, configuration validation (4.2%)
+- **Client Package**: No test files currently exist (0%)
+- **Plugin License**: No test files currently exist (0%)
 
 ### Areas for Future Testing
-- **Server Package**: WebSocket handling, message routing, admin panel (11.9% coverage)
-- **Client Package**: Configuration loading, crypto operations, file picker (0% coverage)
-- **Plugin Host**: Live plugin execution, WebSocket communication (22.3% coverage)
-- **Plugin Manager**: Installation, uninstallation, command execution (12.4% coverage)
-- **Server Main**: Full main function execution, server startup, admin panel integration (5.5% coverage)
+- **Server Package**: WebSocket handling, message routing, admin panel (current: 10.7%)
+- **Client Package**: Configuration loading, crypto operations, file picker (current: 0%)
+- **Plugin Host**: Live plugin execution, WebSocket communication (current: 20.9%)
+- **Plugin Manager**: Installation, uninstallation, command execution (current: 12.4%)
+- **Server Main**: Full main function execution, server startup, admin panel integration (current: 4.2%)
 - **File Transfer**: File upload/download functionality
-- **Plugin License**: License validation and enforcement (0% coverage)
+- **Plugin License**: License validation and enforcement (current: 0%)
 
 ## Test Data and Fixtures
 
@@ -284,10 +285,10 @@ When adding new functionality to Marchat:
 ## Test Metrics
 
 - **Total Tests**: 90+ individual test cases across 9 packages
-- **Coverage**: 79.4% (shared), 78.3% (config), 46.8% (plugin/store), 22.3% (plugin/host), 12.4% (plugin/manager), 11.9% (server), 5.5% (cmd/server), 0% (client, plugin/license)
-- **Overall Coverage**: ~15% (weighted by lines of code)
-- **Execution Time**: <5 seconds for full suite
+- **Coverage by Package**: 79.5% (config), 79.4% (shared), 46.8% (plugin/store), 20.9% (plugin/host), 12.4% (plugin/manager), 10.7% (server), 4.2% (cmd/server), 0% (client, plugin/license)
+- **Overall Coverage**: 9.3% across all packages
+- **Execution Time**: <1 second for full suite
 - **Reliability**: 100% deterministic, no flaky tests, no hanging tests
-- **Test Files**: 12 test files covering core functionality, plugin system, and server startup
+- **Test Files**: 10 test files covering core functionality, plugin system, and server startup
 
 This foundational test suite provides a solid base for testing core functionality, with room for significant expansion in the main application components.

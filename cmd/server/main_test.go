@@ -93,7 +93,7 @@ func TestPrintBanner(t *testing.T) {
 						t.Errorf("printBanner panicked: %v", r)
 					}
 				}()
-				printBanner(tt.addr, tt.admins, tt.scheme)
+				printBanner(tt.addr, tt.admins, tt.scheme, false)
 			}()
 
 			// Restore stdout

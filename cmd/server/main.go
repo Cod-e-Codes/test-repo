@@ -39,7 +39,7 @@ var configDir = flag.String("config-dir", "", "Configuration directory (default:
 var enableAdminPanel = flag.Bool("admin-panel", false, "Enable the built-in admin panel TUI")
 var enableWebPanel = flag.Bool("web-panel", false, "Enable the built-in web admin panel (served at /admin)")
 
-func printBanner(addr string, admins []string, scheme string) {
+func printBanner(addr string, admins []string, scheme string, tlsEnabled bool) {
 	fmt.Println(`
 ⢀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣶⣶⣶⣶⣶⣶⣶⣶⣶⣦⡀⠀⠀⠀⠀⠀⠀⣀⣀⣀⣀⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀  
 ⣿⣷⠀⠀⣀⣤⣴⣾⣿⡿⣿⣧⣿⣶⣿⣿⣿⣽⣿⣽⣿⣷⣤⣤⣴⣶⣾⣿⣿⡿⠿⠛⠛⠿⣷⡀⢀⣀⣀⣀⣀⡀⠀⠀⠀⠀  
@@ -71,6 +71,11 @@ func printBanner(addr string, admins []string, scheme string) {
 	fmt.Printf("\U0001F310 WebSocket: %s://%s/ws\n", scheme, addr)
 	fmt.Printf("\U0001F511 Admins: %s\n", strings.Join(admins, ", "))
 	fmt.Printf("\U0001F4E6 Version: %s\n", shared.GetServerVersionInfo())
+	if tlsEnabled {
+		fmt.Println("\U0001F512 TLS: Enabled")
+	} else {
+		fmt.Println("\U0001F513 TLS: Disabled")
+	}
 	fmt.Println("\U0001F4A1 Tip: Use --username <admin> --admin --admin-key <key> to connect as admin")
 }
 
@@ -291,15 +296,12 @@ func main() {
 	serverAddr := fmt.Sprintf("localhost:%d", listenPort)
 	scheme := cfg.GetWebSocketScheme()
 
-	log.Printf("marchat WebSocket server running on %s", addr)
+	// Print configuration info
 	log.Printf("Configuration directory: %s", cfg.ConfigDir)
 	log.Printf("Database path: %s", cfg.DBPath)
-	if cfg.IsTLSEnabled() {
-		log.Printf("TLS enabled with cert: %s, key: %s", cfg.TLSCertFile, cfg.TLSKeyFile)
-	} else {
-		log.Printf("TLS disabled - running in HTTP mode")
-	}
-	printBanner(serverAddr, admins, scheme)
+
+	// Print banner
+	printBanner(serverAddr, admins, scheme, cfg.IsTLSEnabled())
 	if adminPanelReady {
 		fmt.Println("\U0001F4BB Admin Panel: Press Ctrl+A to open admin panel, Ctrl+C to shutdown")
 	}
@@ -316,10 +318,8 @@ func main() {
 	go func() {
 		var err error
 		if cfg.IsTLSEnabled() {
-			log.Printf("Starting server with TLS on %s", addr)
 			err = srv.ListenAndServeTLS(cfg.TLSCertFile, cfg.TLSKeyFile)
 		} else {
-			log.Printf("Starting server without TLS on %s", addr)
 			err = srv.ListenAndServe()
 		}
 		if err != nil && err != http.ErrServerClosed {
