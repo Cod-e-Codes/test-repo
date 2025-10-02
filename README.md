@@ -608,7 +608,6 @@ marchat includes audio notification support to alert you when new messages arriv
 | `:code` | Open code snippet composer | `:code` |
 | `:bell` | Toggle message bell notifications | `:bell` |
 | `:bell-mention` | Toggle bell only on mentions | `:bell-mention` |
-| `:admin` | Open admin panel (admin only) | `:admin` |
 
 ### File Sharing
 
