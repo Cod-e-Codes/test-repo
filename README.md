@@ -14,16 +14,15 @@ A lightweight terminal chat with real-time messaging over WebSockets, optional E
 
 ## Latest Updates
 
-### v0.8.0-beta.2 (Current)
-- Interactive server configuration with Bubble Tea UI
-- Profile management: view, rename, delete with hotkeys (i/v, r, d)
-- Enhanced client UI with password masking
-- Smart navigation with conditional field visibility
-- Configuration persistence to .env files
-- Improved UX with color-coded messages
-- Updated test coverage metrics (9.3%)
+### v0.8.0-beta.3 (Current)
+- **Main branch simplified**: Environment variables only, no interactive setup
+- **Clear error messages**: Server exits with helpful instructions when config is missing
+- **Container-friendly**: Perfect for Docker, Unraid, systemd services
+- **Interactive setup moved**: Available on `feature/interactive-server-config` branch
+- **Docker base image updated**: Alpine 3.3.5-r0 for better compatibility
 
 ### Recent Releases
+- **v0.8.0-beta.2**: Interactive server configuration, profile management, enhanced client UI
 - **v0.8.0-beta.1**: Comprehensive test suite, cross-platform testing, plugin system tests
 - **v0.7.0-beta.7**: Advanced security hardening, session management, rate limiting
 - **v0.7.0-beta.6**: Brute force protection, timing attack prevention
@@ -110,12 +109,12 @@ Key tables for message tracking and moderation:
 **Binary Installation:**
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.2/marchat-v0.8.0-beta.2-linux-amd64.zip
-unzip marchat-v0.8.0-beta.2-linux-amd64.zip && chmod +x marchat-*
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.3/marchat-v0.8.0-beta.3-linux-amd64.zip
+unzip marchat-v0.8.0-beta.3-linux-amd64.zip && chmod +x marchat-*
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.2/marchat-v0.8.0-beta.2-darwin-amd64.zip
-unzip marchat-v0.8.0-beta.2-darwin-amd64.zip && chmod +x marchat-*
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.3/marchat-v0.8.0-beta.3-darwin-amd64.zip
+unzip marchat-v0.8.0-beta.3-darwin-amd64.zip && chmod +x marchat-*
 
 # Windows - PowerShell
 iwr -useb https://raw.githubusercontent.com/Cod-e-Codes/marchat/main/install.ps1 | iex
@@ -253,9 +252,9 @@ Enable with `--web-panel` flag, access at `http://localhost:8080/admin`:
 - HttpOnly cookies with SameSite protection
 
 **API Example:**
-```bash
+  ```bash
 curl -H "Cookie: admin_session=YOUR_SESSION" http://localhost:8080/admin/api/overview
-```
+  ```
 
 ## TLS Support
 
@@ -408,7 +407,7 @@ Guides through server URL, username, admin privileges, E2E encryption, theme sel
 ### Profile Management
 Profiles stored in platform-appropriate locations:
 - **Windows**: `%APPDATA%\marchat\profiles.json`
-- **macOS**: `~/Library/Application Support/marchat/profiles.json`
+- **macOS**: `~/Library/Application Support/marchat/profiles.json`  
 - **Linux**: `~/.config/marchat/profiles.json`
 
 **During profile selection:**
