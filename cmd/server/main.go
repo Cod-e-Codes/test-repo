@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -89,8 +87,8 @@ func main() {
 		configDir = envConfigDir
 	}
 
-	// Load configuration from environment variables and .env files (without validation)
-	cfg, err := config.LoadConfigWithoutValidation(configDir)
+	// Load configuration from environment variables and .env files
+	cfg, err := config.LoadConfig(configDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading configuration: %v\n", err)
 		fmt.Fprintf(os.Stderr, "\nConfiguration options:\n")
@@ -109,88 +107,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    MARCHAT_GLOBAL_E2E_KEY=base64-key (optional, for global E2E encryption)\n")
 		fmt.Fprintf(os.Stderr, "  .env file: Create %s/.env with the above variables\n", configDir)
 		fmt.Fprintf(os.Stderr, "  Config directory: Use --config-dir or MARCHAT_CONFIG_DIR to specify custom location\n")
-		fmt.Fprintf(os.Stderr, "  Interactive setup: Run without required env vars for guided configuration\n")
-		os.Exit(1)
-	}
-
-	// Check if required settings are missing and offer interactive configuration
-	needsInteractiveConfig := false
-	missingRequired := false
-	missingE2E := false
-
-	if cfg.AdminKey == "" {
-		needsInteractiveConfig = true
-		missingRequired = true
-	}
-	if len(cfg.Admins) == 0 {
-		needsInteractiveConfig = true
-		missingRequired = true
-	}
-
-	// Check if E2E configuration is missing when other settings are present
-	// Only prompt for E2E if this is a completely fresh install (no .env file exists)
-	if !missingRequired && cfg.GlobalE2EKey == "" {
-		configDir := cfg.ConfigDir
-		if configDir == "" {
-			configDir = "./config"
-		}
-		envPath := filepath.Join(configDir, ".env")
-		if _, err := os.Stat(envPath); os.IsNotExist(err) {
-			// No .env file exists, this is a fresh install - offer E2E configuration
-			needsInteractiveConfig = true
-			missingE2E = true
-		}
-	}
-
-	if needsInteractiveConfig {
-		fmt.Println("🚀 Welcome to marchat server setup!")
-		if missingRequired {
-			fmt.Println("Some required configuration is missing. Let's set it up interactively.")
-		} else if missingE2E {
-			fmt.Println("E2E encryption configuration is missing. Let's configure it interactively.")
-		}
-		fmt.Println()
-
-		serverConfig, err := server.RunServerConfig()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
-			os.Exit(1)
-		}
-
-		// Apply the interactive configuration
-		cfg.AdminKey = serverConfig.AdminKey
-		cfg.Admins = strings.Split(serverConfig.AdminUsers, ",")
-
-		// Parse port as integer
-		if port, err := strconv.Atoi(serverConfig.Port); err == nil {
-			cfg.Port = port
-		} else {
-			fmt.Fprintf(os.Stderr, "Invalid port: %s\n", serverConfig.Port)
-			os.Exit(1)
-		}
-
-		// Handle E2E configuration
-		if serverConfig.EnableE2E {
-			if serverConfig.GlobalE2EKey != "" {
-				cfg.GlobalE2EKey = serverConfig.GlobalE2EKey
-			}
-			// If no key provided, we'll let the server generate one
-		}
-
-		// Clean up admin usernames (trim whitespace)
-		for i, admin := range cfg.Admins {
-			cfg.Admins[i] = strings.TrimSpace(admin)
-		}
-
-		fmt.Println()
-		fmt.Println("✅ Configuration saved! You can now start the server.")
-		fmt.Println("💡 Tip: Set environment variables to avoid this setup next time.")
-		fmt.Println()
-	}
-
-	// Validate final configuration
-	if err := cfg.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "Configuration validation failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "  Interactive setup: Available on feature branch feature/interactive-server-config\n")
 		os.Exit(1)
 	}
 
