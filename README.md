@@ -12,22 +12,55 @@
 
 A lightweight terminal chat with real-time messaging over WebSockets, optional E2E encryption, and a flexible plugin ecosystem. Built for developers who prefer the command line.
 
+## Latest Updates
+
+### v0.8.0-beta.2 (Current)
+- Interactive server configuration with Bubble Tea UI
+- Profile management: view, rename, delete with hotkeys (i/v, r, d)
+- Enhanced client UI with password masking
+- Smart navigation with conditional field visibility
+- Configuration persistence to .env files
+- Improved UX with color-coded messages
+- Updated test coverage metrics (9.3%)
+
+### Recent Releases
+- **v0.8.0-beta.1**: Comprehensive test suite, cross-platform testing, plugin system tests
+- **v0.7.0-beta.7**: Advanced security hardening, session management, rate limiting
+- **v0.7.0-beta.6**: Brute force protection, timing attack prevention
+- **v0.7.0-beta.5**: CSRF protection, enhanced session security
+- **v0.7.0-beta.4**: Secure session-based login system
+- **v0.7.0-beta.3**: Web admin panel with embedded HTML and RESTful APIs
+
+Full changelog on [GitHub releases](https://github.com/Cod-e-Codes/marchat/releases).
+
 ![Server Demo](assets/demo-server.gif "marchat server startup")
 ![Client Demo](assets/demo-client-1.gif "marchat client interface")
 
 ## Features
 
 - **Terminal UI** - Beautiful TUI built with Bubble Tea
-- **Real-time Chat** - Fast WebSocket messaging with SQLite backend
+- **Real-time Chat** - Fast WebSocket messaging with SQLite backend (PostgreSQL/MySQL planned)
 - **Plugin System** - Remote registry with `:store` and `:plugin` commands
 - **E2E Encryption** - X25519/ChaCha20-Poly1305 with global encryption
 - **File Sharing** - Send files up to 1MB (configurable) with interactive picker
-- **Admin Controls** - User management, bans, database operations
+- **Admin Controls** - User management, bans, kick system with ban history gaps
 - **Bell Notifications** - Audio alerts with `:bell` and `:bell-mention`
 - **Themes** - System (default), patriot, retro, modern
-- **Docker Support** - Containerized deployment
-- **Health Monitoring** - `/health` endpoints with system metrics
-- **Structured Logging** - JSON logs with component separation
+- **Docker Support** - Containerized deployment with security features
+- **Health Monitoring** - `/health` and `/health/simple` endpoints with system metrics
+- **Structured Logging** - JSON logs with component separation and user tracking
+- **Cross-Platform** - Runs on Linux, macOS, Windows, and Android/Termux
+
+## Overview
+
+marchat started as a fun weekend project for father-son coding sessions and has evolved into a lightweight, self-hosted terminal chat application designed specifically for developers who love the command line. Currently runs with SQLite, with PostgreSQL and MySQL support planned for greater scalability.
+
+**Key Benefits:**
+- **Self-hosted**: No external services required
+- **Cross-platform**: Linux, macOS, Windows, and Android/Termux
+- **Secure**: Optional E2E encryption with X25519/ChaCha20-Poly1305
+- **Extensible**: Plugin ecosystem for custom functionality
+- **Lightweight**: Minimal resource usage, perfect for servers
 
 | Cross-Platform | Theme Switching |
 |---------------|----------------|
@@ -65,6 +98,13 @@ export MARCHAT_USERS="admin1,admin2"
 ./marchat-client
 ```
 
+## Database Schema
+
+Key tables for message tracking and moderation:
+- **messages**: Core message storage with `message_id`
+- **user_message_state**: Per-user message history state
+- **ban_history**: Ban/unban event tracking for history gaps
+
 ## Installation
 
 **Binary Installation:**
@@ -97,6 +137,10 @@ go mod tidy
 go build -o marchat-server ./cmd/server
 go build -o marchat-client ./client
 ```
+
+**Prerequisites for source build:**
+- Go 1.23+ ([download](https://go.dev/dl/))
+- Linux clipboard support: `sudo apt install xclip` (Ubuntu/Debian) or `sudo yum install xclip` (RHEL/CentOS)
 
 ## Configuration
 
@@ -139,13 +183,28 @@ go build -o marchat-client ./client
 | `:theme <name>` | Switch theme (system/patriot/retro/modern) |
 | `:time` | Toggle 12/24-hour format |
 | `:clear` | Clear chat buffer |
-| `:sendfile [path]` | Send file (or open picker) |
+| `:sendfile [path]` | Send file (or open picker without path) |
 | `:savefile <name>` | Save received file |
-| `:code` | Open code composer |
+| `:code` | Open code composer with syntax highlighting |
 | `:bell` | Toggle message notifications |
 | `:bell-mention` | Toggle mention-only notifications |
 | `:store` | Browse plugin store |
 | `:plugin install/list/uninstall` | Manage plugins |
+
+### File Sharing
+
+**Direct send:**
+```bash
+:sendfile /path/to/file.txt
+```
+
+**Interactive picker:**
+```bash
+:sendfile
+```
+Navigate with arrow keys, Enter to select/open folders, ".. (Parent Directory)" to go up.
+
+**Supported types:** Text, code, images, documents, archives (`.txt`, `.md`, `.json`, `.go`, `.py`, `.js`, `.png`, `.jpg`, `.pdf`, `.zip`, etc.)
 
 ## Keyboard Shortcuts
 
@@ -178,113 +237,323 @@ go build -o marchat-client ./client
 ## Admin Panels
 
 ### Terminal Admin Panel
-Press `Ctrl+A` when running `./marchat-server --admin-panel` to access:
-- Real-time server statistics
-- User management
+Enable with `--admin-panel` flag, then press `Ctrl+A` to access:
+- Real-time server statistics (users, messages, performance)
+- User management interface
 - Plugin configuration
 - Database operations
+- Requires terminal environment (auto-disabled in systemd/non-terminal)
 
 ### Web Admin Panel
-Access at `http://localhost:8080/admin` when running `./marchat-server --web-panel`:
-- Secure session-based login
-- Live dashboard with metrics
-- RESTful API endpoints
-- CSRF protection
+Enable with `--web-panel` flag, access at `http://localhost:8080/admin`:
+- Secure session-based login (1-hour expiration)
+- Live dashboard with metrics visualization
+- RESTful API endpoints with `X-Admin-Key` auth
+- CSRF protection on all state-changing operations
+- HttpOnly cookies with SameSite protection
+
+**API Example:**
+```bash
+curl -H "Cookie: admin_session=YOUR_SESSION" http://localhost:8080/admin/api/overview
+```
 
 ## TLS Support
 
-Enable secure WebSocket connections (wss://):
+### When to Use TLS
 
+- **Public deployments**: Server accessible from internet
+- **Production environments**: Enhanced security required
+- **Corporate networks**: Security policy compliance
+- **HTTPS reverse proxies**: Behind nginx, traefik, etc.
+
+### Configuration Examples
+
+**With TLS (production):**
 ```bash
-# Generate self-signed cert (testing)
+# Generate self-signed cert (testing only)
 openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
 
-# Configure TLS
+export MARCHAT_ADMIN_KEY="your-key"
+export MARCHAT_USERS="admin1,admin2"
 export MARCHAT_TLS_CERT_FILE="./cert.pem"
 export MARCHAT_TLS_KEY_FILE="./key.pem"
-./marchat-server
+./marchat-server  # Shows wss:// in banner
+```
 
-# Connect with TLS
+**Without TLS (development):**
+```bash
+export MARCHAT_ADMIN_KEY="your-key"
+export MARCHAT_USERS="admin1,admin2"
+./marchat-server  # Shows ws:// in banner
+```
+
+**Client with TLS:**
+```bash
+# With verification (production)
 ./marchat-client --server wss://localhost:8080/ws
 
-# Skip verification (dev only)
+# Skip verification (dev/self-signed only)
 ./marchat-client --skip-tls-verify --server wss://localhost:8080/ws
 ```
 
+> **Warning**: Use `--skip-tls-verify` only for development. Production should use valid CA-signed certificates.
+
 ## E2E Encryption
 
-Global encryption for secure group chat:
+Global encryption for secure group chat using shared keys across all clients.
 
+### How It Works
+- **Shared Key Model**: All clients use same global encryption key for public channels
+- **Simplified Management**: No complex per-user key exchange
+- **X25519/ChaCha20-Poly1305**: Industry-standard encryption algorithms
+- **Environment Variable**: `MARCHAT_GLOBAL_E2E_KEY` for key distribution
+- **Auto-Generation**: Creates new key if none provided
+
+### Setup Options
+
+**Option 1: Shared Key (Recommended)**
 ```bash
-# Generate global key
+# Generate 32-byte key
 openssl rand -base64 32
 
-# Share key with all clients
+# Set on all clients
 export MARCHAT_GLOBAL_E2E_KEY="your-generated-key"
 
 # Connect with E2E
 ./marchat-client --e2e --keystore-passphrase your-pass --username alice --server ws://localhost:8080/ws
 ```
 
+**Option 2: Auto-Generate**
+```bash
+# Client generates and displays new key
+./marchat-client --e2e --keystore-passphrase your-pass --username alice --server ws://localhost:8080/ws
+
+# Output shows:
+# 🔐 Generated new global E2E key (ID: RsLi9ON0...)
+# 💡 Set MARCHAT_GLOBAL_E2E_KEY=fF+HkmGArkPNsdb+... to share this key
+```
+
+### Expected Output
+```
+🔐 Using global E2E key from environment variable
+🌐 Global chat encryption: ENABLED (Key ID: RsLi9ON0...)
+✅ Encryption validation passed
+🔐 E2E encryption enabled with keystore: config/keystore.dat
+```
+
+### Security Features
+- **Forward Secrecy**: Unique session keys per conversation
+- **Server Privacy**: Server cannot read encrypted messages
+- **Local Keystore**: Encrypted with passphrase protection
+- **Validation**: Automatic encryption/decryption testing on startup
+
 ## Plugin System
 
+Extend functionality with remote plugins from configured registry.
+
+### Configuration
 ```bash
-# Browse available plugins
-:store
-
-# Install plugin
-:plugin install echo
-
-# List installed
-:plugin list
+# Default GitHub registry
+export MARCHAT_PLUGIN_REGISTRY_URL="https://raw.githubusercontent.com/Cod-e-Codes/marchat-plugins/main/registry.json"
 
 # Custom registry
 export MARCHAT_PLUGIN_REGISTRY_URL="https://my-registry.com/plugins.json"
 ```
 
+### Commands
+```bash
+:store                    # Browse available plugins
+:plugin install echo      # Install plugin
+:plugin list              # List installed
+:plugin uninstall echo    # Remove plugin
+```
+
+### Available Plugins
+- **Echo**: Simple echo plugin for testing
+
+See [PLUGIN_ECOSYSTEM.md](PLUGIN_ECOSYSTEM.md) for development guide.
+
+## Moderation System
+
+**Temporary Kicks (24 hours):**
+- `:kick <username>` or `Ctrl+K` for temporary discipline
+- Auto-allowed after 24 hours, or override early with `:allow`
+- Ideal for cooling-off periods
+
+**Permanent Bans (indefinite):**
+- `:ban <username>` or `Ctrl+B` for serious violations
+- Remains until manual `:unban` or `Ctrl+Shift+B`
+- Ideal for persistent troublemakers
+
+**Ban History Gaps:**
+Prevents banned users from seeing messages sent during ban periods. Enable with `MARCHAT_BAN_HISTORY_GAPS=true` (default).
+
+## Client Configuration
+
+### Interactive Mode (Default)
+```bash
+./marchat-client
+```
+Guides through server URL, username, admin privileges, E2E encryption, theme selection, and profile saving.
+
+### Quick Start Options
+```bash
+# Auto-connect to recent profile
+./marchat-client --auto
+
+# Select from saved profiles
+./marchat-client --quick-start
+```
+
+### Profile Management
+Profiles stored in platform-appropriate locations:
+- **Windows**: `%APPDATA%\marchat\profiles.json`
+- **macOS**: `~/Library/Application Support/marchat/profiles.json`
+- **Linux**: `~/.config/marchat/profiles.json`
+
+**During profile selection:**
+- `i` or `v` - View profile details
+- `r` - Rename profile
+- `d` - Delete profile
+
+### Traditional Flags
+```bash
+# Basic connection
+./marchat-client --server ws://localhost:8080/ws --username alice
+
+# Admin connection
+./marchat-client --server ws://localhost:8080/ws --username admin --admin --admin-key your-key
+
+# E2E encrypted
+./marchat-client --server ws://localhost:8080/ws --username alice --e2e --keystore-passphrase your-pass
+
+# Non-interactive (requires all flags)
+./marchat-client --non-interactive --server ws://localhost:8080/ws --username alice
+```
+
 ## Security Best Practices
 
-1. **Generate secure keys** with `openssl rand -hex 32`
-2. **Use TLS** in production (`wss://`)
-3. **Secure file permissions**: `chmod 600 marchat.db && chmod 700 config/`
-4. **Implement reverse proxy** (nginx/traefik)
-5. **Restrict network access** to trusted IPs
+1. **Generate Secure Keys**
+   ```bash
+   # Admin key (64 hex characters)
+   openssl rand -hex 32
+   
+   # Global E2E key (base64-encoded 32 bytes)
+   openssl rand -base64 32
+   ```
+
+2. **Secure File Permissions**
+   ```bash
+   chmod 600 ./config/marchat.db    # Database
+   chmod 600 ./config/keystore.dat  # Keystore
+   chmod 700 ./config               # Config directory
+   ```
+
+3. **Production Deployment**
+   - Use TLS (`wss://`) with valid CA-signed certificates
+   - Deploy behind reverse proxy (nginx/traefik)
+   - Restrict server access to trusted networks
+   - Use Docker secrets for sensitive environment variables
+   - Enable rate limiting and brute force protection
+   - Monitor security logs regularly
+
+4. **E2E Encryption**
+   - Store `MARCHAT_GLOBAL_E2E_KEY` securely
+   - Use strong keystore passphrases
+   - Never share keystores between users
+   - Rotate keys periodically for sensitive deployments
 
 ## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| Connection failed | Verify `ws://` or `wss://` protocol |
-| Admin commands not working | Check `--admin` flag and `--admin-key` |
+| Connection failed | Verify `ws://` or `wss://` protocol in URL |
+| Admin commands not working | Check `--admin` flag and correct `--admin-key` |
+| Admin commands encrypted | Hotkey alternatives work when E2E enabled (e.g., `Ctrl+Shift+A`) |
 | Clipboard issues (Linux) | Install xclip: `sudo apt install xclip` |
 | Port in use | Change port: `export MARCHAT_PORT=8081` |
-| TLS errors | Use `--skip-tls-verify` for dev with self-signed certs |
-| Username taken | Admin use `:forcedisconnect <user>` or wait 5min for auto-cleanup |
-| Global E2E errors | Verify key with `openssl rand -base64 32` |
+| Database migration fails | Check file permissions, backup before source build |
+| Message history missing | Expected after updates - user states reset for ban/unban improvements |
+| Ban history gaps not working | Ensure `MARCHAT_BAN_HISTORY_GAPS=true` (default) and `ban_history` table exists |
+| TLS certificate errors | Use `--skip-tls-verify` for dev with self-signed certs |
+| Plugin installation fails | Verify `MARCHAT_PLUGIN_REGISTRY_URL` is accessible and valid JSON |
+| E2E encryption errors | Ensure `--e2e` flag and keystore passphrase provided, check debug logs |
+| Global E2E key errors | Verify key is valid base64-encoded 32-byte key: `openssl rand -base64 32` |
+| Blank encrypted messages | Fixed in v0.3.0-beta.5+ - ensure latest version |
+| Username already taken | Use admin `:forcedisconnect <user>` or wait 5min for auto-cleanup |
+| Stale connections | Server auto-cleans every 5min, or admin use `:cleanup` |
+| Client frozen at startup | Fixed in latest - `--quick-start` uses proper UI |
+
+### Stale Connection Management
+
+**Automatic:** Server detects and removes stale connections every 5 minutes using WebSocket ping.
+
+**Manual (Admin):**
+```bash
+:cleanup                    # Clean all stale connections
+:forcedisconnect username   # Force disconnect specific user
+```
+
+**Common scenarios:**
+- Client crash/Ctrl+C: Auto-cleaned within 5 minutes
+- Network interruption: Removed on next cleanup cycle
+- Immediate reconnect: Admin uses `:forcedisconnect`
 
 ## Testing
 
+Foundational test suite covering core functionality, cryptography, and plugins.
+
+### Running Tests
 ```bash
-# Run all tests
-go test ./...
-
-# With coverage
-go test -cover ./...
-
-# Test scripts
-./test.sh          # Linux/macOS
-.\test.ps1         # Windows
+go test ./...              # Run all tests
+go test -cover ./...       # With coverage
+go test ./server -v        # Specific package
+go test ./... -timeout 10s # With timeout (CI recommended)
 ```
 
-**Overall coverage: 9.3%** - See [TESTING.md](TESTING.md) for details.
+### Test Scripts
+- **Linux/macOS**: `./test.sh`
+- **Windows**: `.\test.ps1`
+
+### Coverage Summary
+| Package | Coverage | Size | Status |
+|---------|----------|------|--------|
+| `config` | 79.5% | ~523 LOC | High |
+| `shared` | 79.4% | ~235 LOC | High |
+| `plugin/store` | 46.8% | ~494 LOC | Medium |
+| `plugin/host` | 20.9% | ~412 LOC | Low |
+| `plugin/manager` | 12.4% | ~383 LOC | Low |
+| `server` | 10.7% | ~4300 LOC | Low |
+| `cmd/server` | 4.2% | ~342 LOC | Low |
+| `client` | 0% | ~4500 LOC | None |
+| `plugin/license` | 0% | ~188 LOC | None |
+
+**Overall: 9.3%** - See [TESTING.md](TESTING.md) for detailed information.
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup instructions
+- Code style guidelines and conventions
+- Pull request process and requirements
+- Testing expectations
+
+**Quick Start:**
+```bash
+git clone https://github.com/Cod-e-Codes/marchat.git
+cd marchat
+go mod tidy
+go test ./...
+```
 
 ## Documentation
 
-- [Plugin Ecosystem](PLUGIN_ECOSYSTEM.md)
-- [Roadmap](ROADMAP.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security Policy](SECURITY.md)
-- [Testing Guide](TESTING.md)
+- **[PLUGIN_ECOSYSTEM.md](PLUGIN_ECOSYSTEM.md)** - Plugin development guide
+- **[ROADMAP.md](ROADMAP.md)** - Planned features and enhancements
+- **[TESTING.md](TESTING.md)** - Comprehensive testing guide
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+- **[SECURITY.md](SECURITY.md)** - Security policy and reporting
+- **[CONTRIBUTORS.md](CONTRIBUTORS.md)** - Full contributor list
 
 ## Getting Help
 
