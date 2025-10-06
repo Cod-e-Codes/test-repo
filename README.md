@@ -240,15 +240,15 @@ chmod +x marchat-server marchat-client
 # Latest release
 docker pull codecodesxyz/marchat:v0.8.0-beta.2
 
-# Run with interactive configuration prompt
-docker run -it -p 8080:8080 codecodesxyz/marchat:v0.8.0-beta.2
-
-# Or run with environment variables (for non-interactive/background use)
+# Run with environment variables (recommended)
 docker run -d \
   -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
   codecodesxyz/marchat:v0.8.0-beta.2
+
+# Note: An experimental interactive server configuration exists on a separate
+# branch and is not part of main. Use environment variables on main.
 ```
 
 ### Source Installation
