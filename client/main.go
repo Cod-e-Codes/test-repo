@@ -273,6 +273,39 @@ var (
 	nonInteractive     = flag.Bool("non-interactive", false, "Skip interactive prompts (require all flags)")
 )
 
+// isTermux detects if the client is running in Termux environment
+func isTermux() bool {
+	return os.Getenv("TERMUX_VERSION") != "" ||
+		os.Getenv("PREFIX") == "/data/data/com.termux/files/usr" ||
+		(os.Getenv("ANDROID_DATA") != "" && os.Getenv("ANDROID_ROOT") != "")
+}
+
+// safeClipboardOperation wraps clipboard operations with a timeout to prevent freezing
+func safeClipboardOperation(operation func() error, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- operation()
+	}()
+
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// checkClipboardSupport tests if clipboard operations work in the current environment
+func checkClipboardSupport() bool {
+	err := safeClipboardOperation(func() error {
+		return clipboard.WriteAll("test")
+	}, 1*time.Second)
+	return err == nil
+}
+
 // Add these helper functions after the existing imports and before the model struct
 
 // debugEncryptAndSend provides comprehensive logging around encryption
@@ -1351,8 +1384,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.textarea.Focused() {
 				text := m.textarea.Value()
 				if text != "" {
-					if err := clipboard.WriteAll(text); err != nil {
-						m.banner = "❌ Failed to copy to clipboard: " + err.Error()
+					err := safeClipboardOperation(func() error {
+						return clipboard.WriteAll(text)
+					}, 2*time.Second)
+
+					if err != nil {
+						if isTermux() {
+							m.banner = fmt.Sprintf("⚠️ Clipboard unavailable in Termux. Text: %s", text)
+						} else if err == context.DeadlineExceeded {
+							m.banner = "⚠️ Clipboard operation timed out"
+						} else {
+							m.banner = "❌ Failed to copy to clipboard: " + err.Error()
+						}
 					} else {
 						m.banner = "✅ Copied to clipboard"
 					}
@@ -1362,11 +1405,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case key.Matches(v, m.keys.Paste): // Custom Paste
 			if m.textarea.Focused() {
-				text, err := clipboard.ReadAll()
+				var text string
+				err := safeClipboardOperation(func() error {
+					var readErr error
+					text, readErr = clipboard.ReadAll()
+					return readErr
+				}, 2*time.Second)
+
 				if err != nil {
-					m.banner = "❌ Failed to paste from clipboard: " + err.Error()
+					if isTermux() {
+						m.banner = "⚠️ Clipboard unavailable in Termux. Paste manually or use other methods."
+					} else if err == context.DeadlineExceeded {
+						m.banner = "⚠️ Clipboard operation timed out"
+					} else {
+						m.banner = "❌ Failed to paste from clipboard: " + err.Error()
+					}
 				} else {
 					m.textarea.SetValue(m.textarea.Value() + text)
+					m.banner = "✅ Pasted from clipboard"
 				}
 				return m, nil
 			}
@@ -1375,12 +1431,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.textarea.Focused() {
 				text := m.textarea.Value()
 				if text != "" {
-					if err := clipboard.WriteAll(text); err != nil {
-						m.banner = "❌ Failed to cut to clipboard: " + err.Error()
+					err := safeClipboardOperation(func() error {
+						return clipboard.WriteAll(text)
+					}, 2*time.Second)
+
+					if err != nil {
+						if isTermux() {
+							m.banner = fmt.Sprintf("⚠️ Clipboard unavailable in Termux. Text cleared: %s", text)
+						} else if err == context.DeadlineExceeded {
+							m.banner = "⚠️ Clipboard operation timed out"
+						} else {
+							m.banner = "❌ Failed to cut to clipboard: " + err.Error()
+						}
 					} else {
-						m.textarea.SetValue("")
 						m.banner = "✅ Cut to clipboard"
 					}
+					m.textarea.SetValue("")
 				}
 				return m, nil
 			}
@@ -1389,8 +1455,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.textarea.Focused() {
 				text := m.textarea.Value()
 				if text != "" {
-					if err := clipboard.WriteAll(text); err != nil {
-						m.banner = "❌ Failed to select all: " + err.Error()
+					err := safeClipboardOperation(func() error {
+						return clipboard.WriteAll(text)
+					}, 2*time.Second)
+
+					if err != nil {
+						if isTermux() {
+							m.banner = fmt.Sprintf("⚠️ Clipboard unavailable in Termux. Full text: %s", text)
+						} else if err == context.DeadlineExceeded {
+							m.banner = "⚠️ Clipboard operation timed out"
+						} else {
+							m.banner = "❌ Failed to select all: " + err.Error()
+						}
 					} else {
 						m.banner = "✅ Selected all and copied to clipboard"
 					}
@@ -2550,6 +2626,14 @@ func validateFlags(isAdmin bool, adminKey string, useE2E bool, keystorePassphras
 func initializeClient(cfg *config.Config, adminKeyParam, keystorePassphraseParam string) {
 	// Your existing client initialization code here...
 	fmt.Printf("Connecting to %s as %s...\n", cfg.ServerURL, cfg.Username)
+
+	// Termux clipboard availability notice
+	if isTermux() {
+		fmt.Println("⚠️  Termux environment detected")
+		if !checkClipboardSupport() {
+			fmt.Println("⚠️  Clipboard operations may be unavailable - text will be shown in banner")
+		}
+	}
 
 	// Use platform-appropriate config path for saving
 	var configFilePath string
