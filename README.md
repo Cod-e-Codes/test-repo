@@ -117,15 +117,20 @@ go build -o marchat-client ./client
 
 ## Admin Commands
 
+### User Management
 | Command | Description | Hotkey |
 |---------|-------------|--------|
-| `:cleardb` | Wipe server database | - |
-| `:ban <user>` | Permanent ban | - |
-| `:kick <user>` | 24h temporary ban | - |
-| `:unban <user>` | Remove permanent ban | - |
+| `:ban <user>` | Permanent ban | `Ctrl+B` (with user selected) |
+| `:kick <user>` | 24h temporary ban | `Ctrl+K` (with user selected) |
+| `:unban <user>` | Remove permanent ban | `Ctrl+Shift+B` |
 | `:allow <user>` | Override kick early | `Ctrl+Shift+A` |
+| `:forcedisconnect <user>` | Force disconnect user | `Ctrl+F` (with user selected) |
 | `:cleanup` | Clean stale connections | - |
-| `:forcedisconnect <user>` | Force disconnect user | - |
+
+### Database Operations (`:cleardb` or `Ctrl+D` menu)
+- **Clear DB** - Wipe all messages
+- **Backup DB** - Create database backup
+- **Show Stats** - Display database statistics
 
 ## User Commands
 
@@ -144,6 +149,7 @@ go build -o marchat-client ./client
 
 ## Keyboard Shortcuts
 
+### General
 | Key | Action |
 |-----|--------|
 | `Ctrl+H` | Toggle help overlay |
@@ -151,8 +157,23 @@ go build -o marchat-client ./client
 | `Esc` | Quit |
 | `↑/↓` | Scroll history |
 | `PgUp/PgDn` | Page through history |
-| `Ctrl+C/V/X` | Copy/Paste/Cut |
-| `Ctrl+A` (server) | Open admin panel |
+| `Ctrl+C/V/X/A` | Copy/Paste/Cut/Select all |
+
+### Admin Interface (Client)
+| Key | Action |
+|-----|--------|
+| `Ctrl+U` | Select/cycle user |
+| `Ctrl+D` | Database operations menu |
+| `Ctrl+K` | Kick selected user |
+| `Ctrl+B` | Ban selected user |
+| `Ctrl+F` | Force disconnect selected user |
+| `Ctrl+Shift+B` | Unban user (prompts for username) |
+| `Ctrl+Shift+A` | Allow user (prompts for username) |
+
+### Server
+| Key | Action |
+|-----|--------|
+| `Ctrl+A` | Open terminal admin panel |
 
 ## Admin Panels
 
