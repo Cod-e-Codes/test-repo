@@ -14,14 +14,15 @@ A lightweight terminal chat with real-time messaging over WebSockets, optional E
 
 ## Latest Updates
 
-### v0.8.0-beta.3 (Current)
-- **Main branch simplified**: Environment variables only, no interactive setup
-- **Clear error messages**: Server exits with helpful instructions when config is missing
-- **Container-friendly**: Perfect for Docker, Unraid, systemd services
-- **Interactive setup moved**: Available on `feature/interactive-server-config` branch
-- **Docker base image updated**: Alpine 3.3.5-r0 for better compatibility
+### v0.8.0-beta.4 (Current)
+- **Interactive setup**: New `--interactive` flag for guided server configuration
+- **Simplified setup**: Focus on server-specific config only (admin key, users, port)
+- **Clear separation**: E2E encryption configuration remains client-side only
+- **Enhanced UX**: Better error messages and setup guidance
+- **Backward compatible**: Existing environment variable approach unchanged
 
 ### Recent Releases
+- **v0.8.0-beta.3**: Environment variables only setup, container-friendly configuration
 - **v0.8.0-beta.2**: Interactive server configuration, profile management, enhanced client UI
 - **v0.8.0-beta.1**: Comprehensive test suite, cross-platform testing, plugin system tests
 - **v0.7.0-beta.7**: Advanced security hardening, session management, rate limiting
