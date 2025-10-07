@@ -12,7 +12,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Database Tests**: Testing database operations and schema management
 - **Server Tests**: Testing WebSocket handling, message routing, and user management
 
-**Note**: This is a foundational test suite with good coverage for smaller utility packages and significantly improved coverage for client components. Overall coverage is 27.0% across all packages.
+**Note**: This is a foundational test suite with good coverage for smaller utility packages and significantly improved coverage for client and server components. Overall coverage is 32.4% across all packages.
 
 ## Test Structure
 
@@ -33,6 +33,11 @@ The Marchat test suite provides foundational coverage of the application's core 
 | `server/handlers_test.go` | Server-side request handling | Database operations, message insertion, IP extraction |
 | `server/hub_test.go` | WebSocket hub management | User bans, kicks, connection management |
 | `server/integration_test.go` | End-to-end workflows | Message flow, ban flow, concurrent operations |
+| `server/admin_web_test.go` | Admin web interface | HTTP endpoints, authentication, admin panel functionality |
+| `server/config_ui_test.go` | Server configuration UI | Configuration management, environment handling |
+| `server/admin_panel_test.go` | Admin panel functionality | Admin-specific operations and controls |
+| `server/db_test.go` | Database operations | Database initialization, schema setup |
+| `server/config_test.go` | Server configuration | Server configuration logic and validation |
 | `plugin/sdk/plugin_test.go` | Plugin SDK | Message types, JSON serialization, validation |
 | `plugin/host/host_test.go` | Plugin Host | Plugin lifecycle, communication, enable/disable |
 | `plugin/store/store_test.go` | Plugin Store | Registry management, platform resolution, filtering |
@@ -53,6 +58,10 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Client Main**: Message rendering, user lists, URL handling, encryption functions, flag validation
 - **Client File Picker**: File browsing, directory navigation, file selection, size validation, error handling
 - **Server Main**: Flag parsing, multi-flag handling, banner display, admin username normalization
+- **Server Admin Web**: HTTP endpoints, authentication, admin panel functionality, web interface
+- **Server Configuration**: Configuration management, environment handling, UI components
+- **Server Database**: Database initialization, schema setup, connection management
+- **Server Admin Panel**: Admin-specific operations, user management, administrative controls
 
 #### 2. Integration Tests
 - **Message Flow**: Complete message lifecycle from insertion to retrieval
@@ -138,14 +147,14 @@ go test -cover ./...
 | `client/crypto` | 76.5% | High | ~200 | Small |
 | `client/config` | 55.2% | Medium | ~150 | Small |
 | `plugin/store` | 46.8% | Medium | ~494 | Medium |
+| `server` | 27.0% | Medium | ~4300 | Large |
 | `client` | 27.8% | Medium | ~2769 | Large |
 | `plugin/host` | 22.3% | Low | ~412 | Medium |
 | `plugin/manager` | 12.4% | Low | ~383 | Medium |
-| `server` | 11.0% | Low | ~4300 | Large |
 | `cmd/server` | 5.6% | Low | ~342 | Small |
 | `plugin/license` | 0% | None | ~188 | Small |
 
-**Overall coverage: 26.9%** (all packages)
+**Overall coverage: 32.4%** (all packages)
 
 ### High Coverage (70%+)
 - **Shared Package**: Cryptographic operations, data types, message handling
@@ -154,18 +163,18 @@ go test -cover ./...
 
 ### Medium Coverage (40-70%)
 - **Client Config Package**: Configuration management, path utilities, keystore migration, interactive UI (55.2%)
-- **Client Package**: Message rendering, user lists, encryption functions, flag validation (27.8%)
 - **Plugin Store**: Registry management, platform resolution, filtering, caching (46.8%)
+- **Server Package**: WebSocket handling, admin panel, database operations, configuration management (27.0%)
+- **Client Package**: Message rendering, user lists, encryption functions, flag validation (27.8%)
 
 ### Low Coverage (<40%)
 - **Plugin Host**: Plugin lifecycle management, communication, enable/disable (22.3%)
 - **Plugin Manager**: Installation, uninstallation, command execution (12.4%)
-- **Server Package**: Basic database operations, user management (11.0%)
 - **Server Main**: Flag parsing, configuration validation (5.6%)
 - **Plugin License**: No test files currently exist (0%)
 
 ### Areas for Future Testing
-- **Server Package**: WebSocket handling, message routing, admin panel (current: 11.0%)
+- **Server Package**: Advanced WebSocket handling, complex message routing scenarios (current: 27.0%)
 - **Client Package**: WebSocket communication, full TUI integration (current: 27.8%)
 - **Plugin Host**: Live plugin execution, WebSocket communication (current: 22.3%)
 - **Plugin Manager**: Installation, uninstallation, command execution (current: 12.4%)
@@ -302,10 +311,10 @@ When adding new functionality to Marchat:
 ## Test Metrics
 
 - **Total Tests**: 245+ individual test cases across 11 packages
-- **Coverage by Package**: 79.4% (shared), 78.6% (config), 76.5% (client/crypto), 55.2% (client/config), 46.8% (plugin/store), 27.8% (client), 22.3% (plugin/host), 12.4% (plugin/manager), 11.0% (server), 5.6% (cmd/server), 0% (plugin/license)
-- **Overall Coverage**: 26.9% across all packages
+- **Coverage by Package**: 79.4% (shared), 78.6% (config), 76.5% (client/crypto), 55.2% (client/config), 46.8% (plugin/store), 27.8% (client), 27.0% (server), 22.3% (plugin/host), 12.4% (plugin/manager), 5.6% (cmd/server), 0% (plugin/license)
+- **Overall Coverage**: 32.4% across all packages
 - **Execution Time**: <3 seconds for full suite
 - **Reliability**: 100% deterministic, no flaky tests, no hanging tests
-- **Test Files**: 15 test files covering core functionality, client components, plugin system, and server startup
+- **Test Files**: 23 test files covering core functionality, client components, plugin system, server operations, and admin interfaces
 
 This foundational test suite provides a solid base for testing core functionality, with room for significant expansion in the main application components.

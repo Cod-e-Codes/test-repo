@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -282,9 +283,9 @@ func (m *ServerConfigModel) validateAndBuildConfig() error {
 		return fmt.Errorf("port is required")
 	}
 
-	// Validate port is numeric
-	if port != "8080" && (port < "1" || port > "65535") {
-		return fmt.Errorf("port must be between 1 and 65535")
+	// Validate port is numeric and in range
+	if p, err := strconv.Atoi(port); err != nil || p < 1 || p > 65535 {
+		return fmt.Errorf("port must be a number between 1 and 65535")
 	}
 
 	// Build config
