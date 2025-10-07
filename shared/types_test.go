@@ -63,12 +63,8 @@ func TestMessageWithFile(t *testing.T) {
 	}
 
 	msg := Message{
-		Sender:    "testuser",
-		Content:   "", // Empty for file messages
-		CreatedAt: time.Now(),
-		Type:      FileMessageType,
-		Encrypted: false,
-		File:      fileMeta,
+		Type: FileMessageType,
+		File: fileMeta,
 	}
 
 	if msg.Type != FileMessageType {
@@ -277,11 +273,7 @@ func TestMessageTypes(t *testing.T) {
 
 func TestMessageDefaults(t *testing.T) {
 	// Test message with minimal fields
-	msg := Message{
-		Sender:    "user",
-		Content:   "message",
-		CreatedAt: time.Now(),
-	}
+	msg := Message{}
 
 	// Default values should be applied
 	if msg.Type != "" {
