@@ -537,13 +537,13 @@ go test ./... -timeout 10s # With timeout (CI recommended)
 | `plugin/store` | 46.8% | ~494 LOC | Medium |
 | `plugin/host` | 22.3% | ~412 LOC | Low |
 | `plugin/manager` | 12.4% | ~383 LOC | Low |
-| `client/config` | 11.1% | ~150 LOC | Low |
+| `client/config` | 55.2% | ~150 LOC | Medium |
 | `server` | 11.0% | ~4300 LOC | Low |
 | `client` | 9.8% | ~200 LOC | Low |
 | `cmd/server` | 5.6% | ~342 LOC | Low |
 | `plugin/license` | 0% | ~188 LOC | None |
 
-**Overall: 15.3%** - See [TESTING.md](TESTING.md) for detailed information.
+**Overall: 21.6%** - See [TESTING.md](TESTING.md) for detailed information.
 
 ## Contributing
 
