@@ -254,7 +254,7 @@ func main() {
 		adminPanelReady = true
 	}
 
-	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, key, cfg.BanGapsHistory, cfg.MaxFileBytes))
+	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, key, cfg.BanGapsHistory, cfg.MaxFileBytes, cfg.DBPath))
 
 	// Web admin panel routes (optional)
 	if *enableWebPanel {

@@ -276,7 +276,8 @@ func TestIntegrationWebSocketHandshake(t *testing.T) {
 	maxFileBytes := int64(10 * 1024 * 1024) // 10MB
 
 	// Create handler
-	handler := ServeWs(hub, db, adminList, adminKey, banGapsHistory, maxFileBytes)
+	dbPath := "test_marchat.db"
+	handler := ServeWs(hub, db, adminList, adminKey, banGapsHistory, maxFileBytes, dbPath)
 
 	// Test regular user handshake
 	handshake := shared.Handshake{

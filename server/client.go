@@ -26,6 +26,7 @@ type Client struct {
 	ipAddr               string // Store IP address for logging and ban enforcement
 	pluginCommandHandler *PluginCommandHandler
 	maxFileBytes         int64
+	dbPath               string // Store database path for backup operations
 }
 
 func (c *Client) readPump() {
@@ -340,10 +341,8 @@ func (c *Client) handleAdminCommand(command string) {
 
 	case ":backup":
 		log.Printf("[ADMIN] Database backup requested by %s", c.username)
-		// We need the database file path - this should be passed from the server config
-		// For now, we'll use a default path - this should be made configurable
-		dbPath := "marchat.db" // This should be configurable
-		backupFilename, err := BackupDatabase(dbPath)
+		// Use the configured database path
+		backupFilename, err := BackupDatabase(c.dbPath)
 		if err != nil {
 			log.Printf("Failed to backup database: %v", err)
 			c.send <- shared.Message{
