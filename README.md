@@ -13,7 +13,12 @@ A lightweight terminal chat with real-time messaging over WebSockets, optional E
 
 ## Latest Updates
 
-### v0.8.0-beta.4 (Current)
+### v0.8.0-beta.5 (Current)
+- **Database backup fix**: Fixed `:backup` command to use configured DB path instead of hardcoded `marchat.db`
+- **Improved admin commands**: Admin session backup now respects `MARCHAT_DB_PATH` setting
+- **Bug fix**: Resolves issue #53 where custom database names caused backup failures
+
+### v0.8.0-beta.4
 - **Interactive setup**: New `--interactive` flag for guided server configuration
 - **Simplified setup**: Focus on server-specific config only (admin key, users, port)
 - **Clear separation**: E2E encryption configuration remains client-side only
