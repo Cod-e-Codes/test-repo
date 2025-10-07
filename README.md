@@ -531,18 +531,18 @@ go test ./... -timeout 10s # With timeout (CI recommended)
 ### Coverage Summary
 | Package | Coverage | Size | Status |
 |---------|----------|------|--------|
-| `plugin/license` | 83.1% | ~647 LOC | High |
-| `shared` | 82.4% | ~1045 LOC | High |
-| `config` | 78.6% | ~625 LOC | High |
-| `client/crypto` | 76.5% | ~610 LOC | High |
-| `client/config` | 55.2% | ~3174 LOC | Medium |
-| `plugin/store` | 46.8% | ~1117 LOC | Medium |
-| `cmd/license` | 42.2% | ~515 LOC | Medium |
-| `server` | 35.4% | ~7815 LOC | Medium |
-| `client` | 27.8% | ~5932 LOC | Medium |
-| `plugin/host` | 22.3% | ~782 LOC | Low |
-| `plugin/manager` | 12.4% | ~1141 LOC | Low |
-| `cmd/server` | 5.6% | ~1093 LOC | Low |
+| `plugin/license` | 83.1% | 229 LOC | High |
+| `shared` | 82.4% | 283 LOC | High |
+| `config` | 78.6% | 304 LOC | High |
+| `client/crypto` | 76.5% | 289 LOC | High |
+| `client/config` | 55.2% | 1816 LOC | Medium |
+| `plugin/store` | 46.8% | 559 LOC | Medium |
+| `cmd/license` | 42.2% | 160 LOC | Medium |
+| `server` | 35.4% | 5391 LOC | Medium |
+| `client` | 27.8% | 3679 LOC | Medium |
+| `plugin/host` | 22.3% | 486 LOC | Low |
+| `plugin/manager` | 12.4% | 464 LOC | Low |
+| `cmd/server` | 5.6% | 403 LOC | Low |
 
 **Overall: 37.1%** - See [TESTING.md](TESTING.md) for detailed information.
 
