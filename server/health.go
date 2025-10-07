@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -51,6 +52,7 @@ type HealthChecker struct {
 	db         *sql.DB
 	version    string
 	components map[string]*ComponentHealth
+	mutex      sync.RWMutex
 }
 
 // NewHealthChecker creates a new health checker
@@ -87,15 +89,19 @@ func (hc *HealthChecker) CheckHealth() *HealthCheck {
 
 	// Check database health
 	dbHealth := hc.checkDatabaseHealth()
-	hc.components["database"] = dbHealth
 
 	// Check websocket health
 	wsHealth := hc.checkWebSocketHealth()
-	hc.components["websocket"] = wsHealth
 
 	// Check memory health
 	memHealth := hc.checkMemoryHealth()
+
+	// Update components with write lock
+	hc.mutex.Lock()
+	hc.components["database"] = dbHealth
+	hc.components["websocket"] = wsHealth
 	hc.components["memory"] = memHealth
+	hc.mutex.Unlock()
 
 	// Determine overall status
 	overallStatus := hc.determineOverallStatus()
@@ -197,6 +203,9 @@ func (hc *HealthChecker) determineOverallStatus() HealthStatus {
 	hasUnhealthy := false
 	hasDegraded := false
 
+	hc.mutex.RLock()
+	defer hc.mutex.RUnlock()
+
 	for _, component := range hc.components {
 		switch component.Status {
 		case HealthStatusUnhealthy:
@@ -230,17 +239,24 @@ func (hc *HealthChecker) getSystemMetrics() SystemMetrics {
 		_ = hc.db.QueryRow("SELECT COUNT(*) FROM messages").Scan(&totalMessages)
 	}
 
+	hc.mutex.RLock()
+	databaseStatus := hc.components["database"].Status.String()
+	hc.mutex.RUnlock()
+
 	return SystemMetrics{
 		MemoryUsage:    float64(m.Alloc) / 1024 / 1024,
 		Goroutines:     runtime.NumGoroutine(),
 		ActiveUsers:    activeUsers,
 		TotalMessages:  totalMessages,
-		DatabaseStatus: hc.components["database"].Status.String(),
+		DatabaseStatus: databaseStatus,
 	}
 }
 
 // getComponentsMap returns a copy of the components map
 func (hc *HealthChecker) getComponentsMap() map[string]ComponentHealth {
+	hc.mutex.RLock()
+	defer hc.mutex.RUnlock()
+
 	components := make(map[string]ComponentHealth)
 	for name, health := range hc.components {
 		components[name] = *health

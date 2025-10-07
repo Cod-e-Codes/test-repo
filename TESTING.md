@@ -12,7 +12,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Database Tests**: Testing database operations and schema management
 - **Server Tests**: Testing WebSocket handling, message routing, and user management
 
-**Note**: This is a foundational test suite with good coverage for smaller utility packages and significantly improved coverage for client and server components. Overall coverage is 32.4% across all packages.
+**Note**: This is a foundational test suite with good coverage for smaller utility packages and significantly improved coverage for client and server components. Overall coverage is 35.4% across all packages.
 
 ## Test Structure
 
@@ -38,6 +38,8 @@ The Marchat test suite provides foundational coverage of the application's core 
 | `server/admin_panel_test.go` | Admin panel functionality | Admin-specific operations and controls |
 | `server/db_test.go` | Database operations | Database initialization, schema setup |
 | `server/config_test.go` | Server configuration | Server configuration logic and validation |
+| `server/client_test.go` | Server client management | WebSocket client initialization, message handling, admin operations |
+| `server/health_test.go` | Server health monitoring | Health checks, system metrics, HTTP endpoints, concurrent access |
 | `plugin/sdk/plugin_test.go` | Plugin SDK | Message types, JSON serialization, validation |
 | `plugin/host/host_test.go` | Plugin Host | Plugin lifecycle, communication, enable/disable |
 | `plugin/store/store_test.go` | Plugin Store | Registry management, platform resolution, filtering |
@@ -74,6 +76,8 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Hub Management**: User registration, broadcasting, cleanup operations
 - **Admin Functions**: Ban management, user administration, system commands
 - **Server Main Function**: Flag parsing, configuration validation, TLS setup, admin username normalization, banner display
+- **Client Management**: WebSocket client initialization, message handling, admin operations, connection settings
+- **Health Monitoring**: Database health checks, system metrics collection, HTTP endpoints, concurrent access safety
 
 ## Running Tests
 
@@ -147,14 +151,14 @@ go test -cover ./...
 | `client/crypto` | 76.5% | High | ~200 | Small |
 | `client/config` | 55.2% | Medium | ~150 | Small |
 | `plugin/store` | 46.8% | Medium | ~494 | Medium |
-| `server` | 27.0% | Medium | ~4300 | Large |
+| `server` | 35.4% | Medium | ~4300 | Large |
 | `client` | 27.8% | Medium | ~2769 | Large |
 | `plugin/host` | 22.3% | Low | ~412 | Medium |
 | `plugin/manager` | 12.4% | Low | ~383 | Medium |
 | `cmd/server` | 5.6% | Low | ~342 | Small |
 | `plugin/license` | 0% | None | ~188 | Small |
 
-**Overall coverage: 32.4%** (all packages)
+**Overall coverage: 35.4%** (all packages)
 
 ### High Coverage (70%+)
 - **Shared Package**: Cryptographic operations, data types, message handling
@@ -310,9 +314,9 @@ When adding new functionality to Marchat:
 
 ## Test Metrics
 
-- **Total Tests**: 245+ individual test cases across 11 packages
-- **Coverage by Package**: 79.4% (shared), 78.6% (config), 76.5% (client/crypto), 55.2% (client/config), 46.8% (plugin/store), 27.8% (client), 27.0% (server), 22.3% (plugin/host), 12.4% (plugin/manager), 5.6% (cmd/server), 0% (plugin/license)
-- **Overall Coverage**: 32.4% across all packages
+- **Total Tests**: 322 individual test cases across 11 packages
+- **Coverage by Package**: 79.4% (shared), 78.6% (config), 76.5% (client/crypto), 55.2% (client/config), 46.8% (plugin/store), 35.4% (server), 27.8% (client), 22.3% (plugin/host), 12.4% (plugin/manager), 5.6% (cmd/server), 0% (plugin/license)
+- **Overall Coverage**: 35.4% across all packages
 - **Execution Time**: <3 seconds for full suite
 - **Reliability**: 100% deterministic, no flaky tests, no hanging tests
 - **Test Files**: 23 test files covering core functionality, client components, plugin system, server operations, and admin interfaces
