@@ -300,7 +300,7 @@ When adding new functionality to Marchat:
 
 ## Test Metrics
 
-- **Total Tests**: 160+ individual test cases across 11 packages
+- **Total Tests**: 245+ individual test cases across 11 packages
 - **Coverage by Package**: 79.4% (shared), 78.6% (config), 76.5% (client/crypto), 46.8% (plugin/store), 22.3% (plugin/host), 12.4% (plugin/manager), 11.1% (client/config), 11.0% (server), 16.2% (client), 5.6% (cmd/server), 0% (plugin/license)
 - **Overall Coverage**: 23.5% across all packages
 - **Execution Time**: <3 seconds for full suite
