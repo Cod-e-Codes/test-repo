@@ -46,7 +46,7 @@ try {
             Write-Host "Generating coverage report..." -ForegroundColor Yellow
             Write-Host "=============================" -ForegroundColor Yellow
             
-            go tool cover -html=coverage.out -o coverage.html
+            go tool cover -html coverage.out -o coverage.html
             
             Write-Host "Coverage report generated: coverage.html" -ForegroundColor Green
             
@@ -54,7 +54,7 @@ try {
             Write-Host ""
             Write-Host "Coverage Summary:" -ForegroundColor Yellow
             Write-Host "=================" -ForegroundColor Yellow
-            $coverageSummary = go tool cover -func=coverage.out | Select-Object -Last 1
+            $coverageSummary = go tool cover -func coverage.out | Select-Object -Last 1
             Write-Host $coverageSummary -ForegroundColor White
         }
         

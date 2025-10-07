@@ -53,7 +53,7 @@ if go test ./...; then
     echo "=================================="
     
     go test -coverprofile=coverage.out ./...
-    go tool cover -html=coverage.out -o coverage.html
+    go tool cover -html coverage.out -o coverage.html
     
     print_status "Coverage report generated: coverage.html"
     
@@ -61,7 +61,7 @@ if go test ./...; then
     echo ""
     echo "Coverage Summary:"
     echo "================="
-    go tool cover -func=coverage.out | tail -1
+    go tool cover -func coverage.out | tail -1
     
     echo ""
     print_status "Test suite completed successfully!"
