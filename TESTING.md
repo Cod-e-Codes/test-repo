@@ -12,7 +12,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Database Tests**: Testing database operations and schema management
 - **Server Tests**: Testing WebSocket handling, message routing, and user management
 
-**Note**: This is a foundational test suite with good coverage for smaller utility packages but limited coverage for the main application components. Overall coverage is 9.3% across all packages.
+**Note**: This is a foundational test suite with good coverage for smaller utility packages and improving coverage for client components. Overall coverage is 12.5% across all packages.
 
 ## Test Structure
 
@@ -23,6 +23,9 @@ The Marchat test suite provides foundational coverage of the application's core 
 | `config/config_test.go` | Configuration loading and validation | Environment variables, validation rules |
 | `shared/crypto_test.go` | Cryptographic operations | Key generation, encryption, decryption, session keys |
 | `shared/types_test.go` | Data structures and serialization | Message types, JSON marshaling/unmarshaling |
+| `client/crypto/keystore_test.go` | Client keystore management | Keystore initialization, encryption/decryption, file I/O |
+| `client/config/config_test.go` | Client configuration management | Config loading/saving, path utilities, keystore migration |
+| `client/main_test.go` | Client main functionality | Basic client operations and initialization |
 | `cmd/server/main_test.go` | Server main function and startup | Flag parsing, configuration validation, TLS setup, admin management |
 | `server/handlers_test.go` | Server-side request handling | Database operations, message insertion, IP extraction |
 | `server/hub_test.go` | WebSocket hub management | User bans, kicks, connection management |
@@ -40,6 +43,8 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Data Types**: Message structures, JSON serialization, validation
 - **Utility Functions**: IP extraction, message sorting, database stats
 - **Configuration**: Environment variable parsing, validation rules
+- **Client Keystore**: Keystore initialization, encryption/decryption, file operations, passphrase handling
+- **Client Config**: Configuration loading/saving, path utilities, keystore migration
 - **Server Main**: Flag parsing, multi-flag handling, banner display, admin username normalization
 
 #### 2. Integration Tests
@@ -122,38 +127,42 @@ go test -cover ./...
 | Package | Coverage | Status | Lines of Code | Weighted Impact |
 |---------|----------|--------|---------------|-----------------|
 | `shared` | 79.4% | High | ~235 | Small |
-| `config` | 79.5% | High | ~523 | Small |
-| `cmd/server` | 4.2% | Low | ~342 | Small |
+| `config` | 78.6% | High | ~523 | Small |
+| `client/crypto` | 76.5% | High | ~200 | Small |
 | `plugin/store` | 46.8% | Medium | ~494 | Medium |
-| `plugin/host` | 20.9% | Low | ~412 | Medium |
+| `plugin/host` | 22.3% | Low | ~412 | Medium |
 | `plugin/manager` | 12.4% | Low | ~383 | Medium |
-| `server` | 10.7% | Low | ~4300 | Large |
-| `client` | 0% | None | ~4500 | Large |
+| `client/config` | 11.1% | Low | ~150 | Small |
+| `server` | 11.0% | Low | ~4300 | Large |
+| `cmd/server` | 5.6% | Low | ~342 | Small |
+| `client` | 0.3% | Low | ~150 | Small |
 | `plugin/license` | 0% | None | ~188 | Small |
 
-**Overall coverage: 9.3%** (all packages)
+**Overall coverage: 12.5%** (all packages)
 
 ### High Coverage (70%+)
 - **Shared Package**: Cryptographic operations, data types, message handling
 - **Config Package**: Configuration loading, validation, environment variables
+- **Client Crypto Package**: Keystore management, encryption/decryption, file operations
 
 ### Medium Coverage (40-70%)
 - **Plugin Store**: Registry management, platform resolution, filtering, caching (46.8%)
 
 ### Low Coverage (<40%)
-- **Plugin Host**: Plugin lifecycle management, communication, enable/disable (20.9%)
+- **Plugin Host**: Plugin lifecycle management, communication, enable/disable (22.3%)
 - **Plugin Manager**: Installation, uninstallation, command execution (12.4%)
-- **Server Package**: Basic database operations, user management (10.7%)
-- **Server Main**: Flag parsing, configuration validation (4.2%)
-- **Client Package**: No test files currently exist (0%)
+- **Client Config Package**: Configuration management, path utilities, keystore migration (11.1%)
+- **Server Package**: Basic database operations, user management (11.0%)
+- **Server Main**: Flag parsing, configuration validation (5.6%)
+- **Client Package**: Basic main functionality (0.3%)
 - **Plugin License**: No test files currently exist (0%)
 
 ### Areas for Future Testing
-- **Server Package**: WebSocket handling, message routing, admin panel (current: 10.7%)
-- **Client Package**: Configuration loading, crypto operations, file picker (current: 0%)
-- **Plugin Host**: Live plugin execution, WebSocket communication (current: 20.9%)
+- **Server Package**: WebSocket handling, message routing, admin panel (current: 11.0%)
+- **Client Package**: Interactive UI, file picker, WebSocket communication (current: 0.3%)
+- **Plugin Host**: Live plugin execution, WebSocket communication (current: 22.3%)
 - **Plugin Manager**: Installation, uninstallation, command execution (current: 12.4%)
-- **Server Main**: Full main function execution, server startup, admin panel integration (current: 4.2%)
+- **Server Main**: Full main function execution, server startup, admin panel integration (current: 5.6%)
 - **File Transfer**: File upload/download functionality
 - **Plugin License**: License validation and enforcement (current: 0%)
 
@@ -170,6 +179,7 @@ go test -cover ./...
 - Tests ChaCha20-Poly1305 encryption
 - Verifies session key derivation
 - Tests key validation and ID generation
+- **Client Keystore**: Tests keystore initialization, encryption/decryption, file operations, passphrase handling
 
 ### Message Tests
 - Tests various message types (text, file, admin)
@@ -284,11 +294,11 @@ When adding new functionality to Marchat:
 
 ## Test Metrics
 
-- **Total Tests**: 90+ individual test cases across 9 packages
-- **Coverage by Package**: 79.5% (config), 79.4% (shared), 46.8% (plugin/store), 20.9% (plugin/host), 12.4% (plugin/manager), 10.7% (server), 4.2% (cmd/server), 0% (client, plugin/license)
-- **Overall Coverage**: 9.3% across all packages
-- **Execution Time**: <1 second for full suite
+- **Total Tests**: 120+ individual test cases across 11 packages
+- **Coverage by Package**: 79.4% (shared), 78.6% (config), 76.5% (client/crypto), 46.8% (plugin/store), 22.3% (plugin/host), 12.4% (plugin/manager), 11.1% (client/config), 11.0% (server), 5.6% (cmd/server), 0.3% (client), 0% (plugin/license)
+- **Overall Coverage**: 12.5% across all packages
+- **Execution Time**: <2 seconds for full suite
 - **Reliability**: 100% deterministic, no flaky tests, no hanging tests
-- **Test Files**: 10 test files covering core functionality, plugin system, and server startup
+- **Test Files**: 13 test files covering core functionality, client components, plugin system, and server startup
 
 This foundational test suite provides a solid base for testing core functionality, with room for significant expansion in the main application components.
