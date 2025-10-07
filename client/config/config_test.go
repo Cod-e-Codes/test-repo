@@ -178,9 +178,15 @@ func TestGetKeystorePath(t *testing.T) {
 	// Test with no legacy keystore
 	tmpDir := t.TempDir()
 	originalDir, _ := os.Getwd()
-	defer os.Chdir(originalDir)
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to restore original directory: %v", err)
+		}
+	}()
 
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
 
 	keystorePath, err := GetKeystorePath()
 	if err != nil {
@@ -197,9 +203,15 @@ func TestGetKeystorePathWithLegacy(t *testing.T) {
 	// Test with legacy keystore in current directory
 	tmpDir := t.TempDir()
 	originalDir, _ := os.Getwd()
-	defer os.Chdir(originalDir)
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to restore original directory: %v", err)
+		}
+	}()
 
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
 
 	// Create legacy keystore
 	legacyPath := "keystore.dat"
@@ -223,9 +235,15 @@ func TestGetKeystorePathWithLegacy(t *testing.T) {
 func TestMigrateKeystoreToNewLocation(t *testing.T) {
 	tmpDir := t.TempDir()
 	originalDir, _ := os.Getwd()
-	defer os.Chdir(originalDir)
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to restore original directory: %v", err)
+		}
+	}()
 
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
 
 	// Clean up any existing keystore in the config directory
 	configDir, _ := GetConfigDir()
@@ -270,9 +288,15 @@ func TestMigrateKeystoreToNewLocation(t *testing.T) {
 func TestMigrateKeystoreAlreadyExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	originalDir, _ := os.Getwd()
-	defer os.Chdir(originalDir)
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to restore original directory: %v", err)
+		}
+	}()
 
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
 
 	// Create legacy keystore
 	legacyData := []byte("legacy keystore data")
