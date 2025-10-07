@@ -12,7 +12,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Database Tests**: Testing database operations and schema management
 - **Server Tests**: Testing WebSocket handling, message routing, and user management
 
-**Note**: This is a foundational test suite with good coverage for smaller utility packages and improving coverage for client components. Overall coverage is 21.6% across all packages.
+**Note**: This is a foundational test suite with good coverage for smaller utility packages and improving coverage for client components. Overall coverage is 23.5% across all packages.
 
 ## Test Structure
 
@@ -27,6 +27,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 | `client/config/config_test.go` | Client configuration management | Config loading/saving, path utilities, keystore migration |
 | `client/config/interactive_ui_test.go` | Client interactive UI components | TUI forms, profile selection, authentication prompts |
 | `client/code_snippet_test.go` | Client code snippet functionality | Text editing, selection, clipboard, syntax highlighting |
+| `client/file_picker_test.go` | Client file picker functionality | File browsing, selection, size validation, directory navigation |
 | `client/main_test.go` | Client main functionality | Basic client operations and initialization |
 | `cmd/server/main_test.go` | Server main function and startup | Flag parsing, configuration validation, TLS setup, admin management |
 | `server/handlers_test.go` | Server-side request handling | Database operations, message insertion, IP extraction |
@@ -49,6 +50,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Client Config**: Configuration loading/saving, path utilities, keystore migration
 - **Client Interactive UI**: TUI forms, profile selection, authentication prompts, navigation, validation
 - **Client Code Snippet**: Text editing, selection, clipboard operations, syntax highlighting, state management
+- **Client File Picker**: File browsing, directory navigation, file selection, size validation, error handling
 - **Server Main**: Flag parsing, multi-flag handling, banner display, admin username normalization
 
 #### 2. Integration Tests
@@ -138,11 +140,11 @@ go test -cover ./...
 | `plugin/manager` | 12.4% | Low | ~383 | Medium |
 | `client/config` | 55.2% | Medium | ~150 | Small |
 | `server` | 11.0% | Low | ~4300 | Large |
-| `client` | 9.8% | Low | ~200 | Small |
+| `client` | 16.2% | Low | ~200 | Small |
 | `cmd/server` | 5.6% | Low | ~342 | Small |
 | `plugin/license` | 0% | None | ~188 | Small |
 
-**Overall coverage: 21.6%** (all packages)
+**Overall coverage: 23.5%** (all packages)
 
 ### High Coverage (70%+)
 - **Shared Package**: Cryptographic operations, data types, message handling
@@ -298,11 +300,11 @@ When adding new functionality to Marchat:
 
 ## Test Metrics
 
-- **Total Tests**: 140+ individual test cases across 11 packages
-- **Coverage by Package**: 79.4% (shared), 78.6% (config), 76.5% (client/crypto), 46.8% (plugin/store), 22.3% (plugin/host), 12.4% (plugin/manager), 11.1% (client/config), 11.0% (server), 9.8% (client), 5.6% (cmd/server), 0% (plugin/license)
-- **Overall Coverage**: 21.6% across all packages
+- **Total Tests**: 160+ individual test cases across 11 packages
+- **Coverage by Package**: 79.4% (shared), 78.6% (config), 76.5% (client/crypto), 46.8% (plugin/store), 22.3% (plugin/host), 12.4% (plugin/manager), 11.1% (client/config), 11.0% (server), 16.2% (client), 5.6% (cmd/server), 0% (plugin/license)
+- **Overall Coverage**: 23.5% across all packages
 - **Execution Time**: <3 seconds for full suite
 - **Reliability**: 100% deterministic, no flaky tests, no hanging tests
-- **Test Files**: 14 test files covering core functionality, client components, plugin system, and server startup
+- **Test Files**: 15 test files covering core functionality, client components, plugin system, and server startup
 
 This foundational test suite provides a solid base for testing core functionality, with room for significant expansion in the main application components.
