@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -36,6 +37,7 @@ var configPath = flag.String("config", "", "Path to server config file (JSON, de
 var configDir = flag.String("config-dir", "", "Configuration directory (default: ./config in dev, $XDG_CONFIG_HOME/marchat in prod)")
 var enableAdminPanel = flag.Bool("admin-panel", false, "Enable the built-in admin panel TUI")
 var enableWebPanel = flag.Bool("web-panel", false, "Enable the built-in web admin panel (served at /admin)")
+var interactiveFlag = flag.Bool("interactive", false, "Enable interactive setup when required configuration is missing")
 
 func printBanner(addr string, admins []string, scheme string, tlsEnabled bool) {
 	fmt.Println(`
@@ -87,8 +89,8 @@ func main() {
 		configDir = envConfigDir
 	}
 
-	// Load configuration from environment variables and .env files
-	cfg, err := config.LoadConfig(configDir)
+	// Load configuration from environment variables and .env files (without validation)
+	cfg, err := config.LoadConfigWithoutValidation(configDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading configuration: %v\n", err)
 		fmt.Fprintf(os.Stderr, "\nConfiguration options:\n")
@@ -107,7 +109,65 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    MARCHAT_GLOBAL_E2E_KEY=base64-key (optional, for global E2E encryption)\n")
 		fmt.Fprintf(os.Stderr, "  .env file: Create %s/.env with the above variables\n", configDir)
 		fmt.Fprintf(os.Stderr, "  Config directory: Use --config-dir or MARCHAT_CONFIG_DIR to specify custom location\n")
-		fmt.Fprintf(os.Stderr, "  Interactive setup: Available on feature branch feature/interactive-server-config\n")
+		fmt.Fprintf(os.Stderr, "  Interactive setup: Use --interactive flag for guided configuration\n")
+		os.Exit(1)
+	}
+
+	// Check if required settings are missing and offer interactive configuration
+	needsInteractiveConfig := false
+
+	if cfg.AdminKey == "" {
+		needsInteractiveConfig = true
+	}
+	if len(cfg.Admins) == 0 {
+		needsInteractiveConfig = true
+	}
+
+	if needsInteractiveConfig {
+		if !*interactiveFlag {
+			// Print clear non-interactive error and exit
+			fmt.Fprintln(os.Stderr, "Missing required configuration.")
+			fmt.Fprintln(os.Stderr, "Set MARCHAT_ADMIN_KEY and MARCHAT_USERS (comma-separated) to proceed.")
+			fmt.Fprintln(os.Stderr, "Tip: Use --interactive flag for guided configuration setup.")
+			os.Exit(2)
+		}
+
+		fmt.Println("🚀 Welcome to marchat server setup!")
+		fmt.Println("Some required configuration is missing. Let's set it up interactively.")
+		fmt.Println()
+
+		serverConfig, err := server.RunServerConfig()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Apply the interactive configuration
+		cfg.AdminKey = serverConfig.AdminKey
+		cfg.Admins = strings.Split(serverConfig.AdminUsers, ",")
+
+		// Parse port as integer
+		if port, err := strconv.Atoi(serverConfig.Port); err == nil {
+			cfg.Port = port
+		} else {
+			fmt.Fprintf(os.Stderr, "Invalid port: %s\n", serverConfig.Port)
+			os.Exit(1)
+		}
+
+		// Clean up admin usernames (trim whitespace)
+		for i, admin := range cfg.Admins {
+			cfg.Admins[i] = strings.TrimSpace(admin)
+		}
+
+		fmt.Println()
+		fmt.Println("✅ Configuration saved! You can now start the server.")
+		fmt.Println("💡 Tip: Set environment variables to avoid this setup next time.")
+		fmt.Println()
+	}
+
+	// Validate final configuration
+	if err := cfg.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "Configuration validation failed: %v\n", err)
 		os.Exit(1)
 	}
 

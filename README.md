@@ -73,6 +73,8 @@ openssl rand -hex 32
 ```
 
 ### 2. Start Server
+
+**Option A: Environment Variables (Recommended)**
 ```bash
 export MARCHAT_ADMIN_KEY="your-generated-key"
 export MARCHAT_USERS="admin1,admin2"
@@ -83,6 +85,11 @@ export MARCHAT_USERS="admin1,admin2"
 
 # With web panel
 ./marchat-server --web-panel
+```
+
+**Option B: Interactive Setup**
+```bash
+./marchat-server --interactive
 ```
 
 ### 3. Connect Client
@@ -157,6 +164,8 @@ go build -o marchat-client ./client
 | `MARCHAT_MAX_FILE_BYTES` | No | `1048576` | Max file size (1MB default) |
 
 **Additional variables:** `MARCHAT_LOG_LEVEL`, `MARCHAT_CONFIG_DIR`, `MARCHAT_BAN_HISTORY_GAPS`, `MARCHAT_PLUGIN_REGISTRY_URL`, `MARCHAT_MAX_FILE_MB`
+
+**Interactive Setup:** Use `--interactive` flag for guided server configuration when environment variables are missing.
 
 ## Admin Commands
 

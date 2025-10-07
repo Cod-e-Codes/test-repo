@@ -36,21 +36,18 @@ const (
 )
 
 type ServerConfigModel struct {
-	focusIndex    int
-	inputs        []textinput.Model
-	config        *ServerConfig
-	errorMessage  string
-	finished      bool
-	cancelled     bool
-	showE2EFields bool
+	focusIndex   int
+	inputs       []textinput.Model
+	config       *ServerConfig
+	errorMessage string
+	finished     bool
+	cancelled    bool
 }
 
 type ServerConfig struct {
-	AdminKey     string
-	AdminUsers   string
-	Port         string
-	EnableE2E    bool
-	GlobalE2EKey string
+	AdminKey   string
+	AdminUsers string
+	Port       string
 }
 
 func NewServerConfigUI() ServerConfigModel {
@@ -68,13 +65,9 @@ func NewServerConfigUI() ServerConfigModel {
 	if adminUsers := os.Getenv("MARCHAT_USERS"); adminUsers != "" {
 		config.AdminUsers = adminUsers
 	}
-	if globalE2EKey := os.Getenv("MARCHAT_GLOBAL_E2E_KEY"); globalE2EKey != "" {
-		config.GlobalE2EKey = globalE2EKey
-		config.EnableE2E = true
-	}
 
 	m := ServerConfigModel{
-		inputs: make([]textinput.Model, 5), // 5 input fields
+		inputs: make([]textinput.Model, 3), // 3 input fields
 		config: config,
 	}
 
@@ -112,24 +105,6 @@ func NewServerConfigUI() ServerConfigModel {
 			t.CharLimit = 5
 			t.Width = 10
 			t.SetValue(config.Port)
-		case enableE2EField:
-			t.Placeholder = "y/n"
-			t.Prompt = "Enable Global E2E Encryption? "
-			t.CharLimit = 1
-			t.Width = 5
-			if config.EnableE2E {
-				t.SetValue("y")
-			}
-		case globalE2EKeyField:
-			t.Placeholder = "Enter or generate E2E key"
-			t.Prompt = "Global E2E Key: "
-			t.CharLimit = 128
-			t.Width = 50
-			t.EchoMode = textinput.EchoPassword
-			t.EchoCharacter = '•'
-			if config.GlobalE2EKey != "" {
-				t.SetValue(config.GlobalE2EKey)
-			}
 		}
 
 		m.inputs[i] = t
@@ -162,10 +137,6 @@ func (m *ServerConfigModel) saveConfigToEnv() error {
 	envContent.WriteString(fmt.Sprintf("MARCHAT_PORT=%s\n", m.config.Port))
 	envContent.WriteString(fmt.Sprintf("MARCHAT_ADMIN_KEY=%s\n", m.config.AdminKey))
 	envContent.WriteString(fmt.Sprintf("MARCHAT_USERS=%s\n", m.config.AdminUsers))
-
-	if m.config.EnableE2E && m.config.GlobalE2EKey != "" {
-		envContent.WriteString(fmt.Sprintf("MARCHAT_GLOBAL_E2E_KEY=%s\n", m.config.GlobalE2EKey))
-	}
 
 	// Write to file
 	if err := os.WriteFile(envPath, []byte(envContent.String()), 0600); err != nil {
@@ -231,9 +202,6 @@ func (m ServerConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 
-			// Update conditional field visibility on any navigation
-			m.updateConditionalFields()
-
 			// Navigate between fields
 			if s == "up" || s == "shift+tab" {
 				m.focusIndex--
@@ -242,7 +210,7 @@ func (m ServerConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			// Skip conditional fields that shouldn't be shown
-			m.focusIndex = m.getNextValidFocus(m.focusIndex, s == "up" || s == "shift+tab")
+			m.focusIndex = m.getNextValidFocus(m.focusIndex)
 
 			if m.focusIndex > int(submitButton) {
 				m.focusIndex = 0
@@ -260,37 +228,12 @@ func (m ServerConfigModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *ServerConfigModel) updateConditionalFields() {
-	// Update E2E field visibility
-	e2eValue := strings.ToLower(strings.TrimSpace(m.inputs[enableE2EField].Value()))
-	m.showE2EFields = e2eValue == "y" || e2eValue == "yes"
-	if !m.showE2EFields {
-		m.inputs[globalE2EKeyField].SetValue("")
+func (m *ServerConfigModel) getNextValidFocus(index int) int {
+	if index < 0 {
+		return int(submitButton)
 	}
-}
-
-func (m *ServerConfigModel) getNextValidFocus(index int, reverse bool) int {
-	for {
-		if index < 0 {
-			return int(submitButton)
-		}
-		if index > int(submitButton) {
-			return 0
-		}
-
-		field := serverConfigField(index)
-
-		// Skip E2E key field if E2E not enabled
-		if field == globalE2EKeyField && !m.showE2EFields {
-			if reverse {
-				index--
-			} else {
-				index++
-			}
-			continue
-		}
-
-		break
+	if index > int(submitButton) {
+		return 0
 	}
 	return index
 }
@@ -327,8 +270,6 @@ func (m *ServerConfigModel) validateAndBuildConfig() error {
 	adminKey := strings.TrimSpace(m.inputs[adminKeyField].Value())
 	adminUsers := strings.TrimSpace(m.inputs[adminUsersField].Value())
 	port := strings.TrimSpace(m.inputs[portField].Value())
-	e2eStr := strings.ToLower(strings.TrimSpace(m.inputs[enableE2EField].Value()))
-	globalE2EKey := strings.TrimSpace(m.inputs[globalE2EKeyField].Value())
 
 	// Validation
 	if adminKey == "" {
@@ -346,16 +287,11 @@ func (m *ServerConfigModel) validateAndBuildConfig() error {
 		return fmt.Errorf("port must be between 1 and 65535")
 	}
 
-	enableE2E := e2eStr == "y" || e2eStr == "yes"
-	// E2E key is optional - if not provided, the server will generate one
-
 	// Build config
 	m.config = &ServerConfig{
-		AdminKey:     adminKey,
-		AdminUsers:   adminUsers,
-		Port:         port,
-		EnableE2E:    enableE2E,
-		GlobalE2EKey: globalE2EKey,
+		AdminKey:   adminKey,
+		AdminUsers: adminUsers,
+		Port:       port,
 	}
 
 	// Save configuration to .env file
@@ -396,22 +332,6 @@ func (m ServerConfigModel) View() string {
 		b.WriteString(serverHelpStyle.Render(" (default: 8080)"))
 	}
 	b.WriteString("\n")
-
-	// E2E Encryption
-	b.WriteString(m.inputs[enableE2EField].View())
-	if m.focusIndex == int(enableE2EField) {
-		b.WriteString(serverHelpStyle.Render(" (y/n)"))
-	}
-	b.WriteString("\n")
-
-	// Global E2E Key (conditional)
-	if m.showE2EFields {
-		b.WriteString(m.inputs[globalE2EKeyField].View())
-		if m.focusIndex == int(globalE2EKeyField) {
-			b.WriteString(serverHelpStyle.Render(" (leave empty to auto-generate)"))
-		}
-		b.WriteString("\n")
-	}
 
 	b.WriteString("\n")
 
