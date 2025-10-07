@@ -534,16 +534,16 @@ go test ./... -timeout 10s # With timeout (CI recommended)
 | `config` | 78.6% | ~523 LOC | High |
 | `shared` | 79.4% | ~235 LOC | High |
 | `client/crypto` | 76.5% | ~200 LOC | High |
+| `client/config` | 55.2% | ~150 LOC | Medium |
 | `plugin/store` | 46.8% | ~494 LOC | Medium |
+| `client` | 27.8% | ~2769 LOC | Medium |
 | `plugin/host` | 22.3% | ~412 LOC | Low |
 | `plugin/manager` | 12.4% | ~383 LOC | Low |
-| `client/config` | 55.2% | ~150 LOC | Medium |
 | `server` | 11.0% | ~4300 LOC | Low |
-| `client` | 16.2% | ~200 LOC | Low |
 | `cmd/server` | 5.6% | ~342 LOC | Low |
 | `plugin/license` | 0% | ~188 LOC | None |
 
-**Overall: 23.5%** - See [TESTING.md](TESTING.md) for detailed information.
+**Overall: 26.9%** - See [TESTING.md](TESTING.md) for detailed information.
 
 ## Contributing
 
