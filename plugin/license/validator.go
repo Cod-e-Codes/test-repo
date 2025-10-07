@@ -61,7 +61,7 @@ func (lv *LicenseValidator) ValidateLicense(licensePath string) (*License, error
 	}
 
 	// Validate signature
-	if err := lv.validateSignature(&license, data); err != nil {
+	if err := lv.validateSignature(&license, nil); err != nil {
 		return nil, fmt.Errorf("invalid license signature: %w", err)
 	}
 

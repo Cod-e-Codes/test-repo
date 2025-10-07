@@ -12,7 +12,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Database Tests**: Testing database operations and schema management
 - **Server Tests**: Testing WebSocket handling, message routing, and user management
 
-**Note**: This is a foundational test suite with good coverage for smaller utility packages and significantly improved coverage for client and server components. Overall coverage is 35.6% across all packages.
+**Note**: This is a foundational test suite with good coverage for smaller utility packages and significantly improved coverage for client and server components. Overall coverage is 37.1% across all packages.
 
 ## Test Structure
 
@@ -45,6 +45,39 @@ The Marchat test suite provides foundational coverage of the application's core 
 | `plugin/store/store_test.go` | Plugin Store | Registry management, platform resolution, filtering |
 | `plugin/manager/manager_test.go` | Plugin Manager | Installation, uninstallation, command execution |
 | `plugin/integration_test.go` | Plugin Integration | End-to-end plugin system workflows |
+| `shared/version_test.go` | Version information | Version functions, variable validation, format consistency |
+| `plugin/license/validator_test.go` | License validation | Signature verification, caching, expiration checks |
+| `cmd/license/main_test.go` | License CLI tool functions | CLI functions (validateLicense, generateLicense, generateKeyPair, checkLicense) |
+
+### Detailed File Coverage (from coverage.html)
+| File | Coverage | Package | Description |
+|------|----------|---------|-------------|
+| `shared/version.go` | 100.0% | shared | Version information functions |
+| `client/file_picker.go` | 98.2% | client | File selection TUI component |
+| `server/health.go` | 88.9% | server | Health monitoring and status |
+| `plugin/license/validator.go` | 83.1% | plugin/license | License validation and verification |
+| `shared/crypto.go` | 81.8% | shared | Cryptographic operations |
+| `config/config.go` | 78.6% | config | Configuration management |
+| `client/crypto/keystore.go` | 76.5% | client/crypto | Keystore management |
+| `server/db.go` | 75.0% | server | Database operations |
+| `client/config/interactive_ui.go` | 66.6% | client/config | Interactive configuration UI |
+| `server/config.go` | 66.7% | server | Server configuration |
+| `server/logger.go` | 63.0% | server | Logging functionality |
+| `server/hub.go` | 62.7% | server | WebSocket hub management |
+| `client/code_snippet.go` | 53.4% | client | Code snippet TUI component |
+| `plugin/store/store.go` | 46.8% | plugin/store | Plugin store operations |
+| `server/handlers.go` | 44.5% | server | HTTP/WebSocket handlers |
+| `cmd/license/main.go` | 42.2% | cmd/license | License CLI tool |
+| `server/admin_web.go` | 36.5% | server | Admin web interface |
+| `server/config_ui.go` | 35.0% | server | Server configuration UI |
+| `client/config/config.go` | 32.9% | client/config | Client configuration |
+| `server/client.go` | 26.1% | server | Client management |
+| `plugin/host/host.go` | 22.3% | plugin/host | Plugin hosting |
+| `client/main.go` | 15.6% | client | Client main application |
+| `server/admin_panel.go` | 14.8% | server | Admin panel functionality |
+| `plugin/manager/manager.go` | 12.4% | plugin/manager | Plugin management |
+| `server/plugin_commands.go` | 14.2% | server | Plugin command handling |
+| `cmd/server/main.go` | 5.6% | cmd/server | Server main application |
 
 ### Test Categories
 
@@ -146,24 +179,26 @@ go test -cover ./...
 
 | Package | Coverage | Status | Lines of Code | Weighted Impact |
 |---------|----------|--------|---------------|-----------------|
+| `plugin/license` | 83.1% | High | ~188 | Small |
 | `shared` | 82.4% | High | ~235 | Small |
 | `config` | 78.6% | High | ~523 | Small |
 | `client/crypto` | 76.5% | High | ~200 | Small |
 | `client/config` | 55.2% | Medium | ~150 | Small |
 | `plugin/store` | 46.8% | Medium | ~494 | Medium |
+| `cmd/license` | 42.2% | Medium | ~161 | Small |
 | `server` | 35.4% | Medium | ~4300 | Large |
 | `client` | 27.8% | Medium | ~2769 | Large |
 | `plugin/host` | 22.3% | Low | ~412 | Medium |
 | `plugin/manager` | 12.4% | Low | ~383 | Medium |
 | `cmd/server` | 5.6% | Low | ~342 | Small |
-| `plugin/license` | 0% | None | ~188 | Small |
 
-**Overall coverage: 35.6%** (all packages)
+**Overall coverage: 37.1%** (all packages)
 
 ### High Coverage (70%+)
-- **Shared Package**: Cryptographic operations, data types, message handling
-- **Config Package**: Configuration loading, validation, environment variables
-- **Client Crypto Package**: Keystore management, encryption/decryption, file operations
+- **Plugin License Package**: License validation, signature verification, caching (83.1%)
+- **Shared Package**: Cryptographic operations, data types, message handling (82.4%)
+- **Config Package**: Configuration loading, validation, environment variables (78.6%)
+- **Client Crypto Package**: Keystore management, encryption/decryption, file operations (76.5%)
 
 ### Medium Coverage (40-70%)
 - **Client Config Package**: Configuration management, path utilities, keystore migration, interactive UI (55.2%)
@@ -175,16 +210,45 @@ go test -cover ./...
 - **Plugin Host**: Plugin lifecycle management, communication, enable/disable (22.3%)
 - **Plugin Manager**: Installation, uninstallation, command execution (12.4%)
 - **Server Main**: Flag parsing, configuration validation (5.6%)
-- **Plugin License**: No test files currently exist (0%)
+
+### Detailed File Coverage
+| File | Coverage | Package | Description |
+|------|----------|---------|-------------|
+| `shared/version.go` | 100.0% | shared | Version information functions |
+| `client/file_picker.go` | 98.2% | client | File selection TUI component |
+| `server/health.go` | 88.9% | server | Health monitoring and status |
+| `plugin/license/validator.go` | 83.1% | plugin/license | License validation and verification |
+| `shared/crypto.go` | 81.8% | shared | Cryptographic operations |
+| `config/config.go` | 78.6% | config | Configuration management |
+| `client/crypto/keystore.go` | 76.5% | client/crypto | Keystore management |
+| `server/db.go` | 75.0% | server | Database operations |
+| `client/config/interactive_ui.go` | 66.6% | client/config | Interactive configuration UI |
+| `server/config.go` | 66.7% | server | Server configuration |
+| `server/logger.go` | 63.0% | server | Logging functionality |
+| `server/hub.go` | 62.7% | server | WebSocket hub management |
+| `client/code_snippet.go` | 53.4% | client | Code snippet TUI component |
+| `plugin/store/store.go` | 46.8% | plugin/store | Plugin store operations |
+| `server/handlers.go` | 44.5% | server | HTTP/WebSocket handlers |
+| `cmd/license/main.go` | 42.2% | cmd/license | License CLI tool |
+| `server/admin_web.go` | 36.5% | server | Admin web interface |
+| `server/config_ui.go` | 35.0% | server | Server configuration UI |
+| `client/config/config.go` | 32.9% | client/config | Client configuration |
+| `server/client.go` | 26.1% | server | Client management |
+| `plugin/host/host.go` | 22.3% | plugin/host | Plugin hosting |
+| `client/main.go` | 15.6% | client | Client main application |
+| `server/admin_panel.go` | 14.8% | server | Admin panel functionality |
+| `server/plugin_commands.go` | 14.2% | server | Plugin command handling |
+| `plugin/manager/manager.go` | 12.4% | plugin/manager | Plugin management |
+| `cmd/server/main.go` | 5.6% | cmd/server | Server main application |
 
 ### Areas for Future Testing
-- **Server Package**: Advanced WebSocket handling, complex message routing scenarios (current: 27.0%)
+- **Server Package**: Advanced WebSocket handling, complex message routing scenarios (current: 35.4%)
 - **Client Package**: WebSocket communication, full TUI integration (current: 27.8%)
 - **Plugin Host**: Live plugin execution, WebSocket communication (current: 22.3%)
 - **Plugin Manager**: Installation, uninstallation, command execution (current: 12.4%)
 - **Server Main**: Full main function execution, server startup, admin panel integration (current: 5.6%)
 - **File Transfer**: File upload/download functionality
-- **Plugin License**: License validation and enforcement (current: 0%)
+- **Plugin License**: License validation and enforcement (current: 83.1%)
 
 ## Test Data and Fixtures
 
@@ -314,11 +378,11 @@ When adding new functionality to Marchat:
 
 ## Test Metrics
 
-- **Total Tests**: 327 individual test cases across 11 packages
-- **Coverage by Package**: 82.4% (shared), 78.6% (config), 76.5% (client/crypto), 55.2% (client/config), 46.8% (plugin/store), 35.4% (server), 27.8% (client), 22.3% (plugin/host), 12.4% (plugin/manager), 5.6% (cmd/server), 0% (plugin/license)
-- **Overall Coverage**: 35.6% across all packages
+- **Total Tests**: 366 individual test cases across 11 packages
+- **Coverage by Package**: 83.1% (plugin/license), 82.4% (shared), 78.6% (config), 76.5% (client/crypto), 55.2% (client/config), 46.8% (plugin/store), 42.2% (cmd/license), 35.4% (server), 27.8% (client), 22.3% (plugin/host), 12.4% (plugin/manager), 5.6% (cmd/server)
+- **Overall Coverage**: 37.1% across all packages
 - **Execution Time**: <3 seconds for full suite
 - **Reliability**: 100% deterministic, no flaky tests, no hanging tests
-- **Test Files**: 24 test files covering core functionality, client components, plugin system, server operations, and admin interfaces
+- **Test Files**: 26 test files covering core functionality, client components, plugin system, server operations, and admin interfaces
 
 This foundational test suite provides a solid base for testing core functionality, with room for significant expansion in the main application components.
