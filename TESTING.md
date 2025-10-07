@@ -12,7 +12,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Database Tests**: Testing database operations and schema management
 - **Server Tests**: Testing WebSocket handling, message routing, and user management
 
-**Note**: This is a foundational test suite with good coverage for smaller utility packages and significantly improved coverage for client and server components. Overall coverage is 35.4% across all packages.
+**Note**: This is a foundational test suite with good coverage for smaller utility packages and significantly improved coverage for client and server components. Overall coverage is 35.6% across all packages.
 
 ## Test Structure
 
@@ -146,7 +146,7 @@ go test -cover ./...
 
 | Package | Coverage | Status | Lines of Code | Weighted Impact |
 |---------|----------|--------|---------------|-----------------|
-| `shared` | 79.4% | High | ~235 | Small |
+| `shared` | 82.4% | High | ~235 | Small |
 | `config` | 78.6% | High | ~523 | Small |
 | `client/crypto` | 76.5% | High | ~200 | Small |
 | `client/config` | 55.2% | Medium | ~150 | Small |
@@ -158,7 +158,7 @@ go test -cover ./...
 | `cmd/server` | 5.6% | Low | ~342 | Small |
 | `plugin/license` | 0% | None | ~188 | Small |
 
-**Overall coverage: 35.4%** (all packages)
+**Overall coverage: 35.6%** (all packages)
 
 ### High Coverage (70%+)
 - **Shared Package**: Cryptographic operations, data types, message handling
@@ -314,11 +314,11 @@ When adding new functionality to Marchat:
 
 ## Test Metrics
 
-- **Total Tests**: 322 individual test cases across 11 packages
-- **Coverage by Package**: 79.4% (shared), 78.6% (config), 76.5% (client/crypto), 55.2% (client/config), 46.8% (plugin/store), 35.4% (server), 27.8% (client), 22.3% (plugin/host), 12.4% (plugin/manager), 5.6% (cmd/server), 0% (plugin/license)
-- **Overall Coverage**: 35.4% across all packages
+- **Total Tests**: 327 individual test cases across 11 packages
+- **Coverage by Package**: 82.4% (shared), 78.6% (config), 76.5% (client/crypto), 55.2% (client/config), 46.8% (plugin/store), 35.4% (server), 27.8% (client), 22.3% (plugin/host), 12.4% (plugin/manager), 5.6% (cmd/server), 0% (plugin/license)
+- **Overall Coverage**: 35.6% across all packages
 - **Execution Time**: <3 seconds for full suite
 - **Reliability**: 100% deterministic, no flaky tests, no hanging tests
-- **Test Files**: 23 test files covering core functionality, client components, plugin system, server operations, and admin interfaces
+- **Test Files**: 24 test files covering core functionality, client components, plugin system, server operations, and admin interfaces
 
 This foundational test suite provides a solid base for testing core functionality, with room for significant expansion in the main application components.
