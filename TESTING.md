@@ -179,18 +179,18 @@ go test -cover ./...
 
 | Package | Coverage | Status | Lines of Code | Weighted Impact |
 |---------|----------|--------|---------------|-----------------|
-| `plugin/license` | 83.1% | High | ~188 | Small |
-| `shared` | 82.4% | High | ~235 | Small |
-| `config` | 78.6% | High | ~523 | Small |
-| `client/crypto` | 76.5% | High | ~200 | Small |
-| `client/config` | 55.2% | Medium | ~150 | Small |
-| `plugin/store` | 46.8% | Medium | ~494 | Medium |
-| `cmd/license` | 42.2% | Medium | ~161 | Small |
-| `server` | 35.4% | Medium | ~4300 | Large |
-| `client` | 27.8% | Medium | ~2769 | Large |
-| `plugin/host` | 22.3% | Low | ~412 | Medium |
-| `plugin/manager` | 12.4% | Low | ~383 | Medium |
-| `cmd/server` | 5.6% | Low | ~342 | Small |
+| `plugin/license` | 83.1% | High | ~647 | Medium |
+| `shared` | 82.4% | High | ~1045 | Medium |
+| `config` | 78.6% | High | ~625 | Medium |
+| `client/crypto` | 76.5% | High | ~610 | Medium |
+| `client/config` | 55.2% | Medium | ~3174 | Large |
+| `plugin/store` | 46.8% | Medium | ~1117 | Large |
+| `cmd/license` | 42.2% | Medium | ~515 | Medium |
+| `server` | 35.4% | Medium | ~7815 | Large |
+| `client` | 27.8% | Medium | ~5932 | Large |
+| `plugin/host` | 22.3% | Low | ~782 | Medium |
+| `plugin/manager` | 12.4% | Low | ~1141 | Large |
+| `cmd/server` | 5.6% | Low | ~1093 | Large |
 
 **Overall coverage: 37.1%** (all packages)
 
