@@ -96,29 +96,41 @@ func (icl *InteractiveConfigLoader) LoadOrPromptConfig(overrides map[string]inte
 	// Check if user wants to use a profile or create new connection
 	if len(profiles.Profiles) > 0 {
 		// Use enhanced profile selection with management features
-		choice, isCreateNew, err := RunEnhancedProfileSelectionWithNew(profiles.Profiles, icl)
+		selectedProfile, isCreateNew, err := RunEnhancedProfileSelectionWithNew(profiles.Profiles, icl)
 		if err != nil {
 			return nil, "", "", "", err
 		}
 
 		if !isCreateNew {
+			// We now have the actual profile object, not just an index!
 			// Reload profiles in case they were modified during selection
 			profiles, err = icl.LoadProfiles()
 			if err != nil {
 				return nil, "", "", "", fmt.Errorf("error reloading profiles: %w", err)
 			}
 
-			if choice >= len(profiles.Profiles) {
-				return nil, "", "", "", fmt.Errorf("invalid profile selection")
+			// Find the selected profile in the reloaded list
+			var profileIndex = -1
+			for i, p := range profiles.Profiles {
+				if p.Name == selectedProfile.Name &&
+					p.ServerURL == selectedProfile.ServerURL &&
+					p.Username == selectedProfile.Username {
+					profileIndex = i
+					break
+				}
 			}
 
-			// User selected existing profile
-			profile := profiles.Profiles[choice]
+			if profileIndex == -1 {
+				return nil, "", "", "", fmt.Errorf("selected profile no longer exists")
+			}
+
+			// Now use the correct profile
+			profile := profiles.Profiles[profileIndex]
 			cfg = icl.profileToConfig(profile)
 
 			// Update last used timestamp
 			profile.LastUsed = time.Now().Unix()
-			profiles.Profiles[choice] = profile
+			profiles.Profiles[profileIndex] = profile
 			if err := icl.SaveProfiles(profiles); err != nil {
 				fmt.Printf("Warning: Could not update profile usage: %v\n", err)
 			}
@@ -493,22 +505,34 @@ func (icl *InteractiveConfigLoader) QuickStartConnect() (*Config, error) {
 	})
 
 	// Use enhanced Bubble Tea UI for profile selection with management features
-	choice, err := RunEnhancedProfileSelection(profiles.Profiles, icl)
+	selectedProfile, err := RunEnhancedProfileSelection(profiles.Profiles, icl)
 	if err != nil {
 		return nil, err
 	}
 
+	// We now have the actual profile object, not just an index!
 	// Reload profiles in case they were modified
 	profiles, err = icl.LoadProfiles()
 	if err != nil {
 		return nil, err
 	}
 
-	if choice >= len(profiles.Profiles) {
-		return nil, fmt.Errorf("invalid profile selection")
+	// Find the selected profile in the reloaded list
+	var profileIndex = -1
+	for i, p := range profiles.Profiles {
+		if p.Name == selectedProfile.Name &&
+			p.ServerURL == selectedProfile.ServerURL &&
+			p.Username == selectedProfile.Username {
+			profileIndex = i
+			break
+		}
 	}
 
-	profile := &profiles.Profiles[choice]
+	if profileIndex == -1 {
+		return nil, fmt.Errorf("selected profile no longer exists")
+	}
+
+	profile := &profiles.Profiles[profileIndex]
 	fmt.Printf("Selected: %s\n", profile.Name)
 
 	// Update last used timestamp

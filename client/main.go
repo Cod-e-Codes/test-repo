@@ -2467,7 +2467,7 @@ func main() {
 				return profiles.Profiles[i].LastUsed > profiles.Profiles[j].LastUsed
 			})
 
-			choice, isCreateNew, err := config.RunProfileSelectionWithNew(profiles.Profiles, loader)
+			selectedProfile, isCreateNew, err := config.RunProfileSelectionWithNew(profiles.Profiles, loader)
 			if err != nil {
 				fmt.Printf("Profile selection error: %v\n", err)
 				os.Exit(1)
@@ -2504,20 +2504,32 @@ func main() {
 				fmt.Printf("✅ Configuration saved as '%s'! You can use --auto or --quick-start for faster connections.\n", profileName)
 
 			} else {
-				// Reload profiles in case they were modified (renamed/deleted) during selection
+				// We now have the actual profile object, not just an index!
+				// Reload profiles in case they were modified during selection
 				profiles, err = loader.LoadProfiles()
 				if err != nil {
 					fmt.Printf("Error reloading profiles: %v\n", err)
 					os.Exit(1)
 				}
 
-				if choice >= len(profiles.Profiles) {
-					fmt.Println("Error: Invalid profile selection")
+				// Find the selected profile in the reloaded list
+				var profileIndex = -1
+				for i, p := range profiles.Profiles {
+					if p.Name == selectedProfile.Name &&
+						p.ServerURL == selectedProfile.ServerURL &&
+						p.Username == selectedProfile.Username {
+						profileIndex = i
+						break
+					}
+				}
+
+				if profileIndex == -1 {
+					fmt.Println("Error: Selected profile no longer exists")
 					os.Exit(1)
 				}
 
 				// User selected an existing profile
-				profile := &profiles.Profiles[choice]
+				profile := &profiles.Profiles[profileIndex]
 				fmt.Printf("Selected: %s\n", profile.Name)
 
 				// Update last used timestamp

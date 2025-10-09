@@ -400,19 +400,20 @@ const (
 
 // ProfileSelectionModel handles profile selection UI with management features
 type ProfileSelectionModel struct {
-	profiles      []ConnectionProfile
-	cursor        int
-	selected      bool
-	cancelled     bool
-	choice        int
-	showNewOption bool // Whether to show "Create New Profile" option
-	operation     ProfileOperation
-	renameInput   textinput.Model
-	message       string
-	messageType   string                   // "success", "error", "warning", "info"
-	deleteConfirm string                   // stores the profile name being deleted
-	modified      bool                     // tracks if profiles were modified
-	icl           *InteractiveConfigLoader // for saving profiles
+	profiles        []ConnectionProfile
+	cursor          int
+	selected        bool
+	cancelled       bool
+	choice          int
+	showNewOption   bool // Whether to show "Create New Profile" option
+	operation       ProfileOperation
+	renameInput     textinput.Model
+	message         string
+	messageType     string                   // "success", "error", "warning", "info"
+	deleteConfirm   string                   // stores the profile name being deleted
+	modified        bool                     // tracks if profiles were modified
+	icl             *InteractiveConfigLoader // for saving profiles
+	selectedProfile *ConnectionProfile       // Store the actual selected profile
 }
 
 func NewProfileSelectionModel(profiles []ConnectionProfile, showNewOption bool) ProfileSelectionModel {
@@ -489,10 +490,14 @@ func (m ProfileSelectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Selected "Create New Profile"
 				m.choice = m.cursor
 				m.selected = true
+				// selectedProfile remains nil for "create new"
 				return m, tea.Quit
 			} else if m.cursor < len(m.profiles) {
 				m.choice = m.cursor
 				m.selected = true
+				// CRITICAL FIX: Store the actual profile, not just the index
+				profile := m.profiles[m.cursor]
+				m.selectedProfile = &profile
 				return m, tea.Quit
 			}
 		case "i", "v": // View details
@@ -828,6 +833,11 @@ func (m ProfileSelectionModel) IsCreateNew() bool {
 	return m.showNewOption && m.choice == len(m.profiles)
 }
 
+// GetSelectedProfile returns the actual selected profile object
+func (m ProfileSelectionModel) GetSelectedProfile() *ConnectionProfile {
+	return m.selectedProfile
+}
+
 // RunProfileSelection runs the profile selection UI (for quick-start)
 func RunProfileSelection(profiles []ConnectionProfile) (int, error) {
 	model := NewProfileSelectionModel(profiles, false)
@@ -853,55 +863,56 @@ func RunProfileSelection(profiles []ConnectionProfile) (int, error) {
 
 // RunProfileSelectionWithNew runs the profile selection UI with "Create New" option
 // Deprecated: Use RunEnhancedProfileSelectionWithNew instead
-func RunProfileSelectionWithNew(profiles []ConnectionProfile, icl *InteractiveConfigLoader) (int, bool, error) {
+func RunProfileSelectionWithNew(profiles []ConnectionProfile, icl *InteractiveConfigLoader) (*ConnectionProfile, bool, error) {
 	// Use the enhanced version with management features
 	return RunEnhancedProfileSelectionWithNew(profiles, icl)
 }
 
 // RunEnhancedProfileSelection runs the enhanced profile selection UI with management features
-func RunEnhancedProfileSelection(profiles []ConnectionProfile, icl *InteractiveConfigLoader) (int, error) {
+func RunEnhancedProfileSelection(profiles []ConnectionProfile, icl *InteractiveConfigLoader) (*ConnectionProfile, error) {
 	model := NewEnhancedProfileSelectionModel(profiles, false, icl)
 
 	program := tea.NewProgram(model)
 	finalModel, err := program.Run()
 	if err != nil {
-		return -1, fmt.Errorf("failed to run profile selection UI: %w", err)
+		return nil, fmt.Errorf("failed to run profile selection UI: %w", err)
 	}
 
 	selectionModel := finalModel.(ProfileSelectionModel)
 
 	if selectionModel.IsCancelled() {
-		return -1, fmt.Errorf("profile selection cancelled by user")
+		return nil, fmt.Errorf("profile selection cancelled by user")
 	}
 
 	if !selectionModel.IsSelected() {
-		return -1, fmt.Errorf("no profile selected")
+		return nil, fmt.Errorf("no profile selected")
 	}
 
-	return selectionModel.GetChoice(), nil
+	return selectionModel.GetSelectedProfile(), nil
 }
 
 // RunEnhancedProfileSelectionWithNew runs the enhanced profile selection UI with "Create New" option
-func RunEnhancedProfileSelectionWithNew(profiles []ConnectionProfile, icl *InteractiveConfigLoader) (int, bool, error) {
+func RunEnhancedProfileSelectionWithNew(profiles []ConnectionProfile, icl *InteractiveConfigLoader) (*ConnectionProfile, bool, error) {
 	model := NewEnhancedProfileSelectionModel(profiles, true, icl)
 
 	program := tea.NewProgram(model)
 	finalModel, err := program.Run()
 	if err != nil {
-		return -1, false, fmt.Errorf("failed to run profile selection UI: %w", err)
+		return nil, false, fmt.Errorf("failed to run profile selection UI: %w", err)
 	}
 
 	selectionModel := finalModel.(ProfileSelectionModel)
 
 	if selectionModel.IsCancelled() {
-		return -1, false, fmt.Errorf("profile selection cancelled by user")
+		return nil, false, fmt.Errorf("profile selection cancelled by user")
 	}
 
 	if !selectionModel.IsSelected() {
-		return -1, false, fmt.Errorf("no profile selected")
+		return nil, false, fmt.Errorf("no profile selected")
 	}
 
-	return selectionModel.GetChoice(), selectionModel.IsCreateNew(), nil
+	isCreateNew := selectionModel.IsCreateNew()
+	return selectionModel.GetSelectedProfile(), isCreateNew, nil
 }
 
 // SensitiveDataModel handles prompting for admin key and keystore passphrase
