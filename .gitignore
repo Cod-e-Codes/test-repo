@@ -59,4 +59,3 @@ plugin/examples/*/*.dylib
 
 # Build release
 build-release.sh
-build-release.ps1

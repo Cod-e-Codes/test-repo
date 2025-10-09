@@ -13,27 +13,20 @@ A lightweight terminal chat with real-time messaging over WebSockets, optional E
 
 ## Latest Updates
 
-### v0.8.0-beta.5 (Current)
-- **Database backup fix**: Fixed `:backup` command to use configured DB path instead of hardcoded `marchat.db`
-- **Improved admin commands**: Admin session backup now respects `MARCHAT_DB_PATH` setting
-- **Bug fix**: Resolves issue #53 where custom database names caused backup failures
-
-### v0.8.0-beta.4
-- **Interactive setup**: New `--interactive` flag for guided server configuration
-- **Simplified setup**: Focus on server-specific config only (admin key, users, port)
-- **Clear separation**: E2E encryption configuration remains client-side only
-- **Enhanced UX**: Better error messages and setup guidance
-- **Backward compatible**: Existing environment variable approach unchanged
+### v0.8.0-beta.6 (Current)
+- **Critical bug fix**: Fixed profile selection bug where modified profiles caused wrong profile to be selected
+- **Improved profile handling**: Profile selection now returns actual profile object instead of index
+- **Enhanced reliability**: Profile matching uses Name+ServerURL+Username for accurate identification
+- **Better UX**: Profile rename/delete operations no longer cause selection mismatches
 
 ### Recent Releases
+- **v0.8.0-beta.5**: Database backup fix, improved admin commands
+- **v0.8.0-beta.4**: Interactive server setup, simplified configuration
 - **v0.8.0-beta.3**: Environment variables only setup, container-friendly configuration
-- **v0.8.0-beta.2**: Interactive server configuration, profile management, enhanced client UI
-- **v0.8.0-beta.1**: Comprehensive test suite, cross-platform testing, plugin system tests
-- **v0.7.0-beta.7**: Advanced security hardening, session management, rate limiting
+- **v0.8.0-beta.2**: Interactive server configuration, profile management
+- **v0.8.0-beta.1**: Comprehensive test suite, cross-platform testing
+- **v0.7.0-beta.7**: Advanced security hardening, session management
 - **v0.7.0-beta.6**: Brute force protection, timing attack prevention
-- **v0.7.0-beta.5**: CSRF protection, enhanced session security
-- **v0.7.0-beta.4**: Secure session-based login system
-- **v0.7.0-beta.3**: Web admin panel with embedded HTML and RESTful APIs
 
 Full changelog on [GitHub releases](https://github.com/Cod-e-Codes/marchat/releases).
 
