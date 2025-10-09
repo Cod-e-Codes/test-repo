@@ -13,20 +13,21 @@ A lightweight terminal chat with real-time messaging over WebSockets, optional E
 
 ## Latest Updates
 
-### v0.8.0-beta.6 (Current)
-- **Critical bug fix**: Fixed profile selection bug where modified profiles caused wrong profile to be selected
-- **Improved profile handling**: Profile selection now returns actual profile object instead of index
-- **Enhanced reliability**: Profile matching uses Name+ServerURL+Username for accurate identification
-- **Better UX**: Profile rename/delete operations no longer cause selection mismatches
+### v0.8.0-beta.7 (Current)
+- **Real-time log capture**: Admin panels now display live server logs from memory buffer
+- **OS-specific log export**: Logs export to appropriate directories (Windows/macOS/Linux/Android)
+- **Metrics tracking**: Connection and disconnect counters now display accurate totals
+- **Structured logging**: Converted hub and server events to use structured loggers
+- **Live updates**: Admin panel logs grow in real-time as events occur
 
 ### Recent Releases
+- **v0.8.0-beta.6**: Profile selection bug fix, object-based returns
 - **v0.8.0-beta.5**: Database backup fix, improved admin commands
 - **v0.8.0-beta.4**: Interactive server setup, simplified configuration
 - **v0.8.0-beta.3**: Environment variables only setup, container-friendly configuration
 - **v0.8.0-beta.2**: Interactive server configuration, profile management
 - **v0.8.0-beta.1**: Comprehensive test suite, cross-platform testing
 - **v0.7.0-beta.7**: Advanced security hardening, session management
-- **v0.7.0-beta.6**: Brute force protection, timing attack prevention
 
 Full changelog on [GitHub releases](https://github.com/Cod-e-Codes/marchat/releases).
 
