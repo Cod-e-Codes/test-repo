@@ -66,7 +66,10 @@ func (h *Hub) BanUser(username string, adminUsername string) {
 	// Add to permanent bans (using far future time to indicate permanent)
 	permanentBanTime := time.Now().Add(100 * 365 * 24 * time.Hour) // 100 years in the future
 	h.bans[lowerUsername] = permanentBanTime
-	log.Printf("[ADMIN] User '%s' permanently banned by '%s'", username, adminUsername)
+	AdminLogger.Info("User permanently banned", map[string]interface{}{
+		"banned_user": username,
+		"admin":       adminUsername,
+	})
 
 	// Record ban event in database
 	if h.getDB() != nil {
@@ -96,7 +99,10 @@ func (h *Hub) UnbanUser(username string, adminUsername string) bool {
 	lowerUsername := strings.ToLower(username)
 	if _, exists := h.bans[lowerUsername]; exists {
 		delete(h.bans, lowerUsername)
-		log.Printf("[ADMIN] User '%s' unbanned by '%s'", username, adminUsername)
+		AdminLogger.Info("User unbanned", map[string]interface{}{
+			"unbanned_user": username,
+			"admin":         adminUsername,
+		})
 
 		// Record unban event in database
 		if h.getDB() != nil {
@@ -183,7 +189,11 @@ func (h *Hub) KickUser(username string, adminUsername string) {
 	// Add to temporary kicks for 24 hours
 	kickExpiry := time.Now().Add(24 * time.Hour)
 	h.tempKicks[lowerUsername] = kickExpiry
-	log.Printf("[ADMIN] User '%s' kicked by '%s' until %s", username, adminUsername, kickExpiry.Format("2006-01-02 15:04:05"))
+	AdminLogger.Info("User kicked", map[string]interface{}{
+		"kicked_user": username,
+		"admin":       adminUsername,
+		"until":       kickExpiry.Format("2006-01-02 15:04:05"),
+	})
 
 	// Record kick event in database (reuse ban event structure)
 	if h.getDB() != nil {
@@ -305,6 +315,10 @@ func (h *Hub) ForceDisconnectUser(username string, adminUsername string) bool {
 }
 
 func (h *Hub) Run() {
+	HubLogger.Info("Hub started", map[string]interface{}{
+		"plugin_manager": h.pluginManager != nil,
+	})
+
 	// Start ban cleanup goroutine
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour) // Clean up every hour
@@ -351,7 +365,10 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.register:
 			h.clients[client] = true
-			log.Printf("Client %s registered (IP: %s)", client.username, client.ipAddr)
+			HubLogger.Info("Client registered", map[string]interface{}{
+				"username": client.username,
+				"ip":       client.ipAddr,
+			})
 
 			// Update metrics
 			h.metricsMutex.Lock()
@@ -363,7 +380,10 @@ func (h *Hub) Run() {
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
-				log.Printf("Client %s unregistered (IP: %s)", client.username, client.ipAddr)
+				HubLogger.Info("Client unregistered", map[string]interface{}{
+					"username": client.username,
+					"ip":       client.ipAddr,
+				})
 
 				// Update metrics
 				h.metricsMutex.Lock()

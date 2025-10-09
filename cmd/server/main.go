@@ -248,6 +248,14 @@ func main() {
 	hub := server.NewHub(pluginDir, dataDir, registryURL, db)
 	go hub.Run()
 
+	// Log server startup
+	server.ServerLogger.Info("Server starting", map[string]interface{}{
+		"port":        listenPort,
+		"admin_count": len(admins),
+		"plugin_dir":  pluginDir,
+		"db_path":     cfg.DBPath,
+	})
+
 	// Initialize admin panel if enabled (but don't start it yet)
 	var adminPanelReady bool
 	if *enableAdminPanel {

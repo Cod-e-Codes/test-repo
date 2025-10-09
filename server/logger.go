@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -27,6 +28,65 @@ type LogEntry struct {
 	Message   string                 `json:"message"`
 	Error     string                 `json:"error,omitempty"`
 	Data      map[string]interface{} `json:"data,omitempty"`
+}
+
+// LogBuffer stores recent log entries in memory for admin panels
+type LogBuffer struct {
+	entries []LogEntry
+	mutex   sync.RWMutex
+	maxSize int
+}
+
+// Global log buffer for capturing logs
+var globalLogBuffer = &LogBuffer{
+	entries: make([]LogEntry, 0, 200),
+	maxSize: 200, // Keep last 200 log entries
+}
+
+// AddEntry adds a log entry to the buffer
+func (lb *LogBuffer) AddEntry(entry LogEntry) {
+	lb.mutex.Lock()
+	defer lb.mutex.Unlock()
+
+	lb.entries = append(lb.entries, entry)
+
+	// Keep only the most recent entries
+	if len(lb.entries) > lb.maxSize {
+		lb.entries = lb.entries[len(lb.entries)-lb.maxSize:]
+	}
+}
+
+// GetEntries returns a copy of all log entries (newest first)
+func (lb *LogBuffer) GetEntries() []LogEntry {
+	lb.mutex.RLock()
+	defer lb.mutex.RUnlock()
+
+	// Create a copy and reverse order (newest first)
+	entriesCopy := make([]LogEntry, len(lb.entries))
+	for i, j := 0, len(lb.entries)-1; j >= 0; i, j = i+1, j-1 {
+		entriesCopy[i] = lb.entries[j]
+	}
+
+	return entriesCopy
+}
+
+// GetRecentEntries returns the most recent N log entries (newest first)
+func (lb *LogBuffer) GetRecentEntries(count int) []LogEntry {
+	lb.mutex.RLock()
+	defer lb.mutex.RUnlock()
+
+	if count > len(lb.entries) {
+		count = len(lb.entries)
+	}
+
+	// Get the last N entries and reverse order (newest first)
+	startIdx := len(lb.entries) - count
+	entriesCopy := make([]LogEntry, count)
+	for i, j := 0, len(lb.entries)-1; j >= startIdx; i, j = i+1, j-1 {
+		entriesCopy[i] = lb.entries[j]
+	}
+
+	return entriesCopy
 }
 
 // Logger provides structured logging functionality
@@ -98,6 +158,9 @@ func (l *Logger) log(level LogLevel, message string, error *string, data ...map[
 		}
 	}
 
+	// Add to log buffer for admin panels
+	globalLogBuffer.AddEntry(entry)
+
 	// Output as JSON
 	jsonData, err := json.Marshal(entry)
 	if err != nil {
@@ -137,4 +200,9 @@ func LogToFile(filename string) error {
 
 	log.SetOutput(file)
 	return nil
+}
+
+// GetLogBuffer returns the global log buffer for admin panel access
+func GetLogBuffer() *LogBuffer {
+	return globalLogBuffer
 }

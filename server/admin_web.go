@@ -1041,57 +1041,23 @@ func (w *WebAdminServer) getSystemData() map[string]interface{} {
 }
 
 func (w *WebAdminServer) getLogsData() []webLogEntry {
-	currentTime := time.Now()
-	logs := []webLogEntry{
-		{
-			Timestamp: currentTime.Add(-30 * time.Second),
-			Level:     "INFO",
-			Message:   "Web admin panel accessed",
-			User:      "Admin",
-			Component: "WebAdminPanel",
-		},
-		{
-			Timestamp: currentTime.Add(-1 * time.Minute),
-			Level:     "INFO",
-			Message:   fmt.Sprintf("Active connections: %d", len(w.hub.clients)),
-			User:      "System",
-			Component: "ConnectionManager",
-		},
-		{
-			Timestamp: currentTime.Add(-2 * time.Minute),
-			Level:     "INFO",
-			Message:   fmt.Sprintf("Memory usage: %.1f MB", w.getSystemStats().MemoryUsage),
-			User:      "System",
-			Component: "Monitor",
-		},
-		{
-			Timestamp: currentTime.Add(-5 * time.Minute),
-			Level:     "INFO",
-			Message:   "Server startup completed successfully",
-			User:      "System",
-			Component: "Server",
-		},
+	// Get real logs from the log buffer
+	logBuffer := GetLogBuffer()
+	serverLogs := logBuffer.GetRecentEntries(100) // Get last 100 entries
+
+	// Convert LogEntry to webLogEntry format for web admin
+	logs := make([]webLogEntry, 0, len(serverLogs))
+	for _, serverLog := range serverLogs {
+		logs = append(logs, webLogEntry{
+			Timestamp: serverLog.Timestamp,
+			Level:     string(serverLog.Level),
+			Message:   serverLog.Message,
+			User:      serverLog.UserID,
+			Component: serverLog.Component,
+		})
 	}
 
-	// Add plugin-related logs
-	plugins := w.getPluginsData()
-	for _, plugin := range plugins {
-		if plugin.Status == "Active" {
-			logs = append(logs, webLogEntry{
-				Timestamp: currentTime.Add(-3 * time.Minute),
-				Level:     "INFO",
-				Message:   fmt.Sprintf("Plugin '%s' loaded successfully", plugin.Name),
-				User:      "System",
-				Component: "PluginManager",
-			})
-		}
-	}
-
-	// Sort logs by timestamp (newest first)
-	sort.Slice(logs, func(i, j int) bool {
-		return logs[i].Timestamp.After(logs[j].Timestamp)
-	})
-
+	// Logs are already sorted (newest first) from GetRecentEntries
 	return logs
 }
 

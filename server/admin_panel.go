@@ -559,56 +559,23 @@ func (ap *AdminPanel) loadPlugins() {
 }
 
 func (ap *AdminPanel) loadLogs() {
-	// Enhanced log entries with more system information
-	currentTime := time.Now()
-	ap.logs = []logEntry{
-		{
-			Timestamp: currentTime.Add(-30 * time.Second),
-			Level:     "INFO",
-			Message:   "Admin panel started by user",
-			User:      "Admin",
-			Component: "AdminPanel",
-		},
-		{
-			Timestamp: currentTime.Add(-1 * time.Minute),
-			Level:     "INFO",
-			Message:   fmt.Sprintf("Active connections: %d", len(ap.hub.clients)),
-			User:      "System",
-			Component: "ConnectionManager",
-		},
-		{
-			Timestamp: currentTime.Add(-2 * time.Minute),
-			Level:     "INFO",
-			Message:   fmt.Sprintf("Memory usage: %.1f MB", ap.systemInfo.MemoryUsage),
-			User:      "System",
-			Component: "Monitor",
-		},
-		{
-			Timestamp: currentTime.Add(-5 * time.Minute),
-			Level:     "INFO",
-			Message:   "Server startup completed successfully",
-			User:      "System",
-			Component: "Server",
-		},
+	// Get real logs from the log buffer
+	logBuffer := GetLogBuffer()
+	serverLogs := logBuffer.GetRecentEntries(100) // Get last 100 entries
+
+	// Convert LogEntry to logEntry format for admin panel
+	ap.logs = make([]logEntry, 0, len(serverLogs))
+	for _, serverLog := range serverLogs {
+		ap.logs = append(ap.logs, logEntry{
+			Timestamp: serverLog.Timestamp,
+			Level:     string(serverLog.Level),
+			Message:   serverLog.Message,
+			User:      serverLog.UserID,
+			Component: serverLog.Component,
+		})
 	}
 
-	// Add plugin-related logs
-	for _, plugin := range ap.plugins {
-		if plugin.Status == "Active" {
-			ap.logs = append(ap.logs, logEntry{
-				Timestamp: currentTime.Add(-3 * time.Minute),
-				Level:     "INFO",
-				Message:   fmt.Sprintf("Plugin '%s' loaded successfully", plugin.Name),
-				User:      "System",
-				Component: "PluginManager",
-			})
-		}
-	}
-
-	// Sort logs by timestamp (newest first)
-	sort.Slice(ap.logs, func(i, j int) bool {
-		return ap.logs[i].Timestamp.After(ap.logs[j].Timestamp)
-	})
+	// Logs are already sorted (newest first) from GetRecentEntries
 }
 
 func (ap *AdminPanel) updateSystemStats() {
