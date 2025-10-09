@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -698,6 +700,10 @@ func (ap *AdminPanel) updateMetrics() {
 	if ap.systemInfo.AllocatedMem > ap.metrics.PeakMemory {
 		ap.metrics.PeakMemory = ap.systemInfo.AllocatedMem
 	}
+
+	// Update connection/disconnect totals from hub
+	ap.metrics.TotalConnections = ap.hub.GetTotalConnections()
+	ap.metrics.TotalDisconnects = ap.hub.GetTotalDisconnects()
 
 	ap.metrics.LastUpdated = currentTime
 }
@@ -1493,11 +1499,38 @@ func (ap *AdminPanel) exportLogs() tea.Cmd {
 				logEntry.Message))
 		}
 
-		// In a real implementation, you would write this to a file
-		// For now, we'll just return a success message
+		// Get OS-specific log directory
+		logDir, err := getLogExportDir()
+		if err != nil {
+			return actionMsg{
+				success: false,
+				message: fmt.Sprintf("❌ Failed to get log directory: %v", err),
+			}
+		}
+
+		// Create directory if it doesn't exist
+		if err := os.MkdirAll(logDir, 0755); err != nil {
+			return actionMsg{
+				success: false,
+				message: fmt.Sprintf("❌ Failed to create log directory: %v", err),
+			}
+		}
+
+		// Create filename with timestamp
+		timestamp := time.Now().Format("2006-01-02_15-04-05")
+		filename := filepath.Join(logDir, fmt.Sprintf("marchat-logs-%s.txt", timestamp))
+
+		// Write logs to file
+		if err := os.WriteFile(filename, []byte(logText.String()), 0644); err != nil {
+			return actionMsg{
+				success: false,
+				message: fmt.Sprintf("❌ Failed to write log file: %v", err),
+			}
+		}
+
 		return actionMsg{
 			success: true,
-			message: "📄 Logs exported successfully (console output)",
+			message: fmt.Sprintf("📄 Logs exported to: %s", filename),
 		}
 	}
 }
@@ -1508,6 +1541,53 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// getLogExportDir returns the OS-specific directory for log exports
+func getLogExportDir() (string, error) {
+	var logDir string
+
+	switch runtime.GOOS {
+	case "windows":
+		// Windows: %APPDATA%\marchat\logs
+		appData := os.Getenv("APPDATA")
+		if appData == "" {
+			return "", fmt.Errorf("APPDATA environment variable not set")
+		}
+		logDir = filepath.Join(appData, "marchat", "logs")
+
+	case "darwin":
+		// macOS: ~/Library/Application Support/marchat/logs
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		logDir = filepath.Join(homeDir, "Library", "Application Support", "marchat", "logs")
+
+	case "linux", "android":
+		// Linux and Android/Termux: ~/.config/marchat/logs or $PREFIX/var/log/marchat
+		if prefix := os.Getenv("PREFIX"); prefix != "" && strings.Contains(prefix, "com.termux") {
+			// Termux/Android
+			logDir = filepath.Join(prefix, "var", "log", "marchat")
+		} else {
+			// Regular Linux
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				return "", err
+			}
+			logDir = filepath.Join(homeDir, ".config", "marchat", "logs")
+		}
+
+	default:
+		// Fallback
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		logDir = filepath.Join(homeDir, ".config", "marchat", "logs")
+	}
+
+	return logDir, nil
 }
 
 func formatDuration(d time.Duration) string {

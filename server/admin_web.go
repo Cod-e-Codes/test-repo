@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -788,9 +790,56 @@ func (w *WebAdminServer) handleMetricsAction(rw http.ResponseWriter, r *http.Req
 		})
 	case "export_logs":
 		// Export logs functionality
+		logs := w.getLogsData()
+
+		// Create log text
+		var logText strings.Builder
+		logText.WriteString("Marchat Web Admin Log Export\n")
+		logText.WriteString("============================\n\n")
+
+		for _, logEntry := range logs {
+			logText.WriteString(fmt.Sprintf("[%s] %s %s: %s\n",
+				logEntry.Timestamp.Format("2006-01-02 15:04:05"),
+				logEntry.Level,
+				logEntry.Component,
+				logEntry.Message))
+		}
+
+		// Get OS-specific log directory
+		logDir, err := getLogExportDir()
+		if err != nil {
+			writeJSON(rw, map[string]interface{}{
+				"success": false,
+				"message": fmt.Sprintf("Failed to get log directory: %v", err),
+			})
+			return
+		}
+
+		// Create directory if it doesn't exist
+		if err := os.MkdirAll(logDir, 0755); err != nil {
+			writeJSON(rw, map[string]interface{}{
+				"success": false,
+				"message": fmt.Sprintf("Failed to create log directory: %v", err),
+			})
+			return
+		}
+
+		// Create filename with timestamp
+		timestamp := time.Now().Format("2006-01-02_15-04-05")
+		filename := filepath.Join(logDir, fmt.Sprintf("marchat-logs-%s.txt", timestamp))
+
+		// Write logs to file
+		if err := os.WriteFile(filename, []byte(logText.String()), 0644); err != nil {
+			writeJSON(rw, map[string]interface{}{
+				"success": false,
+				"message": fmt.Sprintf("Failed to write log file: %v", err),
+			})
+			return
+		}
+
 		writeJSON(rw, map[string]interface{}{
 			"success": true,
-			"message": "Logs exported successfully",
+			"message": fmt.Sprintf("Logs exported to: %s", filename),
 		})
 	default:
 		rw.WriteHeader(http.StatusBadRequest)
@@ -1121,6 +1170,10 @@ func (w *WebAdminServer) updateMetrics() {
 	if m.Alloc > w.metrics.PeakMemory {
 		w.metrics.PeakMemory = m.Alloc
 	}
+
+	// Update connection/disconnect totals from hub
+	w.metrics.TotalConnections = w.hub.GetTotalConnections()
+	w.metrics.TotalDisconnects = w.hub.GetTotalDisconnects()
 
 	w.metrics.LastUpdated = currentTime
 }

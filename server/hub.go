@@ -23,6 +23,11 @@ type Hub struct {
 	tempKicks map[string]time.Time // username -> kick expiry time (24h temporary)
 	banMutex  sync.RWMutex
 
+	// Metrics tracking
+	totalConnections int
+	totalDisconnects int
+	metricsMutex     sync.RWMutex
+
 	// Plugin management
 	pluginManager        *manager.PluginManager
 	pluginCommandHandler *PluginCommandHandler
@@ -347,12 +352,23 @@ func (h *Hub) Run() {
 		case client := <-h.register:
 			h.clients[client] = true
 			log.Printf("Client %s registered (IP: %s)", client.username, client.ipAddr)
+
+			// Update metrics
+			h.metricsMutex.Lock()
+			h.totalConnections++
+			h.metricsMutex.Unlock()
+
 			h.broadcastUserList() // Broadcast after register
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
 				log.Printf("Client %s unregistered (IP: %s)", client.username, client.ipAddr)
+
+				// Update metrics
+				h.metricsMutex.Lock()
+				h.totalDisconnects++
+				h.metricsMutex.Unlock()
 			}
 			h.broadcastUserList()
 		case message := <-h.broadcast:
@@ -377,4 +393,18 @@ func (h *Hub) getDB() *sql.DB {
 // GetPluginManager returns the plugin manager reference
 func (h *Hub) GetPluginManager() *manager.PluginManager {
 	return h.pluginManager
+}
+
+// GetTotalConnections returns the total number of connections since server start
+func (h *Hub) GetTotalConnections() int {
+	h.metricsMutex.RLock()
+	defer h.metricsMutex.RUnlock()
+	return h.totalConnections
+}
+
+// GetTotalDisconnects returns the total number of disconnections since server start
+func (h *Hub) GetTotalDisconnects() int {
+	h.metricsMutex.RLock()
+	defer h.metricsMutex.RUnlock()
+	return h.totalDisconnects
 }
