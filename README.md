@@ -434,7 +434,9 @@ export MARCHAT_PLUGIN_REGISTRY_URL="https://my-registry.com/plugins.json"
 > **Note**: Plugin management commands and custom plugin commands (e.g., `:echo`) work in E2E encrypted sessions. See [Plugin Commands](#plugin-commands-admin-only) for full reference.
 
 ### Available Plugins
-- **Echo**: Simple echo plugin for testing (provides `:echo` command)
+- **echo** (v2.0.1): Simple echo plugin for testing (provides `:echo` command)
+- **weather** (v1.0.0): Get weather information and forecasts using wttr.in (`:weather [location]`, `:forecast [location]`)
+- **githooks** (v1.0.0): Git repository management with status, log, branch, and diff commands (`:git-status`, `:git-log`, `:git-branch`, `:git-diff`, `:git-watch` admin-only)
 
 See [PLUGIN_ECOSYSTEM.md](PLUGIN_ECOSYSTEM.md) for development guide.
 
