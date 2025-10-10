@@ -43,6 +43,9 @@ var globalLogBuffer = &LogBuffer{
 	maxSize: 200, // Keep last 200 log entries
 }
 
+// Global debug file for runtime logs
+var debugFile *os.File
+
 // AddEntry adds a log entry to the buffer
 func (lb *LogBuffer) AddEntry(entry LogEntry) {
 	lb.mutex.Lock()
@@ -169,8 +172,13 @@ func (l *Logger) log(level LogLevel, message string, error *string, data ...map[
 		return
 	}
 
-	// Use standard log output for now, but structured
-	log.Printf("%s", string(jsonData))
+	// Write structured logs to debug file directly (not via log.Printf to avoid redirection)
+	if debugFile != nil {
+		fmt.Fprintf(debugFile, "%s\n", string(jsonData))
+	} else {
+		// Fallback to log.Printf if debug file not set
+		log.Printf("%s", string(jsonData))
+	}
 }
 
 // Global logger instances for different components
@@ -191,13 +199,29 @@ func SetLogLevel(level LogLevel) {
 	// For now, we log everything
 }
 
-// LogToFile enables logging to a file in addition to stdout
+// LogToFile enables logging to a file instead of stdout with rotation
 func LogToFile(filename string) error {
+	// Check if file exists and rotate if it's too large (>10MB)
+	if stat, err := os.Stat(filename); err == nil {
+		if stat.Size() > 10*1024*1024 { // 10MB
+			// Rotate the log file
+			rotatedName := filename + ".old"
+			// Remove old backup if it exists
+			os.Remove(rotatedName)
+			// Rename current to backup
+			os.Rename(filename, rotatedName)
+		}
+	}
+
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		return fmt.Errorf("failed to open log file: %v", err)
 	}
 
+	// Store the debug file for structured logger to use
+	debugFile = file
+
+	// Redirect all log.Printf calls to the debug file
 	log.SetOutput(file)
 	return nil
 }

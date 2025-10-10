@@ -286,13 +286,41 @@ func init() {
 	// URL regex pattern to match http/https URLs and common domain patterns
 	// This pattern matches URLs more comprehensively
 	urlRegex = regexp.MustCompile(`(https?://[^\s<>"{}|\\^` + "`" + `\[\]]+|www\.[^\s<>"{}|\\^` + "`" + `\[\]]+\.[a-zA-Z]{2,})`)
-	// Set up debug logger
-	f, err := os.OpenFile("marchat-debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+
+	// Set up client debug logging to config directory
+	configDir := getClientConfigDir()
+	debugLogPath := filepath.Join(configDir, "marchat-client-debug.log")
+	f, err := os.OpenFile(debugLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err == nil {
 		log.SetOutput(f)
-	} else {
-		log.SetOutput(os.Stderr)
 	}
+	// If file creation fails, logs will go to stdout (but won't interfere with TUI)
+}
+
+// getClientConfigDir returns the client config directory using same logic as server
+func getClientConfigDir() string {
+	// Check environment variable first
+	if envConfigDir := os.Getenv("MARCHAT_CONFIG_DIR"); envConfigDir != "" {
+		return envConfigDir
+	}
+
+	// Check if we're in development mode (running from project root)
+	if _, err := os.Stat("go.mod"); err == nil {
+		return "./config"
+	}
+
+	// Production mode - use XDG config home
+	if xdgConfig := os.Getenv("XDG_CONFIG_HOME"); xdgConfig != "" {
+		return filepath.Join(xdgConfig, "marchat")
+	}
+
+	// Fallback to user's home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "./config"
+	}
+
+	return filepath.Join(homeDir, ".config", "marchat")
 }
 
 var (

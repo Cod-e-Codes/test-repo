@@ -792,6 +792,9 @@
         <div id="plugins-content" class="content">
             <div class="card">
                 <h3>Plugin Management</h3>
+                <div class="btn-group" style="margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="refreshPluginStore()">Refresh Store</button>
+                </div>
                 <div id="plugins-container">
                     <div class="loading">
                         <div class="spinner"></div>
@@ -1342,6 +1345,16 @@
                 showMessage(res.message, res.success ? 'success' : 'error');
                 await loadPlugins();
             } catch (e) {}
+        }
+
+        async function refreshPluginStore() {
+            try {
+                const res = await apiCall('action/plugin', 'POST', { action: 'refresh' });
+                showMessage(res.message, res.success ? 'success' : 'error');
+                await loadPlugins();
+            } catch (e) {
+                showMessage('Failed to refresh plugin store', 'error');
+            }
         }
 
         async function loadMetrics() {

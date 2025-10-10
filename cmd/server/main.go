@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -83,14 +84,34 @@ func main() {
 	flag.Var(&adminUsers, "admin", "[DEPRECATED] Admin username (use MARCHAT_USERS env var instead)")
 	flag.Parse()
 
-	// Check for MARCHAT_CONFIG_DIR environment variable first
-	configDir := *configDir
+	// Determine config directory using same logic as config package
+	var actualConfigDir string
 	if envConfigDir := os.Getenv("MARCHAT_CONFIG_DIR"); envConfigDir != "" {
-		configDir = envConfigDir
+		actualConfigDir = envConfigDir
+	} else if *configDir != "" {
+		actualConfigDir = *configDir
+	} else {
+		// Use same logic as config package for default directory
+		if _, err := os.Stat("go.mod"); err == nil {
+			actualConfigDir = "./config" // Development mode
+		} else {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				actualConfigDir = "./config"
+			} else {
+				actualConfigDir = filepath.Join(homeDir, ".config", "marchat")
+			}
+		}
+	}
+
+	// Redirect runtime logs to debug file (but keep startup logs on stdout)
+	debugLogPath := filepath.Join(actualConfigDir, "marchat-debug.log")
+	if err := server.LogToFile(debugLogPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to redirect logs to debug file: %v\n", err)
 	}
 
 	// Load configuration from environment variables and .env files (without validation)
-	cfg, err := config.LoadConfigWithoutValidation(configDir)
+	cfg, err := config.LoadConfigWithoutValidation(actualConfigDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading configuration: %v\n", err)
 		fmt.Fprintf(os.Stderr, "\nConfiguration options:\n")
@@ -107,7 +128,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    MARCHAT_BAN_HISTORY_GAPS=true (optional, default: true)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_PLUGIN_REGISTRY_URL=url (optional, default: GitHub registry)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_GLOBAL_E2E_KEY=base64-key (optional, for global E2E encryption)\n")
-		fmt.Fprintf(os.Stderr, "  .env file: Create %s/.env with the above variables\n", configDir)
+		fmt.Fprintf(os.Stderr, "  .env file: Create %s/.env with the above variables\n", actualConfigDir)
 		fmt.Fprintf(os.Stderr, "  Config directory: Use --config-dir or MARCHAT_CONFIG_DIR to specify custom location\n")
 		fmt.Fprintf(os.Stderr, "  Interactive setup: Use --interactive flag for guided configuration\n")
 		os.Exit(1)

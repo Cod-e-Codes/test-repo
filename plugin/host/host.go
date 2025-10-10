@@ -150,8 +150,7 @@ func (h *PluginHost) StartPlugin(name string) error {
 		binaryPath = filepath.Join(instance.Config.PluginDir, name)
 	}
 
-	log.Printf("[DEBUG] Starting plugin %s with binary path: %s", name, binaryPath)
-	log.Printf("[DEBUG] Plugin directory: %s", instance.Config.PluginDir)
+	// Plugin starting with binary path
 
 	// Use absolute path for the executable
 	absBinaryPath, err := filepath.Abs(binaryPath)
@@ -366,7 +365,7 @@ func (h *PluginHost) UpdateUserList(users []string) {
 
 // initializePlugin sends an initialization request to the plugin
 func (h *PluginHost) initializePlugin(instance *PluginInstance) error {
-	log.Printf("[DEBUG] Initializing plugin %s", instance.Name)
+	// Initializing plugin
 
 	initData := map[string]interface{}{
 		"config": instance.Config,
@@ -377,12 +376,12 @@ func (h *PluginHost) initializePlugin(instance *PluginInstance) error {
 		Data: mustMarshal(initData),
 	}
 
-	log.Printf("[DEBUG] Sending init request to plugin %s", instance.Name)
+	// Sending init request to plugin
 	if err := h.sendRequest(instance, initRequest); err != nil {
 		return fmt.Errorf("failed to send init request: %w", err)
 	}
 
-	log.Printf("[DEBUG] Plugin %s initialized successfully", instance.Name)
+	// Plugin initialized successfully
 	return nil
 }
 
@@ -397,36 +396,36 @@ func (h *PluginHost) sendRequest(instance *PluginInstance, req sdk.PluginRequest
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	log.Printf("[DEBUG] Sending request to plugin %s: %s", instance.Name, string(data))
+	// Sending request to plugin
 
 	// Send request with newline delimiter
 	data = append(data, '\n')
 	_, err = instance.Stdin.Write(data)
 	if err != nil {
-		log.Printf("[DEBUG] Failed to write to plugin %s stdin: %v", instance.Name, err)
+		// Failed to write to plugin stdin
 		return err
 	}
 
-	log.Printf("[DEBUG] Successfully sent request to plugin %s", instance.Name)
+	// Successfully sent request to plugin
 	return nil
 }
 
 // handlePluginOutput handles stdout from a plugin
 func (h *PluginHost) handlePluginOutput(instance *PluginInstance) {
-	log.Printf("[DEBUG] Starting output handler for plugin %s", instance.Name)
+	// Starting output handler for plugin
 	decoder := json.NewDecoder(instance.Stdout)
 	for {
 		var response sdk.PluginResponse
 		if err := decoder.Decode(&response); err != nil {
 			if err == io.EOF {
-				log.Printf("[DEBUG] Plugin %s stdout closed", instance.Name)
+				// Plugin stdout closed
 				break
 			}
 			log.Printf("Failed to decode plugin %s response: %v", instance.Name, err)
 			continue
 		}
 
-		log.Printf("[DEBUG] Received response from plugin %s: %+v", instance.Name, response)
+		// Received response from plugin
 		h.handlePluginResponse(instance, response)
 	}
 }

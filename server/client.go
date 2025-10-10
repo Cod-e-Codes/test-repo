@@ -159,13 +159,20 @@ func (c *Client) handleAdminCommand(command string) {
 		cmd := strings.TrimPrefix(parts[0], ":")
 		args := parts[1:]
 
-		AdminLogger.Debug("Trying plugin command", map[string]interface{}{
+		AdminLogger.Info("Trying plugin command", map[string]interface{}{
 			"user":    c.username,
 			"command": cmd,
 			"args":    args,
 		})
 		response, err := c.pluginCommandHandler.HandlePluginCommand(cmd, args, c.isAdmin)
 		if err == nil {
+			// Log plugin operations at INFO level so they show in admin panel
+			AdminLogger.Info("Plugin command executed", map[string]interface{}{
+				"user":     c.username,
+				"command":  cmd,
+				"args":     args,
+				"response": response,
+			})
 			// Plugin command was handled successfully
 			AdminLogger.Debug("Plugin command handled successfully", map[string]interface{}{
 				"user":     c.username,

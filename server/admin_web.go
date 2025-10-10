@@ -740,18 +740,45 @@ func (w *WebAdminServer) handlePluginAction(rw http.ResponseWriter, r *http.Requ
 
 	switch req.Action {
 	case "enable":
-		// Plugin enable/disable would need to be implemented in the plugin manager
-		message = fmt.Sprintf("Plugin enable functionality not yet implemented for '%s'", req.Plugin)
-		success = false
+		if err := w.pluginManager.EnablePlugin(req.Plugin); err != nil {
+			message = fmt.Sprintf("Failed to enable plugin '%s': %v", req.Plugin, err)
+			success = false
+		} else {
+			message = fmt.Sprintf("Plugin '%s' enabled successfully", req.Plugin)
+			success = true
+		}
 	case "disable":
-		message = fmt.Sprintf("Plugin disable functionality not yet implemented for '%s'", req.Plugin)
-		success = false
+		if err := w.pluginManager.DisablePlugin(req.Plugin); err != nil {
+			message = fmt.Sprintf("Failed to disable plugin '%s': %v", req.Plugin, err)
+			success = false
+		} else {
+			message = fmt.Sprintf("Plugin '%s' disabled successfully", req.Plugin)
+			success = true
+		}
 	case "install":
-		message = fmt.Sprintf("Plugin install functionality not yet implemented for '%s'", req.Plugin)
-		success = false
+		if err := w.pluginManager.InstallPlugin(req.Plugin); err != nil {
+			message = fmt.Sprintf("Failed to install plugin '%s': %v", req.Plugin, err)
+			success = false
+		} else {
+			message = fmt.Sprintf("Plugin '%s' installed successfully", req.Plugin)
+			success = true
+		}
 	case "uninstall":
-		message = fmt.Sprintf("Plugin uninstall functionality not yet implemented for '%s'", req.Plugin)
-		success = false
+		if err := w.pluginManager.UninstallPlugin(req.Plugin); err != nil {
+			message = fmt.Sprintf("Failed to uninstall plugin '%s': %v", req.Plugin, err)
+			success = false
+		} else {
+			message = fmt.Sprintf("Plugin '%s' uninstalled successfully", req.Plugin)
+			success = true
+		}
+	case "refresh":
+		if err := w.pluginManager.RefreshStore(); err != nil {
+			message = fmt.Sprintf("Failed to refresh plugin store: %v", err)
+			success = false
+		} else {
+			message = "Plugin store refreshed successfully"
+			success = true
+		}
 	default:
 		rw.WriteHeader(http.StatusBadRequest)
 		writeJSON(rw, map[string]string{"error": "Invalid action"})
@@ -1062,24 +1089,27 @@ func (w *WebAdminServer) getLogsData() []webLogEntry {
 }
 
 func (w *WebAdminServer) getPluginsData() []webPluginInfo {
-	plugins := w.pluginManager.ListPlugins()
+	// Get available plugins from store
+	storePlugins := w.pluginManager.GetStore().GetPluginsPreferredForPlatform("", "")
+	installedPlugins := w.pluginManager.ListPlugins()
+
 	result := []webPluginInfo{}
 
-	for name, plugin := range plugins {
-		status := "Active"
-		if plugin.Manifest == nil {
-			status = "Inactive"
-		}
-
-		version := "1.0.0"
-		if plugin.Manifest != nil && plugin.Manifest.Version != "" {
-			version = plugin.Manifest.Version
+	// Add all store plugins
+	for _, plugin := range storePlugins {
+		status := "Available"
+		if installed, exists := installedPlugins[plugin.Name]; exists {
+			if installed.Enabled {
+				status = "Active"
+			} else {
+				status = "Inactive"
+			}
 		}
 
 		result = append(result, webPluginInfo{
-			Name:    name,
+			Name:    plugin.Name,
 			Status:  status,
-			Version: version,
+			Version: plugin.Version,
 		})
 	}
 

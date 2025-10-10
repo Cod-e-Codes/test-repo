@@ -113,13 +113,13 @@ type AdminPanel struct {
 	tabs      []string
 
 	// Components
-	help      help.Model
-	userTable table.Model
+	help        help.Model
+	userTable   table.Model
+	pluginTable table.Model
 
 	// Scroll state for each tab
 	overviewScroll int
 	systemScroll   int
-	pluginsScroll  int
 	metricsScroll  int
 	logsScroll     int
 
@@ -133,6 +133,7 @@ type AdminPanel struct {
 
 	// Server integration
 	hub           *Hub
+	ServerLogger  *Logger
 	db            *sql.DB
 	pluginManager *manager.PluginManager
 	startTime     time.Time
@@ -391,13 +392,42 @@ func NewAdminPanel(hub *Hub, db *sql.DB, pluginManager *manager.PluginManager, l
 		Bold(false)
 	t.SetStyles(s)
 
+	// Initialize plugin table
+	pluginColumns := []table.Column{
+		{Title: "Name", Width: 20},
+		{Title: "Status", Width: 12},
+		{Title: "Version", Width: 8},
+	}
+
+	pluginTable := table.New(
+		table.WithColumns(pluginColumns),
+		table.WithFocused(false),
+		table.WithHeight(12),
+	)
+
+	// Apply same styling as user table
+	ps := table.DefaultStyles()
+	ps.Header = ps.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(primaryColor).
+		BorderBottom(true).
+		Bold(true).
+		Foreground(accentColor)
+	ps.Selected = ps.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(secondaryColor).
+		Bold(false)
+	pluginTable.SetStyles(ps)
+
 	panel := &AdminPanel{
 		activeTab:     tabOverview,
 		tabs:          []string{"Overview", "Users", "System", "Logs", "Plugins", "Metrics"},
 		help:          help.New(),
 		userTable:     t,
+		pluginTable:   pluginTable,
 		keys:          keys,
 		hub:           hub,
+		ServerLogger:  ServerLogger,
 		db:            db,
 		pluginManager: pluginManager,
 		startTime:     time.Now(),
@@ -535,25 +565,29 @@ func (ap *AdminPanel) loadUsers() {
 }
 
 func (ap *AdminPanel) loadPlugins() {
-	// Get plugin information from plugin manager
-	plugins := ap.pluginManager.ListPlugins()
+	// Get available plugins from store
+	storePlugins := ap.pluginManager.GetStore().GetPluginsPreferredForPlatform("", "")
+	installedPlugins := ap.pluginManager.ListPlugins()
+
 	ap.plugins = []pluginInfo{}
 
-	for name, plugin := range plugins {
-		status := "Disabled"
-		if plugin.Enabled {
-			status = "Active"
+	// Add all store plugins
+	for _, plugin := range storePlugins {
+		status := "Available"
+		if installed, exists := installedPlugins[plugin.Name]; exists {
+			if installed.Enabled {
+				status = "Active"
+			} else {
+				status = "Disabled"
+			}
 		}
 
-		version := "1.0.0"
-		if plugin.Manifest != nil && plugin.Manifest.Version != "" {
-			version = plugin.Manifest.Version
-		}
+		// Plugin data loaded successfully
 
 		ap.plugins = append(ap.plugins, pluginInfo{
-			Name:    name,
+			Name:    plugin.Name,
 			Status:  status,
-			Version: version,
+			Version: plugin.Version,
 		})
 	}
 }
@@ -575,7 +609,18 @@ func (ap *AdminPanel) loadLogs() {
 		})
 	}
 
-	// Logs are already sorted (newest first) from GetRecentEntries
+	// Debug: Check what logs we're getting
+	if len(ap.logs) > 0 {
+		// Check if we have any Admin component logs
+		adminLogs := 0
+		for _, logEntry := range ap.logs {
+			if logEntry.Component == "Admin" {
+				adminLogs++
+			}
+		}
+		// This will show up in the debug file, not admin panel
+		log.Printf("DEBUG: Admin panel loaded %d total logs, %d admin logs", len(ap.logs), adminLogs)
+	}
 }
 
 func (ap *AdminPanel) updateSystemStats() {
@@ -757,11 +802,39 @@ func (ap *AdminPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return ap, tea.Quit
 		case key.Matches(msg, ap.keys.TabNext):
 			ap.activeTab = tabType((int(ap.activeTab) + 1) % len(ap.tabs))
+			// Focus/blur tables based on active tab
+			switch ap.activeTab {
+			case tabUsers:
+				ap.userTable.Focus()
+				ap.pluginTable.Blur()
+			case tabPlugins:
+				ap.pluginTable.Focus()
+				ap.userTable.Blur()
+			default:
+				ap.userTable.Blur()
+				ap.pluginTable.Blur()
+			}
 		case key.Matches(msg, ap.keys.TabPrev):
 			ap.activeTab = tabType((int(ap.activeTab) - 1 + len(ap.tabs)) % len(ap.tabs))
+			// Focus/blur tables based on active tab
+			switch ap.activeTab {
+			case tabUsers:
+				ap.userTable.Focus()
+				ap.pluginTable.Blur()
+			case tabPlugins:
+				ap.pluginTable.Focus()
+				ap.userTable.Blur()
+			default:
+				ap.userTable.Blur()
+				ap.pluginTable.Blur()
+			}
 		case key.Matches(msg, ap.keys.Help):
 			ap.help.ShowAll = !ap.help.ShowAll
 		case key.Matches(msg, ap.keys.Refresh):
+			if ap.activeTab == tabPlugins {
+				// Refresh plugin store
+				return ap, ap.refreshPluginStore()
+			}
 			ap.refreshData()
 			ap.message = "🔄 Data refreshed"
 			ap.messageTimer = 3
@@ -808,6 +881,26 @@ func (ap *AdminPanel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					username := selected[0]
 					return ap, ap.allowUser(username)
 				}
+			}
+		case key.Matches(msg, ap.keys.Enable):
+			if ap.activeTab == tabPlugins && ap.selectedPlugin >= 0 && ap.selectedPlugin < len(ap.plugins) {
+				pluginName := ap.plugins[ap.selectedPlugin].Name
+				return ap, ap.enablePlugin(pluginName)
+			}
+		case key.Matches(msg, ap.keys.Disable):
+			if ap.activeTab == tabPlugins && ap.selectedPlugin >= 0 && ap.selectedPlugin < len(ap.plugins) {
+				pluginName := ap.plugins[ap.selectedPlugin].Name
+				return ap, ap.disablePlugin(pluginName)
+			}
+		case key.Matches(msg, ap.keys.Install):
+			if ap.activeTab == tabPlugins && ap.selectedPlugin >= 0 && ap.selectedPlugin < len(ap.plugins) {
+				pluginName := ap.plugins[ap.selectedPlugin].Name
+				return ap, ap.installPlugin(pluginName)
+			}
+		case key.Matches(msg, ap.keys.Uninstall):
+			if ap.activeTab == tabPlugins && ap.selectedPlugin >= 0 && ap.selectedPlugin < len(ap.plugins) {
+				pluginName := ap.plugins[ap.selectedPlugin].Name
+				return ap, ap.uninstallPlugin(pluginName)
 			}
 		case key.Matches(msg, ap.keys.ForceGC):
 			runtime.GC()
@@ -897,9 +990,20 @@ func (ap *AdminPanel) handleScroll(direction int) {
 			ap.systemScroll = 0
 		}
 	case tabPlugins:
-		ap.pluginsScroll += direction
-		if ap.pluginsScroll < 0 {
-			ap.pluginsScroll = 0
+		// Use table navigation for plugins
+		if direction > 0 {
+			ap.pluginTable.MoveDown(1)
+		} else {
+			ap.pluginTable.MoveUp(1)
+		}
+		ap.selectedPlugin = ap.pluginTable.Cursor()
+
+		// Ensure selectedPlugin is within bounds
+		if ap.selectedPlugin >= len(ap.plugins) {
+			ap.selectedPlugin = len(ap.plugins) - 1
+		}
+		if ap.selectedPlugin < 0 {
+			ap.selectedPlugin = 0
 		}
 	case tabMetrics:
 		ap.metricsScroll += direction
@@ -1220,37 +1324,73 @@ func (ap *AdminPanel) renderPlugins() string {
 	doc.WriteString(subtitleStyle.Width(contentWidth).Render("Plugin Management\n"))
 	doc.WriteString(strings.Repeat("─", min(20, contentWidth-2)) + "\n")
 
-	doc.WriteString(infoStylePanel.Render("Use ↑/↓ to navigate, [e] Enable, [d] Disable, [i] Install, [n] Uninstall\n\n"))
+	// Show selected plugin info
+	if ap.pluginTable.Focused() {
+		selected := ap.pluginTable.SelectedRow()
+		if len(selected) > 0 {
+			pluginName := selected[0] // Name is now in position 0
+			status := selected[1]     // Status is in position 1
 
-	if len(ap.plugins) == 0 {
-		doc.WriteString("No plugins found.\n")
-	} else {
-		for i, plugin := range ap.plugins {
-			statusColor := "green"
-			switch plugin.Status {
-			case "Inactive":
-				statusColor = "yellow"
-			case "Error":
-				statusColor = "red"
+			var statusStyleLocal lipgloss.Style
+			switch status {
+			case "Active":
+				statusStyleLocal = lipgloss.NewStyle().Foreground(successColor).Bold(true)
+			case "Disabled", "Inactive":
+				statusStyleLocal = lipgloss.NewStyle().Foreground(warningColor).Bold(true)
+			case "Available":
+				statusStyleLocal = lipgloss.NewStyle().Foreground(lipgloss.Color("cyan")).Bold(true)
+			default:
+				statusStyleLocal = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Bold(true)
 			}
 
-			statusStyleLocal := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor)).Bold(true)
-
-			// Highlight selected plugin
-			if i == ap.selectedPlugin {
-				doc.WriteString("▶ ")
-			} else {
-				doc.WriteString("  ")
-			}
-
-			doc.WriteString(fmt.Sprintf("%-15s %s %s\n",
-				plugin.Name,
-				statusStyleLocal.Render(plugin.Status),
-				plugin.Version))
+			doc.WriteString(fmt.Sprintf("Selected: %s (%s)\n",
+				pluginName,
+				statusStyleLocal.Render(status)))
 		}
 	}
 
-	return ap.renderScrollableContent(doc.String(), ap.pluginsScroll)
+	doc.WriteString("Use ↑/↓ to navigate, [r] Refresh, [i] Install, [e] Enable, [d] Disable, [n] Uninstall\n\n")
+
+	if len(ap.plugins) == 0 {
+		doc.WriteString("No plugins found.\n")
+		return doc.String()
+	}
+
+	// Update plugin table with current data
+	rows := make([]table.Row, len(ap.plugins))
+	for i, plugin := range ap.plugins {
+		// Add arrow indicator for selected plugin
+		name := plugin.Name
+		if i == ap.selectedPlugin {
+			name = "▶ " + name
+		} else {
+			name = "  " + name
+		}
+		rows[i] = table.Row{name, plugin.Status, "v" + plugin.Version}
+	}
+
+	ap.pluginTable.SetRows(rows)
+
+	// Ensure selectedPlugin is within bounds before setting cursor
+	if ap.selectedPlugin >= len(rows) {
+		ap.selectedPlugin = len(rows) - 1
+	}
+	if ap.selectedPlugin < 0 {
+		ap.selectedPlugin = 0
+	}
+
+	ap.pluginTable.SetCursor(ap.selectedPlugin)
+
+	// Only show selection highlight when plugin table is focused
+	if ap.activeTab == tabPlugins {
+		ap.pluginTable.Focus()
+	} else {
+		ap.pluginTable.Blur()
+	}
+
+	doc.WriteString(ap.pluginTable.View())
+
+	return doc.String()
 }
 
 func (ap *AdminPanel) renderMetrics() string {
@@ -1430,6 +1570,86 @@ func (ap *AdminPanel) allowUser(username string) tea.Cmd {
 		return actionMsg{
 			success: false,
 			message: fmt.Sprintf("❌ User '%s' was not found in kick list", username),
+		}
+	}
+}
+
+func (ap *AdminPanel) enablePlugin(pluginName string) tea.Cmd {
+	return func() tea.Msg {
+		if err := ap.pluginManager.EnablePlugin(pluginName); err != nil {
+			return actionMsg{
+				success: false,
+				message: fmt.Sprintf("❌ Failed to enable plugin '%s': %v", pluginName, err),
+			}
+		}
+		ap.loadPlugins() // Refresh plugin list
+		return actionMsg{
+			success: true,
+			message: fmt.Sprintf("✅ Plugin '%s' has been enabled", pluginName),
+		}
+	}
+}
+
+func (ap *AdminPanel) disablePlugin(pluginName string) tea.Cmd {
+	return func() tea.Msg {
+		if err := ap.pluginManager.DisablePlugin(pluginName); err != nil {
+			return actionMsg{
+				success: false,
+				message: fmt.Sprintf("❌ Failed to disable plugin '%s': %v", pluginName, err),
+			}
+		}
+		ap.loadPlugins() // Refresh plugin list
+		return actionMsg{
+			success: true,
+			message: fmt.Sprintf("⊘ Plugin '%s' has been disabled", pluginName),
+		}
+	}
+}
+
+func (ap *AdminPanel) uninstallPlugin(pluginName string) tea.Cmd {
+	return func() tea.Msg {
+		if err := ap.pluginManager.UninstallPlugin(pluginName); err != nil {
+			return actionMsg{
+				success: false,
+				message: fmt.Sprintf("❌ Failed to uninstall plugin '%s': %v", pluginName, err),
+			}
+		}
+		ap.loadPlugins() // Refresh plugin list
+		return actionMsg{
+			success: true,
+			message: fmt.Sprintf("🗑️ Plugin '%s' has been uninstalled", pluginName),
+		}
+	}
+}
+
+func (ap *AdminPanel) installPlugin(pluginName string) tea.Cmd {
+	return func() tea.Msg {
+		if err := ap.pluginManager.InstallPlugin(pluginName); err != nil {
+			return actionMsg{
+				success: false,
+				message: fmt.Sprintf("❌ Failed to install plugin '%s': %v", pluginName, err),
+			}
+		}
+		ap.loadPlugins() // Refresh plugin list
+		return actionMsg{
+			success: true,
+			message: fmt.Sprintf("📦 Plugin '%s' installed successfully", pluginName),
+		}
+	}
+}
+
+func (ap *AdminPanel) refreshPluginStore() tea.Cmd {
+	return func() tea.Msg {
+		if err := ap.pluginManager.RefreshStore(); err != nil {
+			return actionMsg{
+				success: false,
+				message: fmt.Sprintf("❌ Failed to refresh plugin store: %v", err),
+			}
+		}
+		ap.loadPlugins() // Refresh plugin list
+		return actionMsg{
+			success: true,
+			message: "🔄 Plugin store refreshed successfully",
 		}
 	}
 }
