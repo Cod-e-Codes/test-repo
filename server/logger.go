@@ -206,10 +206,10 @@ func LogToFile(filename string) error {
 		if stat.Size() > 10*1024*1024 { // 10MB
 			// Rotate the log file
 			rotatedName := filename + ".old"
-			// Remove old backup if it exists
-			os.Remove(rotatedName)
-			// Rename current to backup
-			os.Rename(filename, rotatedName)
+			// Remove old backup if it exists (ignore error if it doesn't exist)
+			_ = os.Remove(rotatedName)
+			// Rename current to backup (ignore error, we'll create new file anyway)
+			_ = os.Rename(filename, rotatedName)
 		}
 	}
 
