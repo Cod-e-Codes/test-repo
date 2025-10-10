@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -43,6 +44,11 @@ func validatePluginName(name string) error {
 	return nil
 }
 
+// PluginState represents the persisted state of plugins
+type PluginState struct {
+	Enabled map[string]bool `json:"enabled"` // plugin name -> enabled status
+}
+
 // PluginManager manages plugin installation and commands
 type PluginManager struct {
 	host        *host.PluginHost
@@ -50,6 +56,7 @@ type PluginManager struct {
 	pluginDir   string
 	dataDir     string
 	registryURL string
+	stateFile   string
 }
 
 // NewPluginManager creates a new plugin manager
@@ -63,6 +70,7 @@ func NewPluginManager(pluginDir, dataDir, registryURL string) *PluginManager {
 		pluginDir:   pluginDir,
 		dataDir:     dataDir,
 		registryURL: registryURL,
+		stateFile:   filepath.Join(dataDir, "plugin_state.json"),
 	}
 
 	// Auto-discover and load installed plugins
@@ -71,8 +79,59 @@ func NewPluginManager(pluginDir, dataDir, registryURL string) *PluginManager {
 	return pm
 }
 
+// loadPluginState loads the persisted plugin state
+func (pm *PluginManager) loadPluginState() *PluginState {
+	data, err := os.ReadFile(pm.stateFile)
+	if err != nil {
+		// State file doesn't exist - return default state
+		return &PluginState{
+			Enabled: make(map[string]bool),
+		}
+	}
+
+	var state PluginState
+	if err := json.Unmarshal(data, &state); err != nil {
+		// Corrupted state file - return default
+		return &PluginState{
+			Enabled: make(map[string]bool),
+		}
+	}
+
+	if state.Enabled == nil {
+		state.Enabled = make(map[string]bool)
+	}
+
+	return &state
+}
+
+// savePluginState persists the current plugin state
+func (pm *PluginManager) savePluginState() error {
+	state := &PluginState{
+		Enabled: make(map[string]bool),
+	}
+
+	// Collect enabled status from all plugins
+	for name, instance := range pm.host.ListPlugins() {
+		state.Enabled[name] = instance.Enabled
+	}
+
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal state: %w", err)
+	}
+
+	if err := os.WriteFile(pm.stateFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write state file: %w", err)
+	}
+
+	return nil
+}
+
 // discoverInstalledPlugins scans the plugin directory and loads all installed plugins
 func (pm *PluginManager) discoverInstalledPlugins() {
+	// Load persisted plugin state
+	state := pm.loadPluginState()
+
 	// Read plugin directory
 	entries, err := os.ReadDir(pm.pluginDir)
 	if err != nil {
@@ -105,9 +164,20 @@ func (pm *PluginManager) discoverInstalledPlugins() {
 			continue
 		}
 
-		// Auto-start enabled plugins
-		if instance := pm.host.GetPlugin(pluginName); instance != nil && instance.Enabled {
-			_ = pm.host.StartPlugin(pluginName)
+		// Set enabled status from saved state (default to true if not found)
+		enabled, exists := state.Enabled[pluginName]
+		if !exists {
+			enabled = true // New plugins default to enabled
+		}
+
+		instance := pm.host.GetPlugin(pluginName)
+		if instance != nil {
+			instance.Enabled = enabled
+
+			// Auto-start enabled plugins
+			if enabled {
+				_ = pm.host.StartPlugin(pluginName)
+			}
 		}
 	}
 }
@@ -197,7 +267,12 @@ func (pm *PluginManager) EnablePlugin(name string) error {
 	if err := validatePluginName(name); err != nil {
 		return fmt.Errorf("invalid plugin name: %w", err)
 	}
-	return pm.host.EnablePlugin(name)
+	if err := pm.host.EnablePlugin(name); err != nil {
+		return err
+	}
+	// Save state after enabling
+	_ = pm.savePluginState()
+	return nil
 }
 
 // DisablePlugin disables a plugin
@@ -206,7 +281,12 @@ func (pm *PluginManager) DisablePlugin(name string) error {
 	if err := validatePluginName(name); err != nil {
 		return fmt.Errorf("invalid plugin name: %w", err)
 	}
-	return pm.host.DisablePlugin(name)
+	if err := pm.host.DisablePlugin(name); err != nil {
+		return err
+	}
+	// Save state after disabling
+	_ = pm.savePluginState()
+	return nil
 }
 
 // ListPlugins returns all installed plugins
