@@ -547,11 +547,53 @@ type adminAuth struct {
 	adminKey string
 }
 
+// validateUsernameHandler validates username format (same logic as client.go validateUsername)
+func validateUsernameHandler(username string) error {
+	if username == "" {
+		return fmt.Errorf("username cannot be empty")
+	}
+	if len(username) > 32 {
+		return fmt.Errorf("username too long (max 32 characters)")
+	}
+	// Allow letters, numbers, underscores, hyphens, and periods
+	for _, char := range username {
+		if !((char >= 'a' && char <= 'z') ||
+			(char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') ||
+			char == '_' || char == '-' || char == '.') {
+			return fmt.Errorf("username contains invalid characters (only letters, numbers, _, -, . allowed)")
+		}
+	}
+	// Prevent usernames that could be confused with system messages or commands
+	if strings.HasPrefix(username, ":") || strings.HasPrefix(username, ".") {
+		return fmt.Errorf("username cannot start with : or")
+	}
+	// Prevent path traversal attempts
+	if strings.Contains(username, "..") {
+		return fmt.Errorf("username cannot contain '..'")
+	}
+	return nil
+}
+
 func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string, banGapsHistory bool, maxFileBytes int64, dbPath string) http.HandlerFunc {
 	auth := adminAuth{admins: make(map[string]struct{}), adminKey: adminKey}
 	for _, u := range adminList {
 		auth.admins[strings.ToLower(u)] = struct{}{}
 	}
+
+	// Parse allowed users from environment variable (username allowlist)
+	var allowedUsers map[string]struct{}
+	if allowedUsersEnv := os.Getenv("MARCHAT_ALLOWED_USERS"); allowedUsersEnv != "" {
+		allowedUsers = make(map[string]struct{})
+		for _, u := range strings.Split(allowedUsersEnv, ",") {
+			username := strings.TrimSpace(u)
+			if username != "" {
+				allowedUsers[strings.ToLower(username)] = struct{}{}
+			}
+		}
+		log.Printf("Username allowlist enabled with %d allowed users", len(allowedUsers))
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -576,7 +618,38 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string, banGapsH
 			conn.Close()
 			return
 		}
+
+		// Validate username format
+		if err := validateUsernameHandler(username); err != nil {
+			SecurityLogger.Warn("Invalid username attempt", map[string]interface{}{
+				"username": username,
+				"error":    err.Error(),
+				"ip":       getClientIP(r),
+			})
+			if err := conn.WriteMessage(websocket.CloseMessage, []byte("Invalid username: "+err.Error())); err != nil {
+				log.Printf("WriteMessage error: %v", err)
+			}
+			conn.Close()
+			return
+		}
+
 		lu := strings.ToLower(username)
+
+		// Check username allowlist if enabled
+		if allowedUsers != nil {
+			if _, allowed := allowedUsers[lu]; !allowed {
+				SecurityLogger.Warn("Username not in allowlist", map[string]interface{}{
+					"username": username,
+					"ip":       getClientIP(r),
+				})
+				log.Printf("User '%s' (IP: %s) rejected - not in allowed users list", username, getClientIP(r))
+				if err := conn.WriteMessage(websocket.CloseMessage, []byte("Username not allowed on this server")); err != nil {
+					log.Printf("WriteMessage error: %v", err)
+				}
+				conn.Close()
+				return
+			}
+		}
 		isAdmin := false
 		if hs.Admin {
 			if _, ok := auth.admins[lu]; !ok {

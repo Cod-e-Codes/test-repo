@@ -2,6 +2,7 @@ package server
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -99,6 +100,35 @@ func (c *Client) readPump() {
 		}
 		c.hub.broadcast <- msg
 	}
+}
+
+// validateUsername ensures usernames are safe and cannot cause injection attacks
+func validateUsername(username string) error {
+	if username == "" {
+		return fmt.Errorf("username cannot be empty")
+	}
+	if len(username) > 32 {
+		return fmt.Errorf("username too long (max 32 characters)")
+	}
+	// Allow letters, numbers, underscores, hyphens, and periods
+	// This prevents log injection, command injection, and other issues
+	for _, char := range username {
+		if !((char >= 'a' && char <= 'z') ||
+			(char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') ||
+			char == '_' || char == '-' || char == '.') {
+			return fmt.Errorf("username contains invalid characters (only letters, numbers, _, -, . allowed)")
+		}
+	}
+	// Prevent usernames that could be confused with system messages or commands
+	if strings.HasPrefix(username, ":") || strings.HasPrefix(username, ".") {
+		return fmt.Errorf("username cannot start with : or")
+	}
+	// Prevent path traversal attempts
+	if strings.Contains(username, "..") {
+		return fmt.Errorf("username cannot contain '..'")
+	}
+	return nil
 }
 
 // parseCommandWithQuotes parses a command string, respecting quoted arguments
@@ -225,6 +255,15 @@ func (c *Client) handleAdminCommand(command string) {
 			return
 		}
 		targetUsername := parts[1]
+		if err := validateUsername(targetUsername); err != nil {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Invalid username: " + err.Error(),
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+			return
+		}
 		c.hub.KickUser(targetUsername, c.username)
 		c.send <- shared.Message{
 			Sender:    "System",
@@ -244,6 +283,15 @@ func (c *Client) handleAdminCommand(command string) {
 			return
 		}
 		targetUsername := parts[1]
+		if err := validateUsername(targetUsername); err != nil {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Invalid username: " + err.Error(),
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+			return
+		}
 		c.hub.BanUser(targetUsername, c.username)
 		c.send <- shared.Message{
 			Sender:    "System",
@@ -263,6 +311,15 @@ func (c *Client) handleAdminCommand(command string) {
 			return
 		}
 		targetUsername := parts[1]
+		if err := validateUsername(targetUsername); err != nil {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Invalid username: " + err.Error(),
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+			return
+		}
 		unbanned := c.hub.UnbanUser(targetUsername, c.username)
 		if unbanned {
 			c.send <- shared.Message{
@@ -291,6 +348,15 @@ func (c *Client) handleAdminCommand(command string) {
 			return
 		}
 		targetUsername := parts[1]
+		if err := validateUsername(targetUsername); err != nil {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Invalid username: " + err.Error(),
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+			return
+		}
 		allowed := c.hub.AllowUser(targetUsername, c.username)
 		if allowed {
 			c.send <- shared.Message{
@@ -329,6 +395,15 @@ func (c *Client) handleAdminCommand(command string) {
 			return
 		}
 		targetUsername := parts[1]
+		if err := validateUsername(targetUsername); err != nil {
+			c.send <- shared.Message{
+				Sender:    "System",
+				Content:   "Invalid username: " + err.Error(),
+				CreatedAt: time.Now(),
+				Type:      shared.TextMessage,
+			}
+			return
+		}
 		disconnected := c.hub.ForceDisconnectUser(targetUsername, c.username)
 		if disconnected {
 			c.send <- shared.Message{

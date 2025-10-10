@@ -281,7 +281,7 @@ func (h *PluginHost) StopPlugin(name string) error {
 		log.Printf("Failed to send shutdown request to plugin %s: %v", name, err)
 	}
 
-	// Wait for graceful shutdown with timeout
+	// Wait for graceful shutdown with a short timeout (plugins should shutdown quickly)
 	done := make(chan error, 1)
 	go func() {
 		done <- instance.Process.Wait()
@@ -292,11 +292,13 @@ func (h *PluginHost) StopPlugin(name string) error {
 		if err != nil {
 			log.Printf("Plugin %s exited with error: %v", name, err)
 		}
-	case <-time.After(5 * time.Second):
-		// Force kill if graceful shutdown fails
+	case <-time.After(1 * time.Second):
+		// Force kill if graceful shutdown takes too long
+		// Plugins over JSON IPC should be able to shutdown in under 1 second
 		if err := instance.Process.Process.Kill(); err != nil {
 			log.Printf("Failed to force kill plugin %s: %v", name, err)
 		}
+		log.Printf("Plugin %s killed after timeout", name)
 	}
 
 	instance.Process = nil

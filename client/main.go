@@ -65,11 +65,17 @@ type keyMap struct {
 	Quit       key.Binding
 	TimeFormat key.Binding
 	Clear      key.Binding
-	// Commands
+	// Commands with both text commands and hotkey alternatives
 	SendFile    key.Binding
 	SaveFile    key.Binding
 	Theme       key.Binding
 	CodeSnippet key.Binding
+	// Hotkey alternatives for commands (work even in encrypted sessions)
+	SendFileHotkey    key.Binding
+	ThemeHotkey       key.Binding
+	TimeFormatHotkey  key.Binding
+	ClearHotkey       key.Binding
+	CodeSnippetHotkey key.Binding
 	// Admin UI commands
 	DatabaseMenu key.Binding
 	SelectUser   key.Binding
@@ -110,6 +116,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 func (k keyMap) GetCommandHelp(isAdmin, useE2E bool) [][]key.Binding {
 	commands := [][]key.Binding{
 		{k.SendFile, k.SaveFile, k.Theme, k.CodeSnippet},
+		{k.SendFileHotkey, k.ThemeHotkey, k.TimeFormatHotkey, k.ClearHotkey, k.CodeSnippetHotkey},
 	}
 
 	// Individual E2E commands removed - only global E2E encryption is supported
@@ -192,6 +199,27 @@ func newKeyMap() keyMap {
 		CodeSnippet: key.NewBinding(
 			key.WithKeys(":code"),
 			key.WithHelp(":code", "create syntax highlighted code snippet"),
+		),
+		// Hotkey alternatives for commands (work even in encrypted sessions)
+		SendFileHotkey: key.NewBinding(
+			key.WithKeys("alt+f"),
+			key.WithHelp("alt+f", "send a file (file picker)"),
+		),
+		ThemeHotkey: key.NewBinding(
+			key.WithKeys("ctrl+t"),
+			key.WithHelp("ctrl+t", "cycle through themes"),
+		),
+		TimeFormatHotkey: key.NewBinding(
+			key.WithKeys("alt+t"),
+			key.WithHelp("alt+t", "toggle 12/24h time format"),
+		),
+		ClearHotkey: key.NewBinding(
+			key.WithKeys("ctrl+l"),
+			key.WithHelp("ctrl+l", "clear chat history"),
+		),
+		CodeSnippetHotkey: key.NewBinding(
+			key.WithKeys("alt+c"),
+			key.WithHelp("alt+c", "create code snippet"),
 		),
 		// Admin UI commands
 		DatabaseMenu: key.NewBinding(
@@ -1412,6 +1440,69 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.promptForPluginName("disable")
 			}
 			return m, nil
+		// Hotkey alternatives for common commands
+		case key.Matches(v, m.keys.SendFileHotkey):
+			// Open file picker (same as :sendfile without path)
+			m.textarea.SetValue("")
+			m.showFilePicker = true
+			m.filePickerModel = newFilePickerModel(m.styles, m.width, m.height,
+				func(filePath string) {
+					select {
+					case m.msgChan <- fileSendMsg{filePath: filePath}:
+					default:
+						log.Printf("Failed to send file message")
+					}
+				},
+				func() {
+					m.showFilePicker = false
+				})
+			return m, nil
+		case key.Matches(v, m.keys.ThemeHotkey):
+			// Cycle through themes
+			themes := []string{"system", "patriot", "retro", "modern"}
+			currentIndex := 0
+			for i, theme := range themes {
+				if theme == m.cfg.Theme {
+					currentIndex = i
+					break
+				}
+			}
+			nextIndex := (currentIndex + 1) % len(themes)
+			m.cfg.Theme = themes[nextIndex]
+			m.styles = getThemeStyles(m.cfg.Theme)
+			_ = config.SaveConfig(m.configFilePath, m.cfg)
+			m.banner = fmt.Sprintf("Theme: %s", m.cfg.Theme)
+			return m, nil
+		case key.Matches(v, m.keys.TimeFormatHotkey):
+			// Toggle time format
+			m.twentyFourHour = !m.twentyFourHour
+			m.cfg.TwentyFourHour = m.twentyFourHour
+			_ = config.SaveConfig(m.configFilePath, m.cfg)
+			m.banner = "Timestamp format: " + map[bool]string{true: "24h", false: "12h"}[m.twentyFourHour]
+			m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.users, m.viewport.Width, m.twentyFourHour))
+			return m, nil
+		case key.Matches(v, m.keys.ClearHotkey):
+			// Clear chat history
+			m.messages = nil
+			m.viewport.SetContent("")
+			m.banner = "Chat cleared."
+			return m, nil
+		case key.Matches(v, m.keys.CodeSnippetHotkey):
+			// Launch code snippet interface
+			m.textarea.SetValue("")
+			m.showCodeSnippet = true
+			m.codeSnippetModel = newCodeSnippetModel(m.styles, m.width, m.height,
+				func(code string) {
+					select {
+					case m.msgChan <- codeSnippetMsg{content: code}:
+					default:
+						log.Printf("Failed to send code snippet message")
+					}
+				},
+				func() {
+					m.showCodeSnippet = false
+				})
+			return m, nil
 		case key.Matches(v, m.keys.SelectUser):
 			// Cycle through users for admin selection
 			if *isAdmin && !m.showHelp && !m.showDBMenu && len(m.users) > 0 {
@@ -1750,27 +1841,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.SetValue("")
 				return m, nil
 			}
-			if text == ":cleardb" {
-				if !*isAdmin {
-					m.banner = "You are not authenticated as admin."
-					m.textarea.SetValue("")
-					return m, nil
-				}
-				m.sending = true
-				if m.conn != nil {
-					msg := shared.Message{Sender: m.cfg.Username, Content: text}
-					err := m.conn.WriteJSON(msg)
-					if err != nil {
-						m.banner = "❌ Failed to send (connection lost)"
-						m.sending = false
-						return m, m.listenWebSocket()
-					}
-					m.banner = ""
-				}
-				m.textarea.SetValue("")
-				return m, m.listenWebSocket()
-			}
-
 			// Individual E2E encryption commands removed - only global E2E encryption supported
 			if text == ":time" {
 				m.twentyFourHour = !m.twentyFourHour
@@ -1832,7 +1902,36 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if text != "" {
 				m.sending = true
 				if m.conn != nil {
-					if m.useE2E {
+					// Check if this is a server-side command (admin/plugin) that should bypass encryption
+					// Client-side commands are handled above and never reach this point
+					clientOnlyCommands := []string{":theme", ":time", ":clear", ":bell", ":bell-mention", ":code", ":sendfile", ":savefile"}
+					isClientCommand := false
+					for _, cmd := range clientOnlyCommands {
+						if strings.HasPrefix(text, cmd) {
+							isClientCommand = true
+							break
+						}
+					}
+
+					// If it starts with : and is NOT a client command, it's a server command
+					// This includes both built-in admin commands and dynamic plugin commands
+					isServerCommand := *isAdmin && strings.HasPrefix(text, ":") && !isClientCommand
+
+					if isServerCommand {
+						// Send as admin command type to bypass encryption
+						msg := shared.Message{
+							Sender:  m.cfg.Username,
+							Content: text,
+							Type:    shared.AdminCommandType,
+						}
+						err := m.conn.WriteJSON(msg)
+						if err != nil {
+							m.banner = "❌ Failed to send admin command (connection lost)"
+							m.sending = false
+							return m, m.listenWebSocket()
+						}
+						m.banner = ""
+					} else if m.useE2E {
 						// Use E2E encryption for global chat
 						log.Printf("DEBUG: Attempting to send global encrypted message: '%s'", text)
 
@@ -1860,6 +1959,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 
 						log.Printf("DEBUG: Global encrypted message sent successfully")
+						m.banner = ""
 					} else {
 						// Send plain text message
 						msg := shared.Message{Sender: m.cfg.Username, Content: text}
@@ -1868,8 +1968,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.sending = false
 							return m, m.listenWebSocket()
 						}
+						m.banner = ""
 					}
-					m.banner = ""
 				}
 				m.textarea.SetValue("")
 				return m, m.listenWebSocket()
@@ -2005,53 +2105,65 @@ func (m *model) findURLAtClickPosition(clickX, clickY int) string {
 func (m *model) generateHelpContent() string {
 	title := m.styles.HelpTitle.Render("marchat help")
 
-	// Basic keybindings
-	basicHelp := "Keyboard Shortcuts:\n"
-	basicHelp += "  Ctrl+H               Toggle help\n"
-	basicHelp += "  Esc                  Quit application\n"
-	basicHelp += "  Enter                Send message\n"
-	basicHelp += "  ↑/↓                  Scroll chat history\n"
-	basicHelp += "  PgUp/PgDn            Page through chat\n"
-	basicHelp += "  Ctrl+C/V/X/A         Copy/Paste/Cut/Select all"
-
-	// Command help
-	var commandHelp string
-	commandHelp = "\nCommands:\n"
-
-	// Basic commands
-	commandHelp += "  :sendfile [path]      Send a file (use without path for file picker)\n"
-	commandHelp += "  :savefile <filename>  Save received file\n"
-	commandHelp += "  :theme <name>         Change theme (system, patriot, retro, modern)\n"
-	commandHelp += "  :time                 Toggle 12/24h time format\n"
-	commandHelp += "  :clear                Clear chat history\n"
-	commandHelp += "  :code                 Create syntax highlighted code snippet\n"
-	commandHelp += "  :bell                 Toggle message bell notifications\n"
-	commandHelp += "  :bell-mention         Toggle bell only on mentions\n"
-
-	// Admin commands (only show if admin)
-	if *isAdmin {
-		commandHelp += "\nAdmin Interface:\n"
-		commandHelp += "  Ctrl+U                Select/cycle user\n"
-		commandHelp += "  Ctrl+D                Database operations menu\n"
-		commandHelp += "\nUser Actions (requires selection):\n"
-		commandHelp += "  Ctrl+K                Kick selected user\n"
-		commandHelp += "  Ctrl+B                Ban selected user\n"
-		commandHelp += "  Ctrl+F                Force disconnect selected user\n"
-		commandHelp += "\nUser Actions (prompt for username):\n"
-		commandHelp += "  Ctrl+Shift+B          Unban user\n"
-		commandHelp += "  Ctrl+Shift+A          Allow user (override kick)\n"
-		commandHelp += "\nPlugin Management:\n"
-		commandHelp += "  Alt+P                 List installed plugins\n"
-		commandHelp += "  Alt+S                 View plugin store\n"
-		commandHelp += "  Alt+R                 Refresh plugin list\n"
-		commandHelp += "  Alt+I                 Install plugin (prompts for name)\n"
-		commandHelp += "  Alt+U                 Uninstall plugin (prompts for name)\n"
-		commandHelp += "  Alt+E                 Enable plugin (prompts for name)\n"
-		commandHelp += "  Alt+D                 Disable plugin (prompts for name)\n"
-		commandHelp += "\nDatabase Operations: Clear DB, Backup DB, Show Stats\n"
+	// Session status first
+	var sessionInfo string
+	if m.useE2E {
+		sessionInfo = "Session: 🔒 E2E Encrypted (messages are encrypted for privacy)\n"
+	} else {
+		sessionInfo = "Session: 🔓 Unencrypted (messages are sent in plain text)\n"
 	}
 
-	return title + "\n\n" + basicHelp + commandHelp
+	// Basic keyboard shortcuts
+	shortcuts := "\nKeyboard Shortcuts:\n"
+	shortcuts += "  Ctrl+H               Toggle this help\n"
+	shortcuts += "  Esc                  Quit / Close menus\n"
+	shortcuts += "  Enter                Send message\n"
+	shortcuts += "  ↑/↓                  Scroll chat\n"
+	shortcuts += "  PgUp/PgDn            Page through chat\n"
+	shortcuts += "  Ctrl+C/V/X/A         Copy/Paste/Cut/Select all\n"
+	shortcuts += "  Alt+F                Send file (file picker)\n"
+	shortcuts += "  Alt+C                Create code snippet\n"
+	shortcuts += "  Ctrl+T               Cycle themes\n"
+	shortcuts += "  Alt+T                Toggle 12/24h time\n"
+	shortcuts += "  Ctrl+L               Clear chat history\n"
+
+	// Text commands
+	commands := "\nText Commands:\n"
+	commands += "  :sendfile [path]     Send a file (or Alt+F)\n"
+	commands += "  :savefile <name>     Save received file\n"
+	commands += "  :theme <name>        Change theme (or Ctrl+T to cycle)\n"
+	commands += "  :time                Toggle 12/24h time (or Alt+T)\n"
+	commands += "  :clear               Clear chat history (or Ctrl+L)\n"
+	commands += "  :code                Create code snippet (or Alt+C)\n"
+	commands += "  :bell                Toggle message bell\n"
+	commands += "  :bell-mention        Bell on mentions only\n"
+
+	// Admin section
+	var adminSection string
+	if *isAdmin {
+		adminSection = "\nAdmin Features:\n"
+		adminSection += "\n  User Management:\n"
+		adminSection += "    Ctrl+U             Select/cycle user\n"
+		adminSection += "    Ctrl+K             Kick selected user (or :kick <user>)\n"
+		adminSection += "    Ctrl+B             Ban selected user (or :ban <user>)\n"
+		adminSection += "    Ctrl+F             Force disconnect (or :forcedisconnect <user>)\n"
+		adminSection += "    Ctrl+Shift+B       Unban user (or :unban <user>)\n"
+		adminSection += "    Ctrl+Shift+A       Allow user (or :allow <user>)\n"
+		adminSection += "    :cleanup           Clean stale connections\n"
+		adminSection += "\n  Plugin Management:\n"
+		adminSection += "    Alt+P              List plugins (or :list)\n"
+		adminSection += "    Alt+S              Plugin store (or :store)\n"
+		adminSection += "    Alt+R              Refresh plugins (or :refresh)\n"
+		adminSection += "    Alt+I              Install plugin (or :install <name>)\n"
+		adminSection += "    Alt+U              Uninstall plugin (or :uninstall <name>)\n"
+		adminSection += "    Alt+E              Enable plugin (or :enable <name>)\n"
+		adminSection += "    Alt+D              Disable plugin (or :disable <name>)\n"
+		adminSection += "\n  Database:\n"
+		adminSection += "    Ctrl+D             Database menu (or :cleardb, :backup, :stats)\n"
+		adminSection += "\n  Note: Both hotkeys and text commands work in encrypted sessions.\n"
+	}
+
+	return title + "\n\n" + sessionInfo + shortcuts + commands + adminSection
 }
 
 // generateDBMenuContent creates the database operations menu content
@@ -2229,10 +2341,16 @@ func (m *model) View() string {
 	headerText := fmt.Sprintf(" marchat %s ", shared.ClientVersion)
 	header := m.styles.Header.Width(m.viewport.Width + userListWidth + 4).Render(headerText)
 
-	// Simplified footer - just basic info
+	// Footer with encryption status
 	footerText := "Press Ctrl+H for help"
 	if m.showHelp {
 		footerText = "Press Ctrl+H to close help"
+	}
+	// Add encryption status indicator
+	if m.useE2E {
+		footerText += " | 🔒 E2E Encrypted"
+	} else {
+		footerText += " | 🔓 Unencrypted"
 	}
 	footer := m.styles.Footer.Width(m.viewport.Width + userListWidth + 4).Render(footerText)
 

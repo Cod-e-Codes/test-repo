@@ -13,13 +13,16 @@ A lightweight terminal chat with real-time messaging over WebSockets, optional E
 
 ## Latest Updates
 
-### v0.8.0-beta.10 (Current)
-- **Plugin persistence**: Installed plugins and their state now persist across server restarts
-- **State management**: Plugin enabled/disabled status saved to plugin_state.json
-- **Auto-discovery**: Server automatically loads installed plugins on startup
-- **Deadlock fixes**: Fixed initialization failure deadlock and uninstall file handle issues
+### v0.8.0-beta.11 (Current)
+- **Encryption UI improvements**: Added encryption status indicator in footer (🔒/🔓)
+- **Hotkey alternatives**: Added Alt+F, Alt+C, Alt+T, Ctrl+T, Ctrl+L for commands
+- **Command encryption fix**: All admin/plugin commands now work in E2E encrypted sessions
+- **Username validation**: Added validation to prevent injection attacks (max 32 chars, alphanumeric)
+- **Username allowlist**: Optional `MARCHAT_ALLOWED_USERS` environment variable for access control
+- **Performance**: Reduced plugin disable timeout from 5s to 1s for faster operations
 
 ### Recent Releases
+- **v0.8.0-beta.10**: Plugin persistence, state management, auto-discovery, deadlock fixes
 - **v0.8.0-beta.9**: Critical security fixes for path traversal and command injection
 - **v0.8.0-beta.8**: Debug log management, log rotation, full plugin management, plugin hotkeys
 - **v0.8.0-beta.7**: Real-time log capture, OS-specific log export, metrics tracking
@@ -117,12 +120,12 @@ Key tables for message tracking and moderation:
 **Binary Installation:**
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.3/marchat-v0.8.0-beta.3-linux-amd64.zip
-unzip marchat-v0.8.0-beta.3-linux-amd64.zip && chmod +x marchat-*
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.11/marchat-v0.8.0-beta.11-linux-amd64.zip
+unzip marchat-v0.8.0-beta.11-linux-amd64.zip && chmod +x marchat-*
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.3/marchat-v0.8.0-beta.3-darwin-amd64.zip
-unzip marchat-v0.8.0-beta.3-darwin-amd64.zip && chmod +x marchat-*
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.11/marchat-v0.8.0-beta.11-darwin-amd64.zip
+unzip marchat-v0.8.0-beta.11-darwin-amd64.zip && chmod +x marchat-*
 
 # Windows - PowerShell
 iwr -useb https://raw.githubusercontent.com/Cod-e-Codes/marchat/main/install.ps1 | iex
@@ -130,11 +133,11 @@ iwr -useb https://raw.githubusercontent.com/Cod-e-Codes/marchat/main/install.ps1
 
 **Docker:**
 ```bash
-docker pull codecodesxyz/marchat:v0.8.0-beta.2
+docker pull codecodesxyz/marchat:v0.8.0-beta.11
 docker run -d -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.8.0-beta.2
+  codecodesxyz/marchat:v0.8.0-beta.11
 ```
 
 **From Source:**
@@ -163,6 +166,7 @@ go build -o marchat-client ./client
 | `MARCHAT_TLS_KEY_FILE` | No | - | TLS private key |
 | `MARCHAT_GLOBAL_E2E_KEY` | No | - | Base64 32-byte global encryption key |
 | `MARCHAT_MAX_FILE_BYTES` | No | `1048576` | Max file size (1MB default) |
+| `MARCHAT_ALLOWED_USERS` | No | - | Username allowlist (comma-separated) |
 
 **Additional variables:** `MARCHAT_LOG_LEVEL`, `MARCHAT_CONFIG_DIR`, `MARCHAT_BAN_HISTORY_GAPS`, `MARCHAT_PLUGIN_REGISTRY_URL`, `MARCHAT_MAX_FILE_MB`
 
@@ -187,16 +191,18 @@ go build -o marchat-client ./client
 
 ## User Commands
 
-| Command | Description |
-|---------|-------------|
-| `:theme <name>` | Switch theme (system/patriot/retro/modern) |
-| `:time` | Toggle 12/24-hour format |
-| `:clear` | Clear chat buffer |
-| `:sendfile [path]` | Send file (or open picker without path) |
-| `:savefile <name>` | Save received file |
-| `:code` | Open code composer with syntax highlighting |
-| `:bell` | Toggle message notifications |
-| `:bell-mention` | Toggle mention-only notifications |
+| Command | Description | Hotkey |
+|---------|-------------|--------|
+| `:theme <name>` | Switch theme (system/patriot/retro/modern) | `Ctrl+T` (cycles) |
+| `:time` | Toggle 12/24-hour format | `Alt+T` |
+| `:clear` | Clear chat buffer | `Ctrl+L` |
+| `:sendfile [path]` | Send file (or open picker without path) | `Alt+F` |
+| `:savefile <name>` | Save received file | - |
+| `:code` | Open code composer with syntax highlighting | `Alt+C` |
+| `:bell` | Toggle message notifications | - |
+| `:bell-mention` | Toggle mention-only notifications | - |
+
+> **Note**: Hotkeys work in both encrypted and unencrypted sessions since they're handled client-side.
 
 ### Plugin Commands (Admin Only)
 
@@ -212,7 +218,7 @@ Text commands and hotkeys for plugin management. See [Plugin Management hotkeys]
 | `:plugin disable <name>` or `:disable <name>` | Disable plugin | `Alt+D` |
 | `:refresh` | Refresh plugin list from registry | `Alt+R` |
 
-> **Note**: Hotkeys send commands as unencrypted admin messages, working correctly in E2E encrypted sessions.
+> **Note**: Both text commands and hotkeys work in E2E encrypted sessions (sent as admin messages that bypass encryption).
 
 ### File Sharing
 
@@ -236,10 +242,19 @@ Navigate with arrow keys, Enter to select/open folders, ".. (Parent Directory)" 
 |-----|--------|
 | `Ctrl+H` | Toggle help overlay |
 | `Enter` | Send message |
-| `Esc` | Quit |
-| `↑/↓` | Scroll history |
-| `PgUp/PgDn` | Page through history |
+| `Esc` | Quit / Close menus |
+| `↑/↓` | Scroll chat |
+| `PgUp/PgDn` | Page through chat |
 | `Ctrl+C/V/X/A` | Copy/Paste/Cut/Select all |
+
+### User Features
+| Key | Action |
+|-----|--------|
+| `Alt+F` | Send file (file picker) |
+| `Alt+C` | Create code snippet |
+| `Ctrl+T` | Cycle themes |
+| `Alt+T` | Toggle 12/24h time |
+| `Ctrl+L` | Clear chat history |
 
 ### Admin Interface (Client)
 | Key | Action |
@@ -416,10 +431,10 @@ export MARCHAT_PLUGIN_REGISTRY_URL="https://my-registry.com/plugins.json"
 - `Alt+E` - Enable plugin (prompts for name)
 - `Alt+D` - Disable plugin (prompts for name)
 
-> See [Plugin Commands](#plugin-commands-admin-only) section for full command reference.
+> **Note**: Plugin management commands and custom plugin commands (e.g., `:echo`) work in E2E encrypted sessions. See [Plugin Commands](#plugin-commands-admin-only) for full reference.
 
 ### Available Plugins
-- **Echo**: Simple echo plugin for testing
+- **Echo**: Simple echo plugin for testing (provides `:echo` command)
 
 See [PLUGIN_ECOSYSTEM.md](PLUGIN_ECOSYSTEM.md) for development guide.
 
@@ -513,13 +528,22 @@ Profiles stored in platform-appropriate locations:
    - Never share keystores between users
    - Rotate keys periodically for sensitive deployments
 
+5. **Username Allowlist (Optional)**
+   ```bash
+   # Restrict to specific users for private servers
+   export MARCHAT_ALLOWED_USERS="alice,bob,charlie"
+   ```
+   - Usernames validated (letters, numbers, `_`, `-`, `.` only)
+   - Max 32 characters, cannot start with `:` or `.`
+   - Case-insensitive matching
+   - Protects against log injection and command injection
+
 ## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
 | Connection failed | Verify `ws://` or `wss://` protocol in URL |
 | Admin commands not working | Check `--admin` flag and correct `--admin-key` |
-| Admin commands encrypted | Use hotkeys instead of text commands in E2E sessions (e.g., `Alt+I` for install, `Ctrl+B` for ban) |
 | Clipboard issues (Linux) | Install xclip: `sudo apt install xclip` |
 | Port in use | Change port: `export MARCHAT_PORT=8081` |
 | Database migration fails | Check file permissions, backup before source build |
