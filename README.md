@@ -13,14 +13,16 @@ A lightweight terminal chat with real-time messaging over WebSockets, optional E
 
 ## Latest Updates
 
-### v0.8.0-beta.7 (Current)
-- **Real-time log capture**: Admin panels now display live server logs from memory buffer
-- **OS-specific log export**: Logs export to appropriate directories (Windows/macOS/Linux/Android)
-- **Metrics tracking**: Connection and disconnect counters now display accurate totals
-- **Structured logging**: Converted hub and server events to use structured loggers
-- **Live updates**: Admin panel logs grow in real-time as events occur
+### v0.8.0-beta.8 (Current)
+- **Debug log management**: Separate client and server debug logs in config directory
+- **Log rotation**: Automatic rotation at 10MB with backup file retention
+- **Config directory compliance**: Debug logs respect `MARCHAT_CONFIG_DIR` environment variable
+- **Full plugin management**: Terminal and web admin panels support enable/disable/install/uninstall
+- **Plugin table UI**: Improved plugin display with table component and selection
+- **Plugin logging**: Plugin operations now visible in admin panel logs
 
 ### Recent Releases
+- **v0.8.0-beta.7**: Real-time log capture, OS-specific log export, metrics tracking
 - **v0.8.0-beta.6**: Profile selection bug fix, object-based returns
 - **v0.8.0-beta.5**: Database backup fix, improved admin commands
 - **v0.8.0-beta.4**: Interactive server setup, simplified configuration
