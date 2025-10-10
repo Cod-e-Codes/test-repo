@@ -355,6 +355,18 @@ func (h *PluginHost) GetPlugin(name string) *PluginInstance {
 	return h.plugins[name]
 }
 
+// UnloadPlugin removes a plugin from the host without deleting files
+func (h *PluginHost) UnloadPlugin(name string) {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(name); err != nil {
+		return
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.plugins, name)
+}
+
 // ListPlugins returns all loaded plugins
 func (h *PluginHost) ListPlugins() map[string]*PluginInstance {
 	h.mu.RLock()

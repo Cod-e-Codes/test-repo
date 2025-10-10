@@ -173,6 +173,9 @@ func (pm *PluginManager) UninstallPlugin(name string) error {
 		return fmt.Errorf("failed to stop plugin: %w", err)
 	}
 
+	// Unload plugin from host to release all references
+	pm.host.UnloadPlugin(name)
+
 	// Remove plugin directory
 	pluginPath := filepath.Join(pm.pluginDir, name)
 	if err := os.RemoveAll(pluginPath); err != nil {
