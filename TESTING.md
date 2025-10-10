@@ -183,16 +183,16 @@ go test -cover ./...
 | `shared` | 82.4% | High | 283 | Small |
 | `config` | 78.6% | High | 304 | Small |
 | `client/crypto` | 76.5% | High | 289 | Small |
-| `client/config` | 55.2% | Medium | 1816 | Medium |
+| `client/config` | 54.5% | Medium | 1816 | Medium |
 | `plugin/store` | 46.8% | Medium | 559 | Medium |
 | `cmd/license` | 42.2% | Medium | 160 | Small |
-| `server` | 35.4% | Medium | 5391 | Large |
-| `client` | 27.8% | Medium | 3679 | Large |
-| `plugin/host` | 22.3% | Low | 486 | Medium |
-| `plugin/manager` | 12.4% | Low | 464 | Medium |
-| `cmd/server` | 5.6% | Low | 403 | Medium |
+| `server` | 32.6% | Medium | 5500+ | Large |
+| `client` | 26.2% | Medium | 3700+ | Large |
+| `plugin/host` | 23.7% | Low | 486 | Medium |
+| `plugin/manager` | 22.5% | Low | 464 | Medium |
+| `cmd/server` | 5.3% | Low | 403 | Medium |
 
-**Overall coverage: 37.1%** (all packages)
+**Overall coverage: 35.3%** (all packages)
 
 ### High Coverage (70%+)
 - **Plugin License Package**: License validation, signature verification, caching (83.1%)
@@ -378,9 +378,9 @@ When adding new functionality to Marchat:
 
 ## Test Metrics
 
-- **Total Tests**: 366 individual test cases across 11 packages
-- **Coverage by Package**: 83.1% (plugin/license), 82.4% (shared), 78.6% (config), 76.5% (client/crypto), 55.2% (client/config), 46.8% (plugin/store), 42.2% (cmd/license), 35.4% (server), 27.8% (client), 22.3% (plugin/host), 12.4% (plugin/manager), 5.6% (cmd/server)
-- **Overall Coverage**: 37.1% across all packages
+- **Total Tests**: 366+ individual test cases across 11 packages
+- **Coverage by Package**: 83.1% (plugin/license), 82.4% (shared), 78.6% (config), 76.5% (client/crypto), 54.5% (client/config), 46.8% (plugin/store), 42.2% (cmd/license), 32.6% (server), 26.2% (client), 23.7% (plugin/host), 22.5% (plugin/manager), 5.3% (cmd/server)
+- **Overall Coverage**: 35.3% across all packages
 - **Execution Time**: <3 seconds for full suite
 - **Reliability**: 100% deterministic, no flaky tests, no hanging tests
 - **Test Files**: 26 test files covering core functionality, client components, plugin system, server operations, and admin interfaces
