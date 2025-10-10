@@ -13,15 +13,13 @@ A lightweight terminal chat with real-time messaging over WebSockets, optional E
 
 ## Latest Updates
 
-### v0.8.0-beta.8 (Current)
-- **Debug log management**: Separate client and server debug logs in config directory
-- **Log rotation**: Automatic rotation at 10MB with backup file retention
-- **Config directory compliance**: Debug logs respect `MARCHAT_CONFIG_DIR` environment variable
-- **Full plugin management**: Terminal and web admin panels support enable/disable/install/uninstall
-- **Plugin table UI**: Improved plugin display with table component and selection
-- **Plugin logging**: Plugin operations now visible in admin panel logs
+### v0.8.0-beta.9 (Current)
+- **Security**: Fixed critical path traversal and command injection vulnerabilities in plugin system
+- **Plugin validation**: All plugin names now validated to prevent malicious attacks
+- **CodeQL compliance**: Resolved 18 security alerts (1 Critical, 17 High severity)
 
 ### Recent Releases
+- **v0.8.0-beta.8**: Debug log management, log rotation, full plugin management, plugin hotkeys
 - **v0.8.0-beta.7**: Real-time log capture, OS-specific log export, metrics tracking
 - **v0.8.0-beta.6**: Profile selection bug fix, object-based returns
 - **v0.8.0-beta.5**: Database backup fix, improved admin commands
