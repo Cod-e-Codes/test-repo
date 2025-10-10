@@ -7,7 +7,7 @@ All security updates and fixes are applied to the `main` branch.
 
 | Version            | Supported |
 |--------------------|-----------|
-| v0.6.x (main)      | ✅        |
+| v0.8.x (main)      | ✅        |
 | Earlier versions   | ❌        |
 
 ---
