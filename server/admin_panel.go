@@ -540,9 +540,9 @@ func (ap *AdminPanel) loadPlugins() {
 	ap.plugins = []pluginInfo{}
 
 	for name, plugin := range plugins {
-		status := "Active"
-		if plugin.Manifest == nil {
-			status = "Inactive"
+		status := "Disabled"
+		if plugin.Enabled {
+			status = "Active"
 		}
 
 		version := "1.0.0"

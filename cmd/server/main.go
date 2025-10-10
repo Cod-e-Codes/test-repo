@@ -239,10 +239,16 @@ func main() {
 
 	// Create plugin directories if they don't exist
 	if err := os.MkdirAll(pluginDir, 0755); err != nil {
-		log.Printf("Warning: Failed to create plugin directory %s: %v", pluginDir, err)
+		server.ServerLogger.Warn("Failed to create plugin directory", map[string]interface{}{
+			"path":  pluginDir,
+			"error": err.Error(),
+		})
 	}
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		log.Printf("Warning: Failed to create data directory %s: %v", dataDir, err)
+		server.ServerLogger.Warn("Failed to create data directory", map[string]interface{}{
+			"path":  dataDir,
+			"error": err.Error(),
+		})
 	}
 
 	hub := server.NewHub(pluginDir, dataDir, registryURL, db)
@@ -269,7 +275,9 @@ func main() {
 		web := server.NewWebAdminServer(hub, db, cfg)
 		mux := http.DefaultServeMux
 		web.RegisterRoutes(mux)
-		log.Printf("Web admin panel enabled at /admin (use X-Admin-Key header)")
+		server.ServerLogger.Info("Web admin panel enabled", map[string]interface{}{
+			"endpoint": "/admin",
+		})
 	}
 
 	// Initialize health checker
@@ -281,9 +289,11 @@ func main() {
 	serverAddr := fmt.Sprintf("localhost:%d", listenPort)
 	scheme := cfg.GetWebSocketScheme()
 
-	// Print configuration info
-	log.Printf("Configuration directory: %s", cfg.ConfigDir)
-	log.Printf("Database path: %s", cfg.DBPath)
+	// Log configuration info
+	server.ServerLogger.Info("Configuration loaded", map[string]interface{}{
+		"config_dir": cfg.ConfigDir,
+		"db_path":    cfg.DBPath,
+	})
 
 	// Print banner
 	printBanner(serverAddr, admins, scheme, cfg.IsTLSEnabled())
@@ -318,32 +328,38 @@ func main() {
 			// Check if stdin is a terminal
 			fd := os.Stdin.Fd()
 			if !term.IsTerminal(fd) {
-				log.Printf("Warning: stdin is not a terminal, admin panel hotkeys disabled")
+				server.ServerLogger.Warn("stdin is not a terminal, admin panel hotkeys disabled", nil)
 				return
 			}
 
 			// Set terminal to raw mode for character-by-character input
 			oldState, err := term.MakeRaw(fd)
 			if err != nil {
-				log.Printf("Warning: Could not set terminal to raw mode: %v", err)
+				server.ServerLogger.Warn("Could not set terminal to raw mode", map[string]interface{}{
+					"error": err.Error(),
+				})
 				return
 			}
 
 			// Ensure we restore terminal state when the goroutine exits
 			defer func() {
 				if err := term.Restore(fd, oldState); err != nil {
-					log.Printf("Warning: Could not restore terminal state: %v", err)
+					server.ServerLogger.Warn("Could not restore terminal state", map[string]interface{}{
+						"error": err.Error(),
+					})
 				}
 			}()
 
-			log.Printf("Admin panel ready - press Ctrl+A to open")
+			server.ServerLogger.Info("Admin panel ready", map[string]interface{}{
+				"hotkey": "Ctrl+A",
+			})
 
 			// Read input character by character
 			buf := make([]byte, 1)
 			for {
 				n, err := os.Stdin.Read(buf)
 				if err != nil {
-					log.Printf("Error reading from stdin: %v", err)
+					server.ServerLogger.Error("Error reading from stdin", err)
 					break
 				}
 				if n == 0 {
@@ -352,11 +368,11 @@ func main() {
 
 				// Check for Ctrl+A (ASCII 1) or Ctrl+C (ASCII 3)
 				if buf[0] == 1 {
-					log.Printf("Admin panel hotkey detected (Ctrl+A)")
-
 					// Temporarily restore terminal state
 					if err := term.Restore(fd, oldState); err != nil {
-						log.Printf("Warning: Could not restore terminal state: %v", err)
+						server.ServerLogger.Warn("Could not restore terminal state", map[string]interface{}{
+							"error": err.Error(),
+						})
 					}
 
 					// Launch admin panel
@@ -364,22 +380,24 @@ func main() {
 					panel := server.NewAdminPanel(hub, db, pluginManager, cfg)
 					p := tea.NewProgram(panel, tea.WithAltScreen())
 					if _, err := p.Run(); err != nil {
-						log.Printf("Admin panel error: %v", err)
+						server.ServerLogger.Error("Admin panel error", err)
 					}
 
 					// Set terminal back to raw mode
 					oldState, err = term.MakeRaw(fd)
 					if err != nil {
-						log.Printf("Warning: Could not reset terminal to raw mode: %v", err)
+						server.ServerLogger.Warn("Could not reset terminal to raw mode", map[string]interface{}{
+							"error": err.Error(),
+						})
 						break
 					}
-					log.Printf("Admin panel ready - press Ctrl+A to open")
+					server.ServerLogger.Info("Admin panel closed", nil)
 				} else if buf[0] == 3 { // Ctrl+C (ASCII 3)
-					log.Printf("Ctrl+C detected, shutting down server...")
-
 					// Restore terminal state before shutdown
 					if err := term.Restore(fd, oldState); err != nil {
-						log.Printf("Warning: Could not restore terminal state: %v", err)
+						server.ServerLogger.Warn("Could not restore terminal state", map[string]interface{}{
+							"error": err.Error(),
+						})
 					}
 
 					// Signal shutdown via our channel
@@ -393,9 +411,9 @@ func main() {
 	// Block until we receive SIGINT (Ctrl+C) or admin shutdown
 	select {
 	case <-stop:
-		log.Println("Shutting down server gracefully...")
+		server.ServerLogger.Info("Shutdown signal received", nil)
 	case <-adminShutdown:
-		log.Println("Shutting down server gracefully...")
+		server.ServerLogger.Info("Shutdown initiated from admin panel", nil)
 	}
 
 	// Create a context with timeout for graceful shutdown
@@ -404,8 +422,9 @@ func main() {
 
 	// Attempt graceful shutdown
 	if err := srv.Shutdown(ctx); err != nil {
+		server.ServerLogger.Error("Graceful shutdown failed", err)
 		log.Fatalf("Graceful shutdown failed: %v", err)
 	}
 
-	log.Println("Server shut down cleanly")
+	server.ServerLogger.Info("Server shut down cleanly", nil)
 }

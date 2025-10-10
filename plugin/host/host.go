@@ -267,28 +267,30 @@ func (h *PluginHost) StopPlugin(name string) error {
 // EnablePlugin enables a plugin
 func (h *PluginHost) EnablePlugin(name string) error {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	instance, exists := h.plugins[name]
 	if !exists {
+		h.mu.Unlock()
 		return fmt.Errorf("plugin %s not found", name)
 	}
-
 	instance.Enabled = true
+	h.mu.Unlock()
+
+	// Start plugin without holding the lock to avoid deadlock
 	return h.StartPlugin(name)
 }
 
 // DisablePlugin disables a plugin
 func (h *PluginHost) DisablePlugin(name string) error {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	instance, exists := h.plugins[name]
 	if !exists {
+		h.mu.Unlock()
 		return fmt.Errorf("plugin %s not found", name)
 	}
-
 	instance.Enabled = false
+	h.mu.Unlock()
+
+	// Stop plugin without holding the lock to avoid deadlock
 	return h.StopPlugin(name)
 }
 
