@@ -23,6 +23,15 @@ func TestNewKeyStore(t *testing.T) {
 }
 
 func TestKeyStoreInitialize(t *testing.T) {
+	// Clear environment to ensure test isolation
+	originalKey := os.Getenv("MARCHAT_GLOBAL_E2E_KEY")
+	os.Unsetenv("MARCHAT_GLOBAL_E2E_KEY")
+	defer func() {
+		if originalKey != "" {
+			os.Setenv("MARCHAT_GLOBAL_E2E_KEY", originalKey)
+		}
+	}()
+
 	// Create temporary directory for test
 	tmpDir := t.TempDir()
 	keystorePath := filepath.Join(tmpDir, "test-keystore.dat")
@@ -56,6 +65,15 @@ func TestKeyStoreInitialize(t *testing.T) {
 }
 
 func TestKeyStoreLoad(t *testing.T) {
+	// Clear environment to ensure test isolation
+	originalKey := os.Getenv("MARCHAT_GLOBAL_E2E_KEY")
+	os.Unsetenv("MARCHAT_GLOBAL_E2E_KEY")
+	defer func() {
+		if originalKey != "" {
+			os.Setenv("MARCHAT_GLOBAL_E2E_KEY", originalKey)
+		}
+	}()
+
 	// Create temporary directory for test
 	tmpDir := t.TempDir()
 	keystorePath := filepath.Join(tmpDir, "test-keystore.dat")
@@ -67,8 +85,8 @@ func TestKeyStoreLoad(t *testing.T) {
 		t.Fatalf("Failed to initialize keystore: %v", err)
 	}
 
-	originalKey := ks1.GetGlobalKey()
-	if originalKey == nil {
+	originalGlobalKey := ks1.GetGlobalKey()
+	if originalGlobalKey == nil {
 		t.Fatal("Expected original key to be created")
 	}
 
@@ -85,16 +103,25 @@ func TestKeyStoreLoad(t *testing.T) {
 	}
 
 	// Keys should match
-	if string(originalKey.Key) != string(loadedKey.Key) {
+	if string(originalGlobalKey.Key) != string(loadedKey.Key) {
 		t.Error("Loaded key does not match original key")
 	}
 
-	if originalKey.KeyID != loadedKey.KeyID {
+	if originalGlobalKey.KeyID != loadedKey.KeyID {
 		t.Error("Loaded KeyID does not match original KeyID")
 	}
 }
 
 func TestKeyStoreLoadWrongPassphrase(t *testing.T) {
+	// Clear environment to ensure test isolation
+	originalKey := os.Getenv("MARCHAT_GLOBAL_E2E_KEY")
+	os.Unsetenv("MARCHAT_GLOBAL_E2E_KEY")
+	defer func() {
+		if originalKey != "" {
+			os.Setenv("MARCHAT_GLOBAL_E2E_KEY", originalKey)
+		}
+	}()
+
 	// Create temporary directory for test
 	tmpDir := t.TempDir()
 	keystorePath := filepath.Join(tmpDir, "test-keystore.dat")
@@ -115,6 +142,15 @@ func TestKeyStoreLoadWrongPassphrase(t *testing.T) {
 }
 
 func TestKeyStoreGetSessionKey(t *testing.T) {
+	// Clear environment to ensure test isolation
+	originalKey := os.Getenv("MARCHAT_GLOBAL_E2E_KEY")
+	os.Unsetenv("MARCHAT_GLOBAL_E2E_KEY")
+	defer func() {
+		if originalKey != "" {
+			os.Setenv("MARCHAT_GLOBAL_E2E_KEY", originalKey)
+		}
+	}()
+
 	tmpDir := t.TempDir()
 	keystorePath := filepath.Join(tmpDir, "test-keystore.dat")
 
@@ -137,6 +173,15 @@ func TestKeyStoreGetSessionKey(t *testing.T) {
 }
 
 func TestKeyStoreEncryptDecryptMessage(t *testing.T) {
+	// Clear environment to ensure test isolation
+	originalKey := os.Getenv("MARCHAT_GLOBAL_E2E_KEY")
+	os.Unsetenv("MARCHAT_GLOBAL_E2E_KEY")
+	defer func() {
+		if originalKey != "" {
+			os.Setenv("MARCHAT_GLOBAL_E2E_KEY", originalKey)
+		}
+	}()
+
 	tmpDir := t.TempDir()
 	keystorePath := filepath.Join(tmpDir, "test-keystore.dat")
 

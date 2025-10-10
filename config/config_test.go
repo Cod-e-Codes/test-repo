@@ -71,6 +71,16 @@ func TestLoadConfig(t *testing.T) {
 
 	t.Run("custom config directory", func(t *testing.T) {
 		tempDir := t.TempDir()
+
+		// Clear MARCHAT_CONFIG_DIR to ensure test isolation
+		originalConfigDir := os.Getenv("MARCHAT_CONFIG_DIR")
+		os.Unsetenv("MARCHAT_CONFIG_DIR")
+		defer func() {
+			if originalConfigDir != "" {
+				os.Setenv("MARCHAT_CONFIG_DIR", originalConfigDir)
+			}
+		}()
+
 		os.Setenv("MARCHAT_ADMIN_KEY", "test-key")
 		os.Setenv("MARCHAT_USERS", "user1")
 		defer func() {
@@ -92,6 +102,15 @@ func TestLoadConfig(t *testing.T) {
 func TestLoadConfigWithEnvFile(t *testing.T) {
 	tempDir := t.TempDir()
 	envPath := filepath.Join(tempDir, ".env")
+
+	// Clear environment to ensure test isolation
+	originalConfigDir := os.Getenv("MARCHAT_CONFIG_DIR")
+	os.Unsetenv("MARCHAT_CONFIG_DIR")
+	defer func() {
+		if originalConfigDir != "" {
+			os.Setenv("MARCHAT_CONFIG_DIR", originalConfigDir)
+		}
+	}()
 
 	// Create a test .env file
 	envContent := `MARCHAT_PORT=8080
@@ -141,6 +160,15 @@ MARCHAT_JWT_SECRET=custom-jwt-secret`
 func TestEnvironmentVariablePrecedence(t *testing.T) {
 	tempDir := t.TempDir()
 	envPath := filepath.Join(tempDir, ".env")
+
+	// Clear environment to ensure test isolation
+	originalConfigDir := os.Getenv("MARCHAT_CONFIG_DIR")
+	os.Unsetenv("MARCHAT_CONFIG_DIR")
+	defer func() {
+		if originalConfigDir != "" {
+			os.Setenv("MARCHAT_CONFIG_DIR", originalConfigDir)
+		}
+	}()
 
 	// Create a .env file with one value
 	envContent := `MARCHAT_PORT=8080

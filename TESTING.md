@@ -12,7 +12,7 @@ The Marchat test suite provides foundational coverage of the application's core 
 - **Database Tests**: Testing database operations and schema management
 - **Server Tests**: Testing WebSocket handling, message routing, and user management
 
-**Note**: This is a foundational test suite with good coverage for smaller utility packages and significantly improved coverage for client and server components. Overall coverage is 37.1% across all packages.
+**Note**: This is a foundational test suite with good coverage for smaller utility packages and significantly improved coverage for client and server components. Overall coverage is 35.3% across all packages.
 
 ## Test Structure
 
