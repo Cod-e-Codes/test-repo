@@ -198,9 +198,44 @@ func (h *PluginCommandHandler) handleList() (string, error) {
 
 // handleStore opens the plugin store
 func (h *PluginCommandHandler) handleStore() (string, error) {
-	// This would launch the TUI store interface
-	// For now, return a message
-	return "Plugin store interface not yet implemented. Use :refresh to update plugin list.", nil
+	// Get available plugins from store
+	storePlugins := h.manager.GetStore().GetPluginsPreferredForPlatform("", "")
+
+	if len(storePlugins) == 0 {
+		return "No plugins available in store. Use :refresh to update plugin list.", nil
+	}
+
+	var result strings.Builder
+	result.WriteString("Available plugins in store:\n")
+
+	for _, plugin := range storePlugins {
+		status := ""
+		// Check if plugin is already installed
+		installedPlugins := h.manager.ListPlugins()
+		if instance, exists := installedPlugins[plugin.Name]; exists {
+			if instance.Enabled {
+				status = " [installed, enabled]"
+			} else {
+				status = " [installed, disabled]"
+			}
+		}
+
+		platform := plugin.GoOS
+		if platform == "" {
+			platform = "any"
+		}
+		arch := plugin.GoArch
+		if arch == "" {
+			arch = "any"
+		}
+
+		result.WriteString(fmt.Sprintf("  %s (%s) - %s [%s/%s]%s\n",
+			plugin.Name, plugin.Version, plugin.Description, platform, arch, status))
+	}
+
+	result.WriteString("\nUse :install <plugin-name> to install a plugin")
+
+	return result.String(), nil
 }
 
 // handleRefresh refreshes the plugin store
