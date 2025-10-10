@@ -57,12 +57,58 @@ func NewPluginManager(pluginDir, dataDir, registryURL string) *PluginManager {
 	host := host.NewPluginHost(pluginDir, dataDir)
 	store := store.NewStore(registryURL, dataDir)
 
-	return &PluginManager{
+	pm := &PluginManager{
 		host:        host,
 		store:       store,
 		pluginDir:   pluginDir,
 		dataDir:     dataDir,
 		registryURL: registryURL,
+	}
+
+	// Auto-discover and load installed plugins
+	pm.discoverInstalledPlugins()
+
+	return pm
+}
+
+// discoverInstalledPlugins scans the plugin directory and loads all installed plugins
+func (pm *PluginManager) discoverInstalledPlugins() {
+	// Read plugin directory
+	entries, err := os.ReadDir(pm.pluginDir)
+	if err != nil {
+		// Plugin directory doesn't exist or can't be read - not an error on first run
+		return
+	}
+
+	// Load each plugin directory
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		pluginName := entry.Name()
+
+		// Validate plugin name
+		if err := validatePluginName(pluginName); err != nil {
+			continue
+		}
+
+		// Check if plugin.json exists
+		manifestPath := filepath.Join(pm.pluginDir, pluginName, "plugin.json")
+		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+			continue
+		}
+
+		// Load plugin
+		if err := pm.host.LoadPlugin(pluginName); err != nil {
+			// Log error but continue with other plugins
+			continue
+		}
+
+		// Auto-start enabled plugins
+		if instance := pm.host.GetPlugin(pluginName); instance != nil && instance.Enabled {
+			_ = pm.host.StartPlugin(pluginName)
+		}
 	}
 }
 
