@@ -6,17 +6,42 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/Cod-e-Codes/marchat/plugin/host"
 	"github.com/Cod-e-Codes/marchat/plugin/sdk"
 	"github.com/Cod-e-Codes/marchat/plugin/store"
 )
+
+// Valid plugin name pattern: lowercase letters, numbers, hyphens, underscores only
+var validPluginNameRegex = regexp.MustCompile(`^[a-z0-9_-]+$`)
+
+// validatePluginName ensures plugin names are safe and cannot cause path traversal
+func validatePluginName(name string) error {
+	if name == "" {
+		return errors.New("plugin name cannot be empty")
+	}
+	if len(name) > 64 {
+		return errors.New("plugin name too long (max 64 characters)")
+	}
+	if !validPluginNameRegex.MatchString(name) {
+		return errors.New("plugin name must contain only lowercase letters, numbers, hyphens, and underscores")
+	}
+	if strings.Contains(name, "..") {
+		return errors.New("plugin name cannot contain '..'")
+	}
+	if strings.HasPrefix(name, "/") || strings.HasPrefix(name, "\\") {
+		return errors.New("plugin name cannot start with path separator")
+	}
+	return nil
+}
 
 // PluginManager manages plugin installation and commands
 type PluginManager struct {
@@ -43,12 +68,21 @@ func NewPluginManager(pluginDir, dataDir, registryURL string) *PluginManager {
 
 // InstallPlugin installs a plugin from the store using the current platform
 func (pm *PluginManager) InstallPlugin(name string) error {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(name); err != nil {
+		return fmt.Errorf("invalid plugin name: %w", err)
+	}
 	return pm.InstallPluginWithPlatform(name, "", "")
 }
 
 // InstallPluginWithPlatform installs a plugin selecting a specific os/arch if provided.
 // When osName or arch are empty, the current runtime platform is used for selection.
 func (pm *PluginManager) InstallPluginWithPlatform(name, osName, arch string) error {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(name); err != nil {
+		return fmt.Errorf("invalid plugin name: %w", err)
+	}
+
 	// Get plugin from store
 	plugin := pm.store.ResolvePlugin(name, osName, arch)
 	if plugin == nil {
@@ -83,6 +117,11 @@ func (pm *PluginManager) InstallPluginWithPlatform(name, osName, arch string) er
 
 // UninstallPlugin removes a plugin
 func (pm *PluginManager) UninstallPlugin(name string) error {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(name); err != nil {
+		return fmt.Errorf("invalid plugin name: %w", err)
+	}
+
 	// Stop plugin if running
 	if err := pm.host.StopPlugin(name); err != nil {
 		return fmt.Errorf("failed to stop plugin: %w", err)
@@ -105,11 +144,19 @@ func (pm *PluginManager) UninstallPlugin(name string) error {
 
 // EnablePlugin enables a plugin
 func (pm *PluginManager) EnablePlugin(name string) error {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(name); err != nil {
+		return fmt.Errorf("invalid plugin name: %w", err)
+	}
 	return pm.host.EnablePlugin(name)
 }
 
 // DisablePlugin disables a plugin
 func (pm *PluginManager) DisablePlugin(name string) error {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(name); err != nil {
+		return fmt.Errorf("invalid plugin name: %w", err)
+	}
 	return pm.host.DisablePlugin(name)
 }
 
@@ -120,11 +167,19 @@ func (pm *PluginManager) ListPlugins() map[string]*host.PluginInstance {
 
 // GetPlugin returns a specific plugin
 func (pm *PluginManager) GetPlugin(name string) *host.PluginInstance {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(name); err != nil {
+		return nil
+	}
 	return pm.host.GetPlugin(name)
 }
 
 // ExecuteCommand executes a plugin command
 func (pm *PluginManager) ExecuteCommand(pluginName, command string, args []string) error {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(pluginName); err != nil {
+		return fmt.Errorf("invalid plugin name: %w", err)
+	}
 	return pm.host.ExecuteCommand(pluginName, command, args)
 }
 
@@ -456,6 +511,10 @@ func (pm *PluginManager) GetPluginCommands() map[string][]sdk.PluginCommand {
 
 // GetPluginManifest returns the manifest for a plugin
 func (pm *PluginManager) GetPluginManifest(name string) *sdk.PluginManifest {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(name); err != nil {
+		return nil
+	}
 	instance := pm.host.GetPlugin(name)
 	if instance == nil {
 		return nil

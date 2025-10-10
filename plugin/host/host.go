@@ -3,12 +3,14 @@ package host
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -16,6 +18,29 @@ import (
 
 	"github.com/Cod-e-Codes/marchat/plugin/sdk"
 )
+
+// Valid plugin name pattern: lowercase letters, numbers, hyphens, underscores only
+var validPluginNameRegex = regexp.MustCompile(`^[a-z0-9_-]+$`)
+
+// validatePluginName ensures plugin names are safe and cannot cause path traversal
+func validatePluginName(name string) error {
+	if name == "" {
+		return errors.New("plugin name cannot be empty")
+	}
+	if len(name) > 64 {
+		return errors.New("plugin name too long (max 64 characters)")
+	}
+	if !validPluginNameRegex.MatchString(name) {
+		return errors.New("plugin name must contain only lowercase letters, numbers, hyphens, and underscores")
+	}
+	if strings.Contains(name, "..") {
+		return errors.New("plugin name cannot contain '..'")
+	}
+	if strings.HasPrefix(name, "/") || strings.HasPrefix(name, "\\") {
+		return errors.New("plugin name cannot start with path separator")
+	}
+	return nil
+}
 
 // PluginHost manages the lifecycle and communication with plugins
 type PluginHost struct {
@@ -52,6 +77,11 @@ func NewPluginHost(pluginDir, dataDir string) *PluginHost {
 
 // LoadPlugin loads a plugin from the plugin directory
 func (h *PluginHost) LoadPlugin(name string) error {
+	// Validate plugin name to prevent path traversal and command injection
+	if err := validatePluginName(name); err != nil {
+		return fmt.Errorf("invalid plugin name: %w", err)
+	}
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -113,6 +143,11 @@ func (h *PluginHost) LoadPlugin(name string) error {
 
 // StartPlugin starts a plugin subprocess
 func (h *PluginHost) StartPlugin(name string) error {
+	// Validate plugin name to prevent path traversal and command injection
+	if err := validatePluginName(name); err != nil {
+		return fmt.Errorf("invalid plugin name: %w", err)
+	}
+
 	h.mu.RLock()
 	instance, exists := h.plugins[name]
 	h.mu.RUnlock()
@@ -213,6 +248,11 @@ func (h *PluginHost) StartPlugin(name string) error {
 
 // StopPlugin stops a plugin subprocess
 func (h *PluginHost) StopPlugin(name string) error {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(name); err != nil {
+		return fmt.Errorf("invalid plugin name: %w", err)
+	}
+
 	h.mu.RLock()
 	instance, exists := h.plugins[name]
 	h.mu.RUnlock()
@@ -265,6 +305,11 @@ func (h *PluginHost) StopPlugin(name string) error {
 
 // EnablePlugin enables a plugin
 func (h *PluginHost) EnablePlugin(name string) error {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(name); err != nil {
+		return fmt.Errorf("invalid plugin name: %w", err)
+	}
+
 	h.mu.Lock()
 	instance, exists := h.plugins[name]
 	if !exists {
@@ -280,6 +325,11 @@ func (h *PluginHost) EnablePlugin(name string) error {
 
 // DisablePlugin disables a plugin
 func (h *PluginHost) DisablePlugin(name string) error {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(name); err != nil {
+		return fmt.Errorf("invalid plugin name: %w", err)
+	}
+
 	h.mu.Lock()
 	instance, exists := h.plugins[name]
 	if !exists {
@@ -295,6 +345,11 @@ func (h *PluginHost) DisablePlugin(name string) error {
 
 // GetPlugin returns a plugin instance
 func (h *PluginHost) GetPlugin(name string) *PluginInstance {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(name); err != nil {
+		return nil
+	}
+
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return h.plugins[name]
@@ -335,6 +390,11 @@ func (h *PluginHost) SendMessage(msg sdk.Message) {
 
 // ExecuteCommand executes a plugin command
 func (h *PluginHost) ExecuteCommand(pluginName, command string, args []string) error {
+	// Validate plugin name to prevent path traversal
+	if err := validatePluginName(pluginName); err != nil {
+		return fmt.Errorf("invalid plugin name: %w", err)
+	}
+
 	h.mu.RLock()
 	instance, exists := h.plugins[pluginName]
 	h.mu.RUnlock()
