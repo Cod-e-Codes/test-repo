@@ -232,9 +232,14 @@ func (h *PluginHost) StartPlugin(name string) error {
 
 	// Initialize plugin
 	if err := h.initializePlugin(instance); err != nil {
-		if stopErr := h.StopPlugin(name); stopErr != nil {
-			log.Printf("Failed to stop plugin %s after initialization error: %v", name, stopErr)
+		// Clean up without calling StopPlugin to avoid deadlock (we already hold instance.mu)
+		if instance.Process != nil && instance.Process.Process != nil {
+			_ = instance.Process.Process.Kill()
 		}
+		instance.Process = nil
+		instance.Stdin = nil
+		instance.Stdout = nil
+		instance.Stderr = nil
 		return fmt.Errorf("failed to initialize plugin %s: %w", name, err)
 	}
 
