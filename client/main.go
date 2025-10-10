@@ -80,6 +80,14 @@ type keyMap struct {
 	UnbanUser           key.Binding
 	AllowUser           key.Binding
 	ForceDisconnectUser key.Binding
+	// Plugin management hotkeys (admin only)
+	PluginList      key.Binding
+	PluginStore     key.Binding
+	PluginRefresh   key.Binding
+	PluginInstall   key.Binding
+	PluginUninstall key.Binding
+	PluginEnable    key.Binding
+	PluginDisable   key.Binding
 	// Legacy admin commands (for help display only)
 	ClearDB key.Binding
 }
@@ -218,6 +226,35 @@ func newKeyMap() keyMap {
 		ForceDisconnectUser: key.NewBinding(
 			key.WithKeys("ctrl+f"),
 			key.WithHelp("ctrl+f", "force disconnect selected user (admin)"),
+		),
+		// Plugin management hotkeys (admin only)
+		PluginList: key.NewBinding(
+			key.WithKeys("alt+p"),
+			key.WithHelp("alt+p", "list plugins (admin)"),
+		),
+		PluginStore: key.NewBinding(
+			key.WithKeys("alt+s"),
+			key.WithHelp("alt+s", "plugin store (admin)"),
+		),
+		PluginRefresh: key.NewBinding(
+			key.WithKeys("alt+r"),
+			key.WithHelp("alt+r", "refresh plugins (admin)"),
+		),
+		PluginInstall: key.NewBinding(
+			key.WithKeys("alt+i"),
+			key.WithHelp("alt+i", "install plugin (admin)"),
+		),
+		PluginUninstall: key.NewBinding(
+			key.WithKeys("alt+u"),
+			key.WithHelp("alt+u", "uninstall plugin (admin)"),
+		),
+		PluginEnable: key.NewBinding(
+			key.WithKeys("alt+e"),
+			key.WithHelp("alt+e", "enable plugin (admin)"),
+		),
+		PluginDisable: key.NewBinding(
+			key.WithKeys("alt+d"),
+			key.WithHelp("alt+d", "disable plugin (admin)"),
 		),
 		// Legacy admin commands (for help display only)
 		ClearDB: key.NewBinding(
@@ -525,6 +562,9 @@ type model struct {
 
 	// Bell notification system
 	bellManager *BellManager
+
+	// Plugin command input system
+	pendingPluginAction string // e.g., "install", "uninstall", "enable", "disable"
 }
 
 // BellManager handles bell notifications with rate limiting
@@ -1267,6 +1307,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, cmd
 		case key.Matches(v, m.keys.Quit):
+			// If waiting for plugin input, cancel it
+			if m.pendingPluginAction != "" {
+				m.pendingPluginAction = ""
+				m.textarea.SetValue("")
+				m.banner = "Plugin action cancelled"
+				return m, nil
+			}
 			// If help is open, close it instead of quitting
 			if m.showHelp {
 				m.showHelp = false
@@ -1299,6 +1346,42 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.dbMenuViewport.SetContent(m.generateDBMenuContent())
 					m.dbMenuViewport.GotoTop()
 				}
+			}
+			return m, nil
+		// Plugin management hotkey handlers (must be before SelectUser to prevent Ctrl+Shift+U from matching Ctrl+U)
+		case key.Matches(v, m.keys.PluginList):
+			if *isAdmin {
+				return m.executePluginCommand(":list")
+			}
+			return m, nil
+		case key.Matches(v, m.keys.PluginStore):
+			if *isAdmin {
+				return m.executePluginCommand(":store")
+			}
+			return m, nil
+		case key.Matches(v, m.keys.PluginRefresh):
+			if *isAdmin {
+				return m.executePluginCommand(":refresh")
+			}
+			return m, nil
+		case key.Matches(v, m.keys.PluginInstall):
+			if *isAdmin {
+				return m.promptForPluginName("install")
+			}
+			return m, nil
+		case key.Matches(v, m.keys.PluginUninstall):
+			if *isAdmin {
+				return m.promptForPluginName("uninstall")
+			}
+			return m, nil
+		case key.Matches(v, m.keys.PluginEnable):
+			if *isAdmin {
+				return m.promptForPluginName("enable")
+			}
+			return m, nil
+		case key.Matches(v, m.keys.PluginDisable):
+			if *isAdmin {
+				return m.promptForPluginName("disable")
 			}
 			return m, nil
 		case key.Matches(v, m.keys.SelectUser):
@@ -1476,6 +1559,38 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case key.Matches(v, m.keys.Send):
 			text := m.textarea.Value()
+
+			// Check if we're waiting for plugin name input
+			if m.pendingPluginAction != "" {
+				pluginName := strings.TrimSpace(text)
+				if pluginName == "" {
+					m.banner = "❌ Plugin name cannot be empty"
+					m.textarea.SetValue("")
+					m.pendingPluginAction = ""
+					return m, nil
+				}
+
+				// Build the command based on the pending action
+				var command string
+				switch m.pendingPluginAction {
+				case "install":
+					command = fmt.Sprintf(":install %s", pluginName)
+				case "uninstall":
+					command = fmt.Sprintf(":uninstall %s", pluginName)
+				case "enable":
+					command = fmt.Sprintf(":enable %s", pluginName)
+				case "disable":
+					command = fmt.Sprintf(":disable %s", pluginName)
+				}
+
+				// Clear the textarea and pending action
+				m.textarea.SetValue("")
+				m.pendingPluginAction = ""
+
+				// Execute the plugin command
+				return m.executePluginCommand(command)
+			}
+
 			if text == ":sendfile" {
 				// Open file picker when no path provided
 				m.textarea.SetValue("")
@@ -1897,6 +2012,14 @@ func (m *model) generateHelpContent() string {
 		commandHelp += "\nUser Actions (prompt for username):\n"
 		commandHelp += "  Ctrl+Shift+B          Unban user\n"
 		commandHelp += "  Ctrl+Shift+A          Allow user (override kick)\n"
+		commandHelp += "\nPlugin Management:\n"
+		commandHelp += "  Alt+P                 List installed plugins\n"
+		commandHelp += "  Alt+S                 View plugin store\n"
+		commandHelp += "  Alt+R                 Refresh plugin list\n"
+		commandHelp += "  Alt+I                 Install plugin (prompts for name)\n"
+		commandHelp += "  Alt+U                 Uninstall plugin (prompts for name)\n"
+		commandHelp += "  Alt+E                 Enable plugin (prompts for name)\n"
+		commandHelp += "  Alt+D                 Disable plugin (prompts for name)\n"
 		commandHelp += "\nDatabase Operations: Clear DB, Backup DB, Show Stats\n"
 	}
 
@@ -1972,6 +2095,49 @@ func (m *model) promptForUsername(action string) (tea.Model, tea.Cmd) {
 		m.banner = "Type username to allow in chat and press Enter (prefix with :allow)"
 	}
 	return m, nil
+}
+
+// promptForPluginName prompts for a plugin name for plugin management actions
+func (m *model) promptForPluginName(action string) (tea.Model, tea.Cmd) {
+	// Set pending action and update banner
+	m.pendingPluginAction = action
+	switch action {
+	case "install":
+		m.banner = "Enter plugin name to install (press Enter to confirm, Esc to cancel)"
+	case "uninstall":
+		m.banner = "Enter plugin name to uninstall (press Enter to confirm, Esc to cancel)"
+	case "enable":
+		m.banner = "Enter plugin name to enable (press Enter to confirm, Esc to cancel)"
+	case "disable":
+		m.banner = "Enter plugin name to disable (press Enter to confirm, Esc to cancel)"
+	}
+	// Focus the textarea for input
+	m.textarea.Focus()
+	return m, nil
+}
+
+// executePluginCommand executes a plugin management command
+func (m *model) executePluginCommand(command string) (tea.Model, tea.Cmd) {
+	if !*isAdmin {
+		return m, nil
+	}
+
+	// Send the plugin command as an admin command (unencrypted)
+	if m.conn != nil {
+		msg := shared.Message{
+			Sender:  m.cfg.Username,
+			Content: command,
+			Type:    shared.AdminCommandType, // Use admin command type to bypass encryption
+		}
+		err := m.conn.WriteJSON(msg)
+		if err != nil {
+			m.banner = "❌ Failed to send plugin command (connection lost)"
+		} else {
+			m.banner = fmt.Sprintf("✅ Sent: %s", command)
+		}
+	}
+
+	return m, m.listenWebSocket()
 }
 
 // executeDBAction performs the selected database action

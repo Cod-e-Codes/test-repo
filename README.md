@@ -38,7 +38,7 @@ Full changelog on [GitHub releases](https://github.com/Cod-e-Codes/marchat/relea
 
 - **Terminal UI** - Beautiful TUI built with Bubble Tea
 - **Real-time Chat** - Fast WebSocket messaging with SQLite backend (PostgreSQL/MySQL planned)
-- **Plugin System** - Remote registry with `:store` and `:plugin` commands
+- **Plugin System** - Remote registry with text commands and Alt+key hotkeys
 - **E2E Encryption** - X25519/ChaCha20-Poly1305 with global encryption
 - **File Sharing** - Send files up to 1MB (configurable) with interactive picker
 - **Admin Controls** - User management, bans, kick system with ban history gaps
@@ -195,8 +195,22 @@ go build -o marchat-client ./client
 | `:code` | Open code composer with syntax highlighting |
 | `:bell` | Toggle message notifications |
 | `:bell-mention` | Toggle mention-only notifications |
-| `:store` | Browse plugin store |
-| `:plugin install/list/uninstall` | Manage plugins |
+
+### Plugin Commands (Admin Only)
+
+Text commands and hotkeys for plugin management. See [Plugin Management hotkeys](#plugin-management-admin) for keyboard shortcuts.
+
+| Command | Description | Hotkey |
+|---------|-------------|--------|
+| `:store` | Browse plugin store | `Alt+S` |
+| `:plugin list` or `:list` | List installed plugins | `Alt+P` |
+| `:plugin install <name>` or `:install <name>` | Install plugin | `Alt+I` |
+| `:plugin uninstall <name>` or `:uninstall <name>` | Uninstall plugin | `Alt+U` |
+| `:plugin enable <name>` or `:enable <name>` | Enable plugin | `Alt+E` |
+| `:plugin disable <name>` or `:disable <name>` | Disable plugin | `Alt+D` |
+| `:refresh` | Refresh plugin list from registry | `Alt+R` |
+
+> **Note**: Hotkeys send commands as unencrypted admin messages, working correctly in E2E encrypted sessions.
 
 ### File Sharing
 
@@ -235,6 +249,17 @@ Navigate with arrow keys, Enter to select/open folders, ".. (Parent Directory)" 
 | `Ctrl+F` | Force disconnect selected user |
 | `Ctrl+Shift+B` | Unban user (prompts for username) |
 | `Ctrl+Shift+A` | Allow user (prompts for username) |
+
+### Plugin Management (Admin)
+| Key | Action |
+|-----|--------|
+| `Alt+P` | List installed plugins |
+| `Alt+S` | View plugin store |
+| `Alt+R` | Refresh plugin list |
+| `Alt+I` | Install plugin (prompts for name) |
+| `Alt+U` | Uninstall plugin (prompts for name) |
+| `Alt+E` | Enable plugin (prompts for name) |
+| `Alt+D` | Disable plugin (prompts for name) |
 
 ### Server
 | Key | Action |
@@ -368,12 +393,28 @@ export MARCHAT_PLUGIN_REGISTRY_URL="https://my-registry.com/plugins.json"
 ```
 
 ### Commands
+
+**Text commands:**
 ```bash
 :store                    # Browse available plugins
 :plugin install echo      # Install plugin
 :plugin list              # List installed
 :plugin uninstall echo    # Remove plugin
+:enable echo              # Enable installed plugin
+:disable echo             # Disable plugin
+:refresh                  # Refresh plugin registry
 ```
+
+**Keyboard shortcuts** (Admin only):
+- `Alt+P` - List installed plugins
+- `Alt+S` - View plugin store  
+- `Alt+R` - Refresh plugin list
+- `Alt+I` - Install plugin (prompts for name)
+- `Alt+U` - Uninstall plugin (prompts for name)
+- `Alt+E` - Enable plugin (prompts for name)
+- `Alt+D` - Disable plugin (prompts for name)
+
+> See [Plugin Commands](#plugin-commands-admin-only) section for full command reference.
 
 ### Available Plugins
 - **Echo**: Simple echo plugin for testing
@@ -476,7 +517,7 @@ Profiles stored in platform-appropriate locations:
 |-------|----------|
 | Connection failed | Verify `ws://` or `wss://` protocol in URL |
 | Admin commands not working | Check `--admin` flag and correct `--admin-key` |
-| Admin commands encrypted | Hotkey alternatives work when E2E enabled (e.g., `Ctrl+Shift+A`) |
+| Admin commands encrypted | Use hotkeys instead of text commands in E2E sessions (e.g., `Alt+I` for install, `Ctrl+B` for ban) |
 | Clipboard issues (Linux) | Install xclip: `sudo apt install xclip` |
 | Port in use | Change port: `export MARCHAT_PORT=8081` |
 | Database migration fails | Check file permissions, backup before source build |
