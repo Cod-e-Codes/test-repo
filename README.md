@@ -13,12 +13,14 @@ A lightweight terminal chat with real-time messaging over WebSockets, optional E
 
 ## Latest Updates
 
-### v0.8.0-beta.9 (Current)
-- **Security**: Fixed critical path traversal and command injection vulnerabilities in plugin system
-- **Plugin validation**: All plugin names now validated to prevent malicious attacks
-- **CodeQL compliance**: Resolved 18 security alerts (1 Critical, 17 High severity)
+### v0.8.0-beta.10 (Current)
+- **Plugin persistence**: Installed plugins and their state now persist across server restarts
+- **State management**: Plugin enabled/disabled status saved to plugin_state.json
+- **Auto-discovery**: Server automatically loads installed plugins on startup
+- **Deadlock fixes**: Fixed initialization failure deadlock and uninstall file handle issues
 
 ### Recent Releases
+- **v0.8.0-beta.9**: Critical security fixes for path traversal and command injection
 - **v0.8.0-beta.8**: Debug log management, log rotation, full plugin management, plugin hotkeys
 - **v0.8.0-beta.7**: Real-time log capture, OS-specific log export, metrics tracking
 - **v0.8.0-beta.6**: Profile selection bug fix, object-based returns
