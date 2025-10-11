@@ -30,9 +30,19 @@ type Config struct {
 	TwentyFourHour bool   `json:"twenty_four_hour"`
 	SkipTLSVerify  bool   `json:"skip_tls_verify,omitempty"`
 
-	// Bell notification settings
+	// Bell notification settings (legacy - kept for backward compatibility)
 	EnableBell    bool `json:"enable_bell,omitempty"`     // Enable/disable bell
 	BellOnMention bool `json:"bell_on_mention,omitempty"` // Only bell on mentions
+
+	// Enhanced notification settings
+	NotificationMode     string `json:"notification_mode,omitempty"`     // "none", "bell", "desktop", "both"
+	DesktopNotifications bool   `json:"desktop_notifications,omitempty"` // Enable desktop notifications
+	DesktopOnMention     bool   `json:"desktop_on_mention,omitempty"`    // Desktop notify on mentions
+	DesktopOnDM          bool   `json:"desktop_on_dm,omitempty"`         // Desktop notify on DMs
+	DesktopOnAll         bool   `json:"desktop_on_all,omitempty"`        // Desktop notify on all messages
+	QuietHoursEnabled    bool   `json:"quiet_hours_enabled,omitempty"`   // Enable quiet hours
+	QuietHoursStart      int    `json:"quiet_hours_start,omitempty"`     // Quiet hours start (hour 0-23)
+	QuietHoursEnd        int    `json:"quiet_hours_end,omitempty"`       // Quiet hours end (hour 0-23)
 
 	// Quick start settings
 	SaveCredentials bool  `json:"save_credentials"`

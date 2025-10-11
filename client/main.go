@@ -76,6 +76,8 @@ type keyMap struct {
 	TimeFormatHotkey  key.Binding
 	ClearHotkey       key.Binding
 	CodeSnippetHotkey key.Binding
+	// Notification controls
+	NotifyDesktop key.Binding
 	// Admin UI commands
 	DatabaseMenu key.Binding
 	SelectUser   key.Binding
@@ -220,6 +222,11 @@ func newKeyMap() keyMap {
 		CodeSnippetHotkey: key.NewBinding(
 			key.WithKeys("alt+c"),
 			key.WithHelp("alt+c", "create code snippet"),
+		),
+		// Notification controls
+		NotifyDesktop: key.NewBinding(
+			key.WithKeys("alt+n"),
+			key.WithHelp("alt+n", "toggle desktop notifications"),
 		),
 		// Admin UI commands
 		DatabaseMenu: key.NewBinding(
@@ -621,74 +628,101 @@ type model struct {
 	showFilePicker  bool
 	filePickerModel filePickerModel
 
-	// Bell notification system
-	bellManager *BellManager
+	// Notification system
+	notificationManager *NotificationManager
 
 	// Plugin command input system
 	pendingPluginAction string // e.g., "install", "uninstall", "enable", "disable"
 }
 
-// BellManager handles bell notifications with rate limiting
-type BellManager struct {
-	lastBell    time.Time
-	minInterval time.Duration
-	enabled     bool
-}
+// configToNotificationConfig converts Config to NotificationConfig
+func configToNotificationConfig(cfg config.Config) NotificationConfig {
+	notifCfg := DefaultNotificationConfig()
 
-// NewBellManager creates a new bell manager with default settings
-func NewBellManager() *BellManager {
-	return &BellManager{
-		minInterval: 500 * time.Millisecond, // Minimum 500ms between bells
-		enabled:     true,
+	// Apply legacy bell settings if present
+	if cfg.EnableBell {
+		notifCfg.BellEnabled = true
 	}
-}
-
-// PlayBell plays the bell sound with rate limiting
-func (b *BellManager) PlayBell() {
-	if !b.enabled {
-		return
+	if cfg.BellOnMention {
+		notifCfg.BellOnMention = true
 	}
 
-	now := time.Now()
-	if now.Sub(b.lastBell) < b.minInterval {
-		return // Too soon since last bell
+	// Apply new notification settings from config
+	switch cfg.NotificationMode {
+	case "none":
+		notifCfg.Mode = NotificationModeNone
+	case "bell":
+		notifCfg.Mode = NotificationModeBell
+	case "desktop":
+		notifCfg.Mode = NotificationModeDesktop
+	case "both":
+		notifCfg.Mode = NotificationModeBoth
+	default:
+		// Default to bell if not specified
+		notifCfg.Mode = NotificationModeBell
 	}
 
-	b.lastBell = now
-	fmt.Print("\a") // ASCII bell character
+	notifCfg.DesktopEnabled = cfg.DesktopNotifications
+	notifCfg.DesktopOnMention = cfg.DesktopOnMention
+	notifCfg.DesktopOnDM = cfg.DesktopOnDM
+	notifCfg.DesktopOnAll = cfg.DesktopOnAll
+	notifCfg.QuietHoursEnabled = cfg.QuietHoursEnabled
+	notifCfg.QuietHoursStart = cfg.QuietHoursStart
+	notifCfg.QuietHoursEnd = cfg.QuietHoursEnd
+
+	return notifCfg
 }
 
-// SetEnabled enables or disables the bell
-func (b *BellManager) SetEnabled(enabled bool) {
-	b.enabled = enabled
+// notificationConfigToConfig saves NotificationConfig back to Config
+func notificationConfigToConfig(notifCfg NotificationConfig, cfg *config.Config) {
+	// Update legacy bell settings for backward compatibility
+	cfg.EnableBell = notifCfg.BellEnabled
+	cfg.BellOnMention = notifCfg.BellOnMention
+
+	// Update new notification settings
+	switch notifCfg.Mode {
+	case NotificationModeNone:
+		cfg.NotificationMode = "none"
+	case NotificationModeBell:
+		cfg.NotificationMode = "bell"
+	case NotificationModeDesktop:
+		cfg.NotificationMode = "desktop"
+	case NotificationModeBoth:
+		cfg.NotificationMode = "both"
+	}
+
+	cfg.DesktopNotifications = notifCfg.DesktopEnabled
+	cfg.DesktopOnMention = notifCfg.DesktopOnMention
+	cfg.DesktopOnDM = notifCfg.DesktopOnDM
+	cfg.DesktopOnAll = notifCfg.DesktopOnAll
+	cfg.QuietHoursEnabled = notifCfg.QuietHoursEnabled
+	cfg.QuietHoursStart = notifCfg.QuietHoursStart
+	cfg.QuietHoursEnd = notifCfg.QuietHoursEnd
 }
 
-// IsEnabled returns whether the bell is currently enabled
-func (b *BellManager) IsEnabled() bool {
-	return b.enabled
-}
-
-// shouldPlayBell determines if a bell should be played for a message
-func (m *model) shouldPlayBell(msg shared.Message) bool {
-	// Don't bell for our own messages
+// shouldNotify determines the notification level for a message
+func (m *model) shouldNotify(msg shared.Message) (bool, NotificationLevel) {
+	// Don't notify for our own messages
 	if msg.Sender == m.cfg.Username {
-		return false
+		return false, NotificationLevelInfo
 	}
 
-	// If bell is disabled, don't play
-	if !m.cfg.EnableBell {
-		return false
+	// Check if the message mentions the current user
+	mentionPattern := fmt.Sprintf("@%s", m.cfg.Username)
+	isMention := strings.Contains(strings.ToLower(msg.Content), strings.ToLower(mentionPattern))
+
+	// Determine notification level
+	level := NotificationLevelInfo
+	if isMention {
+		level = NotificationLevelMention
 	}
 
-	// If bell on mention only is enabled, check for mentions
-	if m.cfg.BellOnMention {
-		// Check if the message mentions the current user
-		mentionPattern := fmt.Sprintf("@%s", m.cfg.Username)
-		return strings.Contains(strings.ToLower(msg.Content), strings.ToLower(mentionPattern))
-	}
+	// TODO: Add DM detection logic when DM support is added
+	// if msg.IsDM {
+	//     level = NotificationLevelDM
+	// }
 
-	// Bell for all messages from other users
-	return true
+	return true, level
 }
 
 type themeStyles struct {
@@ -1296,9 +1330,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.showFilePicker = false
 		return m, m.listenWebSocket()
 	case shared.Message:
-		// Check if we should play a bell for this message
-		if m.shouldPlayBell(v) {
-			m.bellManager.PlayBell()
+		// Check if we should notify for this message
+		if shouldNotify, level := m.shouldNotify(v); shouldNotify {
+			m.notificationManager.Notify(v.Sender, v.Content, level)
 		}
 
 		if len(m.messages) >= maxMessages {
@@ -1518,6 +1552,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				func() {
 					m.showCodeSnippet = false
 				})
+			return m, nil
+		case key.Matches(v, m.keys.NotifyDesktop):
+			// Toggle desktop notifications (Alt+N)
+			if !m.notificationManager.IsDesktopSupported() {
+				m.banner = "Desktop notifications not supported on this platform"
+			} else {
+				enabled := m.notificationManager.ToggleDesktop()
+				status := "disabled"
+				if enabled {
+					status = "enabled"
+					m.notificationManager.Notify("System", "Desktop notifications enabled", NotificationLevelInfo)
+				}
+				m.banner = fmt.Sprintf("Desktop notifications %s", status)
+				// Save to config
+				notifCfg := m.notificationManager.GetConfig()
+				notificationConfigToConfig(notifCfg, &m.cfg)
+				_ = config.SaveConfig(m.configFilePath, m.cfg)
+			}
 			return m, nil
 		case key.Matches(v, m.keys.SelectUser):
 			// Cycle through users for admin selection
@@ -1917,32 +1969,195 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if text == ":bell" {
-				m.cfg.EnableBell = !m.cfg.EnableBell
-				m.bellManager.SetEnabled(m.cfg.EnableBell)
+				enabled := m.notificationManager.ToggleBell()
 				status := "disabled"
-				if m.cfg.EnableBell {
+				if enabled {
 					status = "enabled"
-					m.bellManager.PlayBell() // Test beep
+					// Test notification
+					m.notificationManager.Notify("System", "Bell test", NotificationLevelInfo)
 				}
 				m.banner = fmt.Sprintf("Message bell %s", status)
+				// Save to config
+				notifCfg := m.notificationManager.GetConfig()
+				notificationConfigToConfig(notifCfg, &m.cfg)
 				_ = config.SaveConfig(m.configFilePath, m.cfg)
 				m.textarea.SetValue("")
 				return m, nil
 			}
 			if text == ":bell-mention" {
-				m.cfg.BellOnMention = !m.cfg.BellOnMention
+				enabled := m.notificationManager.ToggleBellOnMention()
 				status := "disabled"
-				if m.cfg.BellOnMention {
-					status = "enabled"
-					if m.cfg.EnableBell {
-						m.bellManager.PlayBell() // Test beep
-					}
+				if enabled {
+					status = "enabled (mention only)"
+					// Test notification
+					m.notificationManager.Notify("System", "Bell test", NotificationLevelMention)
+				} else {
+					status = "enabled (all messages)"
 				}
-				m.banner = fmt.Sprintf("Bell on mention only %s", status)
+				m.banner = fmt.Sprintf("Bell notifications %s", status)
+				// Save to config
+				notifCfg := m.notificationManager.GetConfig()
+				notificationConfigToConfig(notifCfg, &m.cfg)
 				_ = config.SaveConfig(m.configFilePath, m.cfg)
 				m.textarea.SetValue("")
 				return m, nil
 			}
+
+			// New enhanced notification commands
+			if strings.HasPrefix(text, ":notify-mode ") {
+				mode := strings.TrimSpace(strings.TrimPrefix(text, ":notify-mode "))
+				switch mode {
+				case "none":
+					m.notificationManager.SetMode(NotificationModeNone)
+					m.banner = "Notifications disabled"
+				case "bell":
+					m.notificationManager.SetMode(NotificationModeBell)
+					m.banner = "Notifications: Bell only"
+					m.notificationManager.Notify("System", "Bell mode test", NotificationLevelInfo)
+				case "desktop":
+					if m.notificationManager.IsDesktopSupported() {
+						m.notificationManager.SetMode(NotificationModeDesktop)
+						m.banner = "Notifications: Desktop only"
+						m.notificationManager.Notify("System", "Desktop notification test", NotificationLevelInfo)
+					} else {
+						m.banner = "Desktop notifications not supported on this platform"
+					}
+				case "both":
+					if m.notificationManager.IsDesktopSupported() {
+						m.notificationManager.SetMode(NotificationModeBoth)
+						m.banner = "Notifications: Bell + Desktop"
+						m.notificationManager.Notify("System", "Combined notification test", NotificationLevelInfo)
+					} else {
+						m.banner = "Desktop notifications not supported, using bell only"
+						m.notificationManager.SetMode(NotificationModeBell)
+					}
+				default:
+					m.banner = "Usage: :notify-mode <none|bell|desktop|both>"
+					m.textarea.SetValue("")
+					return m, nil
+				}
+				// Save to config
+				notifCfg := m.notificationManager.GetConfig()
+				notificationConfigToConfig(notifCfg, &m.cfg)
+				_ = config.SaveConfig(m.configFilePath, m.cfg)
+				m.textarea.SetValue("")
+				return m, nil
+			}
+
+			if text == ":notify-desktop" {
+				if !m.notificationManager.IsDesktopSupported() {
+					m.banner = "Desktop notifications not supported on this platform"
+				} else {
+					enabled := m.notificationManager.ToggleDesktop()
+					status := "disabled"
+					if enabled {
+						status = "enabled"
+						m.notificationManager.Notify("System", "Desktop notifications enabled", NotificationLevelInfo)
+					}
+					m.banner = fmt.Sprintf("Desktop notifications %s", status)
+					// Save to config
+					notifCfg := m.notificationManager.GetConfig()
+					notificationConfigToConfig(notifCfg, &m.cfg)
+					_ = config.SaveConfig(m.configFilePath, m.cfg)
+				}
+				m.textarea.SetValue("")
+				return m, nil
+			}
+
+			if strings.HasPrefix(text, ":quiet ") {
+				parts := strings.Fields(text)
+				if len(parts) == 3 {
+					start, err1 := strconv.Atoi(parts[1])
+					end, err2 := strconv.Atoi(parts[2])
+					if err1 == nil && err2 == nil && start >= 0 && start < 24 && end >= 0 && end < 24 {
+						m.notificationManager.SetQuietHours(true, start, end)
+						m.banner = fmt.Sprintf("Quiet hours enabled: %02d:00 to %02d:00", start, end)
+						// Save to config
+						notifCfg := m.notificationManager.GetConfig()
+						notificationConfigToConfig(notifCfg, &m.cfg)
+						_ = config.SaveConfig(m.configFilePath, m.cfg)
+					} else {
+						m.banner = "Invalid hours (use 0-23). Usage: :quiet 22 8"
+					}
+				} else {
+					m.banner = "Usage: :quiet <start-hour> <end-hour> (e.g., :quiet 22 8)"
+				}
+				m.textarea.SetValue("")
+				return m, nil
+			}
+
+			if text == ":quiet-off" {
+				m.notificationManager.SetQuietHours(false, 22, 8)
+				m.banner = "Quiet hours disabled"
+				// Save to config
+				notifCfg := m.notificationManager.GetConfig()
+				notificationConfigToConfig(notifCfg, &m.cfg)
+				_ = config.SaveConfig(m.configFilePath, m.cfg)
+				m.textarea.SetValue("")
+				return m, nil
+			}
+
+			if strings.HasPrefix(text, ":focus") {
+				parts := strings.Fields(text)
+				if len(parts) == 1 {
+					// Default to 30 minutes
+					m.notificationManager.EnableFocusMode(30 * time.Minute)
+					m.banner = "Focus mode enabled for 30 minutes"
+				} else if len(parts) == 2 {
+					durationStr := parts[1]
+					duration, err := time.ParseDuration(durationStr)
+					if err != nil {
+						m.banner = "Invalid duration. Examples: 30m, 1h, 2h30m"
+					} else {
+						m.notificationManager.EnableFocusMode(duration)
+						m.banner = fmt.Sprintf("Focus mode enabled for %s", duration)
+					}
+				} else {
+					m.banner = "Usage: :focus [duration] (e.g., :focus 30m, :focus 1h)"
+				}
+				m.textarea.SetValue("")
+				return m, nil
+			}
+
+			if text == ":focus-off" {
+				m.notificationManager.DisableFocusMode()
+				m.banner = "Focus mode disabled"
+				m.textarea.SetValue("")
+				return m, nil
+			}
+
+			if text == ":notify-status" {
+				notifCfg := m.notificationManager.GetConfig()
+				var mode string
+				switch notifCfg.Mode {
+				case NotificationModeNone:
+					mode = "none"
+				case NotificationModeBell:
+					mode = "bell"
+				case NotificationModeDesktop:
+					mode = "desktop"
+				case NotificationModeBoth:
+					mode = "both"
+				}
+				statusLines := []string{
+					fmt.Sprintf("Mode: %s", mode),
+					fmt.Sprintf("Bell: %t (mention-only: %t)", notifCfg.BellEnabled, notifCfg.BellOnMention),
+					fmt.Sprintf("Desktop: %t (supported: %t)", notifCfg.DesktopEnabled, m.notificationManager.IsDesktopSupported()),
+				}
+				if notifCfg.QuietHoursEnabled {
+					statusLines = append(statusLines, fmt.Sprintf("Quiet hours: %02d:00 - %02d:00", notifCfg.QuietHoursStart, notifCfg.QuietHoursEnd))
+				}
+				if notifCfg.FocusModeEnabled {
+					remaining := time.Until(notifCfg.FocusModeUntil)
+					if remaining > 0 {
+						statusLines = append(statusLines, fmt.Sprintf("Focus mode: active (%s remaining)", remaining.Round(time.Minute)))
+					}
+				}
+				m.banner = strings.Join(statusLines, " | ")
+				m.textarea.SetValue("")
+				return m, nil
+			}
+
 			if text == ":code" {
 				// Launch code snippet interface
 				m.textarea.SetValue("")
@@ -2190,6 +2405,7 @@ func (m *model) generateHelpContent() string {
 	shortcuts += "  Alt+C                Create code snippet\n"
 	shortcuts += "  Ctrl+T               Cycle themes\n"
 	shortcuts += "  Alt+T                Toggle 12/24h time\n"
+	shortcuts += "  Alt+N                Toggle desktop notifications\n"
 	shortcuts += "  Ctrl+L               Clear chat history\n"
 
 	// Text commands
@@ -2201,8 +2417,16 @@ func (m *model) generateHelpContent() string {
 	commands += "  :time                Toggle 12/24h time (or Alt+T)\n"
 	commands += "  :clear               Clear chat history (or Ctrl+L)\n"
 	commands += "  :code                Create code snippet (or Alt+C)\n"
+	commands += "\nNotifications:\n"
 	commands += "  :bell                Toggle message bell\n"
 	commands += "  :bell-mention        Bell on mentions only\n"
+	commands += "  :notify-mode <mode>  Set notification mode (none/bell/desktop/both)\n"
+	commands += "  :notify-desktop      Toggle desktop notifications\n"
+	commands += "  :notify-status       Show notification settings\n"
+	commands += "  :quiet <start> <end> Enable quiet hours (e.g., :quiet 22 8)\n"
+	commands += "  :quiet-off           Disable quiet hours\n"
+	commands += "  :focus [duration]    Enable focus mode (e.g., :focus 30m)\n"
+	commands += "  :focus-off           Disable focus mode\n"
 
 	// Admin section
 	var adminSection string
@@ -3134,11 +3358,11 @@ func initializeClient(cfg *config.Config, adminKeyParam, keystorePassphraseParam
 		useE2E:            cfg.UseE2E,
 		keys:              newKeyMap(),
 		selectedUserIndex: -1, // No user selected initially
-		bellManager:       NewBellManager(),
 	}
 
-	// Initialize bell manager with config settings
-	m.bellManager.SetEnabled(cfg.EnableBell)
+	// Initialize notification manager with config settings
+	notifConfig := configToNotificationConfig(*cfg)
+	m.notificationManager = NewNotificationManager(notifConfig)
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 

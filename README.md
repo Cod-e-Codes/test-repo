@@ -47,7 +47,7 @@ Full changelog on [GitHub releases](https://github.com/Cod-e-Codes/marchat/relea
 - **E2E Encryption** - X25519/ChaCha20-Poly1305 with global encryption
 - **File Sharing** - Send files up to 1MB (configurable) with interactive picker
 - **Admin Controls** - User management, bans, kick system with ban history gaps
-- **Bell Notifications** - Audio alerts with `:bell` and `:bell-mention`
+- **Smart Notifications** - Bell + desktop notifications with quiet hours and focus mode ([guide](NOTIFICATIONS.md))
 - **Themes** - Built-in themes + custom themes via JSON ([guide](THEMES.md))
 - **Docker Support** - Containerized deployment with security features
 - **Health Monitoring** - `/health` and `/health/simple` endpoints with system metrics
@@ -200,10 +200,15 @@ go build -o marchat-client ./client
 | `:sendfile [path]` | Send file (or open picker without path) | `Alt+F` |
 | `:savefile <name>` | Save received file | - |
 | `:code` | Open code composer with syntax highlighting | `Alt+C` |
-| `:bell` | Toggle message notifications | - |
+| `:notify-mode <mode>` | Set notification mode (none/bell/desktop/both) | `Alt+N` (toggle desktop) |
+| `:bell` | Toggle bell notifications | - |
 | `:bell-mention` | Toggle mention-only notifications | - |
+| `:focus [duration]` | Enable focus mode (mute notifications) | - |
+| `:quiet <start> <end>` | Set quiet hours (e.g., `:quiet 22 8`) | - |
 
 > **Note**: Hotkeys work in both encrypted and unencrypted sessions since they're handled client-side.
+>
+> **Notifications**: See [NOTIFICATIONS.md](NOTIFICATIONS.md) for full notification system documentation including desktop notifications, quiet hours, and focus mode.
 
 ### Plugin Commands (Admin Only)
 
@@ -255,6 +260,7 @@ Navigate with arrow keys, Enter to select/open folders, ".. (Parent Directory)" 
 | `Alt+C` | Create code snippet |
 | `Ctrl+T` | Cycle themes |
 | `Alt+T` | Toggle 12/24h time |
+| `Alt+N` | Toggle desktop notifications |
 | `Ctrl+L` | Clear chat history |
 
 ### Admin Interface (Client)
@@ -628,6 +634,7 @@ go test ./...
 
 ## Documentation
 
+- **[NOTIFICATIONS.md](NOTIFICATIONS.md)** - Notification system guide (desktop, quiet hours, focus mode)
 - **[THEMES.md](THEMES.md)** - Custom theme creation guide
 - **[PLUGIN_ECOSYSTEM.md](PLUGIN_ECOSYSTEM.md)** - Plugin development guide
 - **[ROADMAP.md](ROADMAP.md)** - Planned features and enhancements

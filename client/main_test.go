@@ -239,36 +239,76 @@ func TestBasicFunctionality(t *testing.T) {
 	}
 }
 
-func TestBellManager(t *testing.T) {
-	// Test BellManager functionality
-	bm := NewBellManager()
-	if bm == nil {
-		t.Fatal("NewBellManager() should not return nil")
+func TestNotificationManager(t *testing.T) {
+	// Test NotificationManager functionality
+	config := DefaultNotificationConfig()
+	nm := NewNotificationManager(config)
+	if nm == nil {
+		t.Fatal("NewNotificationManager() should not return nil")
 	}
 
 	// Test initial state
-	if !bm.IsEnabled() {
-		t.Error("BellManager should be enabled by default")
+	cfg := nm.GetConfig()
+	if !cfg.BellEnabled {
+		t.Error("NotificationManager should have bell enabled by default")
 	}
 
-	// Test disabling
-	bm.SetEnabled(false)
-	if bm.IsEnabled() {
-		t.Error("BellManager should be disabled after SetEnabled(false)")
+	// Test mode setting
+	nm.SetMode(NotificationModeNone)
+	cfg = nm.GetConfig()
+	if cfg.Mode != NotificationModeNone {
+		t.Error("Mode should be None after SetMode(NotificationModeNone)")
 	}
 
-	// Test re-enabling
-	bm.SetEnabled(true)
-	if !bm.IsEnabled() {
-		t.Error("BellManager should be enabled after SetEnabled(true)")
+	nm.SetMode(NotificationModeBell)
+	cfg = nm.GetConfig()
+	if cfg.Mode != NotificationModeBell {
+		t.Error("Mode should be Bell after SetMode(NotificationModeBell)")
 	}
 
-	// Test PlayBell (can't easily test the actual bell sound, but can test it doesn't panic)
-	bm.PlayBell()
+	// Test bell toggle
+	enabled := nm.ToggleBell()
+	if enabled {
+		t.Error("Bell should be disabled after first toggle")
+	}
+	enabled = nm.ToggleBell()
+	if !enabled {
+		t.Error("Bell should be enabled after second toggle")
+	}
 
-	// Test rapid bell calls (should be rate limited)
-	bm.PlayBell()
-	bm.PlayBell()
+	// Test desktop toggle
+	_ = nm.ToggleDesktop()
+
+	// Test quiet hours
+	nm.SetQuietHours(true, 22, 8)
+	cfg = nm.GetConfig()
+	if !cfg.QuietHoursEnabled {
+		t.Error("Quiet hours should be enabled")
+	}
+	if cfg.QuietHoursStart != 22 || cfg.QuietHoursEnd != 8 {
+		t.Error("Quiet hours should be set to 22:00-08:00")
+	}
+
+	// Test focus mode
+	nm.EnableFocusMode(30 * time.Minute)
+	cfg = nm.GetConfig()
+	if !cfg.FocusModeEnabled {
+		t.Error("Focus mode should be enabled")
+	}
+
+	nm.DisableFocusMode()
+	cfg = nm.GetConfig()
+	if cfg.FocusModeEnabled {
+		t.Error("Focus mode should be disabled")
+	}
+
+	// Test Notify (should not panic)
+	nm.Notify("TestUser", "Test message", NotificationLevelInfo)
+	nm.Notify("TestUser", "Test mention", NotificationLevelMention)
+	nm.Notify("TestUser", "Test urgent", NotificationLevelUrgent)
+
+	// Test desktop support detection
+	_ = nm.IsDesktopSupported()
 }
 
 func TestThemeStyles(t *testing.T) {
