@@ -1986,7 +1986,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if text == ":bell-mention" {
 				enabled := m.notificationManager.ToggleBellOnMention()
-				status := "disabled"
+				var status string
 				if enabled {
 					status = "enabled (mention only)"
 					// Test notification
