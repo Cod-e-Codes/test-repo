@@ -1838,19 +1838,34 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if text == ":themes" {
-				// List all available themes
+				// List all available themes as a system message
 				themes := ListAllThemes()
 				var themeList strings.Builder
-				themeList.WriteString("Available themes:\n")
+				themeList.WriteString("📋 Available themes:\n\n")
 				for _, themeName := range themes {
 					themeList.WriteString("  • ")
 					themeList.WriteString(GetThemeInfo(themeName))
 					if themeName == m.cfg.Theme {
-						themeList.WriteString(" [current]")
+						themeList.WriteString(" ⭐ [current]")
 					}
 					themeList.WriteString("\n")
 				}
-				m.banner = themeList.String()
+				themeList.WriteString("\nUse :theme <name> to switch or Ctrl+T to cycle")
+
+				// Add as a system message
+				systemMsg := shared.Message{
+					Sender:    "System",
+					Content:   themeList.String(),
+					CreatedAt: time.Now(),
+					Type:      shared.TextMessage,
+				}
+				if len(m.messages) >= maxMessages {
+					m.messages = m.messages[len(m.messages)-maxMessages+1:]
+				}
+				m.messages = append(m.messages, systemMsg)
+				m.viewport.SetContent(renderMessages(m.messages, m.styles, m.cfg.Username, m.users, m.viewport.Width, m.twentyFourHour))
+				m.viewport.GotoBottom()
+
 				m.textarea.SetValue("")
 				return m, nil
 			}
