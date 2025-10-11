@@ -323,6 +323,11 @@ func init() {
 		log.SetOutput(f)
 	}
 	// If file creation fails, logs will go to stdout (but won't interfere with TUI)
+
+	// Load custom themes
+	if err := LoadCustomThemes(); err != nil {
+		log.Printf("Warning: Failed to load custom themes: %v", err)
+	}
 }
 
 // getClientConfigDir returns the client config directory using same logic as server
@@ -740,6 +745,14 @@ func baseThemeStyles() themeStyles {
 }
 
 func getThemeStyles(theme string) themeStyles {
+	// Check for custom themes first
+	if IsCustomTheme(theme) {
+		if customTheme, ok := GetCustomTheme(theme); ok {
+			return ApplyCustomTheme(customTheme)
+		}
+	}
+
+	// Fall back to built-in themes
 	s := baseThemeStyles()
 	switch strings.ToLower(theme) {
 	case "system":
@@ -1458,8 +1471,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				})
 			return m, nil
 		case key.Matches(v, m.keys.ThemeHotkey):
-			// Cycle through themes
-			themes := []string{"system", "patriot", "retro", "modern"}
+			// Cycle through themes (built-in + custom)
+			themes := ListAllThemes()
 			currentIndex := 0
 			for i, theme := range themes {
 				if theme == m.cfg.Theme {
@@ -1471,7 +1484,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cfg.Theme = themes[nextIndex]
 			m.styles = getThemeStyles(m.cfg.Theme)
 			_ = config.SaveConfig(m.configFilePath, m.cfg)
-			m.banner = fmt.Sprintf("Theme: %s", m.cfg.Theme)
+
+			// Show theme info in banner
+			themeInfo := GetThemeInfo(m.cfg.Theme)
+			m.banner = fmt.Sprintf("Theme: %s", themeInfo)
 			return m, nil
 		case key.Matches(v, m.keys.TimeFormatHotkey):
 			// Toggle time format
@@ -1821,15 +1837,48 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textarea.SetValue("")
 				return m, nil
 			}
+			if text == ":themes" {
+				// List all available themes
+				themes := ListAllThemes()
+				var themeList strings.Builder
+				themeList.WriteString("Available themes:\n")
+				for _, themeName := range themes {
+					themeList.WriteString("  • ")
+					themeList.WriteString(GetThemeInfo(themeName))
+					if themeName == m.cfg.Theme {
+						themeList.WriteString(" [current]")
+					}
+					themeList.WriteString("\n")
+				}
+				m.banner = themeList.String()
+				m.textarea.SetValue("")
+				return m, nil
+			}
 			if strings.HasPrefix(text, ":theme ") {
 				parts := strings.SplitN(text, " ", 2)
 				if len(parts) == 2 && strings.TrimSpace(parts[1]) != "" {
-					m.cfg.Theme = strings.TrimSpace(parts[1])
-					m.styles = getThemeStyles(m.cfg.Theme)
-					_ = config.SaveConfig(m.configFilePath, m.cfg)
-					m.banner = "Theme changed to " + m.cfg.Theme
+					themeName := strings.TrimSpace(parts[1])
+
+					// Check if theme exists
+					allThemes := ListAllThemes()
+					themeExists := false
+					for _, t := range allThemes {
+						if t == themeName {
+							themeExists = true
+							break
+						}
+					}
+
+					if !themeExists {
+						m.banner = fmt.Sprintf("Theme '%s' not found. Use :themes to list available themes.", themeName)
+					} else {
+						m.cfg.Theme = themeName
+						m.styles = getThemeStyles(m.cfg.Theme)
+						_ = config.SaveConfig(m.configFilePath, m.cfg)
+						m.banner = fmt.Sprintf("Theme changed to: %s", GetThemeInfo(themeName))
+					}
 				} else {
-					m.banner = "Please provide a theme name."
+					m.banner = "Please provide a theme name. Use :themes to list available themes."
 				}
 				m.textarea.SetValue("")
 				return m, nil
@@ -2133,6 +2182,7 @@ func (m *model) generateHelpContent() string {
 	commands += "  :sendfile [path]     Send a file (or Alt+F)\n"
 	commands += "  :savefile <name>     Save received file\n"
 	commands += "  :theme <name>        Change theme (or Ctrl+T to cycle)\n"
+	commands += "  :themes              List all available themes\n"
 	commands += "  :time                Toggle 12/24h time (or Alt+T)\n"
 	commands += "  :clear               Clear chat history (or Ctrl+L)\n"
 	commands += "  :code                Create code snippet (or Alt+C)\n"

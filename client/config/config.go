@@ -225,6 +225,7 @@ func (icl *InteractiveConfigLoader) promptNewConfig() (*Config, error) {
 
 	// Theme
 	fmt.Println("\nAvailable themes: system, patriot, retro, modern")
+	fmt.Println("(Custom themes can be defined in themes.json)")
 	theme, err := icl.promptString("Theme", "system")
 	if err != nil {
 		return nil, err

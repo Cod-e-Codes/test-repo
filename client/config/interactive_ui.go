@@ -341,7 +341,7 @@ func (m ConfigUIModel) View() string {
 	// Theme
 	b.WriteString(m.inputs[themeField].View())
 	if m.focusIndex == int(themeField) {
-		b.WriteString(helpStyle.Render(" (system, patriot, retro, modern)"))
+		b.WriteString(helpStyle.Render(" (system, patriot, retro, modern, or custom)"))
 	}
 	b.WriteString("\n\n")
 
