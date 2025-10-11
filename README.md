@@ -48,7 +48,7 @@ Full changelog on [GitHub releases](https://github.com/Cod-e-Codes/marchat/relea
 - **File Sharing** - Send files up to 1MB (configurable) with interactive picker
 - **Admin Controls** - User management, bans, kick system with ban history gaps
 - **Bell Notifications** - Audio alerts with `:bell` and `:bell-mention`
-- **Themes** - System (default), patriot, retro, modern
+- **Themes** - Built-in themes + custom themes via JSON ([guide](THEMES.md))
 - **Docker Support** - Containerized deployment with security features
 - **Health Monitoring** - `/health` and `/health/simple` endpoints with system metrics
 - **Structured Logging** - JSON logs with component separation and user tracking
@@ -193,7 +193,8 @@ go build -o marchat-client ./client
 
 | Command | Description | Hotkey |
 |---------|-------------|--------|
-| `:theme <name>` | Switch theme (system/patriot/retro/modern) | `Ctrl+T` (cycles) |
+| `:theme <name>` | Switch theme (built-in or custom) | `Ctrl+T` (cycles) |
+| `:themes` | List all available themes | - |
 | `:time` | Toggle 12/24-hour format | `Alt+T` |
 | `:clear` | Clear chat buffer | `Ctrl+L` |
 | `:sendfile [path]` | Send file (or open picker without path) | `Alt+F` |
@@ -627,6 +628,7 @@ go test ./...
 
 ## Documentation
 
+- **[THEMES.md](THEMES.md)** - Custom theme creation guide
 - **[PLUGIN_ECOSYSTEM.md](PLUGIN_ECOSYSTEM.md)** - Plugin development guide
 - **[ROADMAP.md](ROADMAP.md)** - Planned features and enhancements
 - **[TESTING.md](TESTING.md)** - Comprehensive testing guide
