@@ -1907,7 +1907,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					clientOnlyCommands := []string{":theme", ":time", ":clear", ":bell", ":bell-mention", ":code", ":sendfile", ":savefile"}
 					isClientCommand := false
 					for _, cmd := range clientOnlyCommands {
-						if strings.HasPrefix(text, cmd) {
+						// Check if text is exactly the command or starts with "command "
+						if text == cmd || strings.HasPrefix(text, cmd+" ") {
 							isClientCommand = true
 							break
 						}
