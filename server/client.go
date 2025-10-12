@@ -76,7 +76,7 @@ func (c *Client) readPump() {
 			c.hub.broadcast <- msg
 			continue
 		}
-		// Handle admin commands (both old text-based and new AdminCommandType)
+		// Handle commands (both plugin and admin commands)
 		if strings.HasPrefix(msg.Content, ":") || msg.Type == shared.AdminCommandType {
 			AdminLogger.Info("Command received", map[string]interface{}{
 				"user":    c.username,
@@ -84,15 +84,10 @@ func (c *Client) readPump() {
 				"admin":   c.isAdmin,
 				"type":    msg.Type,
 			})
-			if c.isAdmin {
-				c.handleAdminCommand(msg.Content)
-			} else {
-				SecurityLogger.Warn("Unauthorized admin command attempt", map[string]interface{}{
-					"user":    c.username,
-					"command": msg.Content,
-				})
-			}
-			continue // Don't insert admin commands as normal messages
+			// Let handleCommand process both plugin and admin commands
+			// It will check permissions for each command individually
+			c.handleCommand(msg.Content)
+			continue // Don't insert commands as normal messages
 		}
 		msg.CreatedAt = time.Now()
 		if msg.Type == "" || msg.Type == shared.TextMessage {
@@ -173,18 +168,15 @@ func parseCommandWithQuotes(command string) []string {
 	return parts
 }
 
-// handleAdminCommand processes admin commands
-func (c *Client) handleAdminCommand(command string) {
+// handleCommand processes both plugin commands and built-in admin commands
+func (c *Client) handleCommand(command string) {
 	// Parse command with proper quote handling
 	parts := parseCommandWithQuotes(command)
 	if len(parts) == 0 {
 		return
 	}
 
-	// Handle security-confirmed commands first
-	// Confirmation prompts are disabled; execute admin commands directly via hotkeys/text
-
-	// First, try to handle plugin commands
+	// First, try to handle plugin commands (these have their own permission checks)
 	if c.pluginCommandHandler != nil {
 		cmd := strings.TrimPrefix(parts[0], ":")
 		args := parts[1:]
@@ -227,7 +219,21 @@ func (c *Client) handleAdminCommand(command string) {
 		})
 	}
 
-	// Fall back to built-in admin commands
+	// Fall back to built-in admin commands (these require admin privileges)
+	// Check admin status for built-in commands
+	if !c.isAdmin {
+		SecurityLogger.Warn("Unauthorized admin command attempt", map[string]interface{}{
+			"user":    c.username,
+			"command": parts[0],
+		})
+		c.send <- shared.Message{
+			Sender:    "System",
+			Content:   "This command requires admin privileges",
+			CreatedAt: time.Now(),
+			Type:      shared.TextMessage,
+		}
+		return
+	}
 	switch parts[0] {
 	case ":cleardb":
 		log.Printf("[ADMIN] Clearing message database via WebSocket by %s...", c.username)

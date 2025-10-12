@@ -495,24 +495,24 @@ func TestClient_HandleAdminCommand(t *testing.T) {
 	defer cleanup()
 
 	// Test with empty command
-	client.handleAdminCommand("")
+	client.handleCommand("")
 	// Should not panic or cause issues
 
 	// Test with simple command
-	client.handleAdminCommand(":test")
+	client.handleCommand(":test")
 	// Should not panic or cause issues
 
 	// Test with quoted arguments
-	client.handleAdminCommand(`:test "arg with spaces"`)
+	client.handleCommand(`:test "arg with spaces"`)
 	// Should not panic or cause issues
 
 	// Test with plugin command handler - create a proper one
 	client.pluginCommandHandler = NewPluginCommandHandler(client.hub.pluginManager)
-	client.handleAdminCommand(":plugin test")
+	client.handleCommand(":plugin test")
 	// Should not panic or cause issues
 
 	// Test admin-only command
 	client.isAdmin = true
-	client.handleAdminCommand(":stats")
+	client.handleCommand(":stats")
 	// Should not panic or cause issues
 }
