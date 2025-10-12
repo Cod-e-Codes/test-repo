@@ -13,15 +13,15 @@ A lightweight terminal chat with real-time messaging over WebSockets, optional E
 
 ## Latest Updates
 
-### v0.8.0-beta.11 (Current)
-- **Encryption UI improvements**: Added encryption status indicator in footer (🔒/🔓)
-- **Hotkey alternatives**: Added Alt+F, Alt+C, Alt+T, Ctrl+T, Ctrl+L for commands
-- **Command encryption fix**: All admin/plugin commands now work in E2E encrypted sessions
-- **Username validation**: Added validation to prevent injection attacks (max 32 chars, alphanumeric)
-- **Username allowlist**: Optional `MARCHAT_ALLOWED_USERS` environment variable for access control
-- **Performance**: Reduced plugin disable timeout from 5s to 1s for faster operations
+### v0.9.0-beta.1 (Current)
+- **Enhanced notifications**: Desktop notification support with quiet hours and focus mode ([guide](NOTIFICATIONS.md))
+- **Custom themes**: Load custom themes from JSON configuration files ([guide](THEMES.md))
+- **Plugin ecosystem**: Added weather and githooks plugins to registry
+- **Test coverage**: Improved overall coverage to 35.3% across all packages
+- **Bug fixes**: Fixed :cleardb command detection, ineffectual assignments, test isolation
 
 ### Recent Releases
+- **v0.8.0-beta.11**: Encryption UI, hotkey alternatives, command encryption fix, username validation
 - **v0.8.0-beta.10**: Plugin persistence, state management, auto-discovery, deadlock fixes
 - **v0.8.0-beta.9**: Critical security fixes for path traversal and command injection
 - **v0.8.0-beta.8**: Debug log management, log rotation, full plugin management, plugin hotkeys
@@ -120,12 +120,12 @@ Key tables for message tracking and moderation:
 **Binary Installation:**
 ```bash
 # Linux (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.11/marchat-v0.8.0-beta.11-linux-amd64.zip
-unzip marchat-v0.8.0-beta.11-linux-amd64.zip && chmod +x marchat-*
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.9.0-beta.1/marchat-v0.9.0-beta.1-linux-amd64.zip
+unzip marchat-v0.9.0-beta.1-linux-amd64.zip && chmod +x marchat-*
 
 # macOS (amd64)
-wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.8.0-beta.11/marchat-v0.8.0-beta.11-darwin-amd64.zip
-unzip marchat-v0.8.0-beta.11-darwin-amd64.zip && chmod +x marchat-*
+wget https://github.com/Cod-e-Codes/marchat/releases/download/v0.9.0-beta.1/marchat-v0.9.0-beta.1-darwin-amd64.zip
+unzip marchat-v0.9.0-beta.1-darwin-amd64.zip && chmod +x marchat-*
 
 # Windows - PowerShell
 iwr -useb https://raw.githubusercontent.com/Cod-e-Codes/marchat/main/install.ps1 | iex
@@ -133,11 +133,11 @@ iwr -useb https://raw.githubusercontent.com/Cod-e-Codes/marchat/main/install.ps1
 
 **Docker:**
 ```bash
-docker pull codecodesxyz/marchat:v0.8.0-beta.11
+docker pull codecodesxyz/marchat:v0.9.0-beta.1
 docker run -d -p 8080:8080 \
   -e MARCHAT_ADMIN_KEY=$(openssl rand -hex 32) \
   -e MARCHAT_USERS=admin1,admin2 \
-  codecodesxyz/marchat:v0.8.0-beta.11
+  codecodesxyz/marchat:v0.9.0-beta.1
 ```
 
 **From Source:**
