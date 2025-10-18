@@ -192,9 +192,10 @@ Additional command-line utilities for system management and plugin licensing.
 ### Message Flow
 
 ```
-Client Input → Encryption → WebSocket → Server Hub → Database
-     ↑              ↓           ↓           ↓           ↓
-Client Display ← Decryption ← Broadcast ← Plugin ← Persistence
+Client: Input → Encrypt → WebSocket Send
+Server: WebSocket Receive → Hub → Plugin Processing → Database
+Server: Database → Hub → WebSocket Broadcast  
+Client: WebSocket Receive → Decrypt → Display
 ```
 
 ### WebSocket Protocol
