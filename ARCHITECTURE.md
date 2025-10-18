@@ -405,6 +405,15 @@ The marchat project produces two main executables:
 - **Component Styling**: Granular control over UI elements
 - **Dynamic Loading**: Runtime theme switching
 
+### Alternative Frontends
+
+- **WebSocket Protocol**: Standardized communication layer enabling any frontend
+- **JSON IPC**: Structured messages for easy parsing and integration
+- **Encryption Support**: X25519/ChaCha20-Poly1305 ensures secure messaging
+- **Frontend Flexibility**: Architecture supports multiple frontend technologies
+  - Web, desktop, or mobile clients can implement real-time chat, file transfer, and admin commands
+- **Protocol Independence**: Frontends are decoupled from server implementation
+
 ### Administrative Extensions
 
 - **Custom Commands**: Plugin-based command extensions
