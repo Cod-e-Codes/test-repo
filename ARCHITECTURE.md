@@ -356,7 +356,7 @@ The web-based interface provides the same functionality through a browser:
 
 ### Application Structure
 
-The marchat project produces two main executables:
+marchat produces two main executables:
 
 - **`marchat-client`**: Built from `client/main.go` - the terminal chat client
 - **`marchat-server`**: Built from `cmd/server/main.go` - the WebSocket server
