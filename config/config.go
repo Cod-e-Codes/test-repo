@@ -150,7 +150,7 @@ func (c *Config) loadFromEnv() error {
 	}
 
 	// Ban history gaps configuration
-	if banGapsStr := os.Getenv("MARCHAT_BAN_GAPS_HISTORY"); banGapsStr != "" {
+	if banGapsStr := os.Getenv("MARCHAT_BAN_HISTORY_GAPS"); banGapsStr != "" {
 		c.BanGapsHistory = strings.ToLower(banGapsStr) == "true"
 	} else {
 		c.BanGapsHistory = false // Default to false for backward compatibility

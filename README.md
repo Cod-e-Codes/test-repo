@@ -149,7 +149,7 @@ go build -o marchat-client ./client
 ```
 
 **Prerequisites for source build:**
-- Go 1.23+ ([download](https://go.dev/dl/))
+- Go 1.24+ ([download](https://go.dev/dl/))
 - Linux clipboard support: `sudo apt install xclip` (Ubuntu/Debian) or `sudo yum install xclip` (RHEL/CentOS)
 
 ## Configuration
@@ -165,10 +165,13 @@ go build -o marchat-client ./client
 | `MARCHAT_TLS_CERT_FILE` | No | - | TLS certificate (enables wss://) |
 | `MARCHAT_TLS_KEY_FILE` | No | - | TLS private key |
 | `MARCHAT_GLOBAL_E2E_KEY` | No | - | Base64 32-byte global encryption key |
-| `MARCHAT_MAX_FILE_BYTES` | No | `1048576` | Max file size (1MB default) |
+| `MARCHAT_MAX_FILE_BYTES` | No | `1048576` | Max file size in bytes (1MB default) |
+| `MARCHAT_MAX_FILE_MB` | No | `1` | Max file size in MB (alternative to bytes) |
 | `MARCHAT_ALLOWED_USERS` | No | - | Username allowlist (comma-separated) |
 
-**Additional variables:** `MARCHAT_LOG_LEVEL`, `MARCHAT_CONFIG_DIR`, `MARCHAT_BAN_HISTORY_GAPS`, `MARCHAT_PLUGIN_REGISTRY_URL`, `MARCHAT_MAX_FILE_MB`
+**Additional variables:** `MARCHAT_LOG_LEVEL`, `MARCHAT_CONFIG_DIR`, `MARCHAT_BAN_HISTORY_GAPS`, `MARCHAT_PLUGIN_REGISTRY_URL`
+
+**File Size Configuration:** Use either `MARCHAT_MAX_FILE_BYTES` (exact bytes) or `MARCHAT_MAX_FILE_MB` (megabytes). If both are set, `MARCHAT_MAX_FILE_BYTES` takes priority.
 
 **Interactive Setup:** Use `--interactive` flag for guided server configuration when environment variables are missing.
 
