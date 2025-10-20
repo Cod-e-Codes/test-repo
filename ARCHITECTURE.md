@@ -257,6 +257,7 @@ CREATE TABLE ban_history (
 ### Key Features
 
 - **WAL Mode**: Write-Ahead Logging for better concurrency and crash recovery
+- **Database Files**: Creates three files - `marchat.db` (main), `marchat.db-wal` (write-ahead log), `marchat.db-shm` (shared memory)
 - **Message ID Tracking**: Sequential message IDs for user state management
 - **Encryption Support**: Binary storage for encrypted message data
 - **Performance Indexes**: Optimized queries for message retrieval and user state
@@ -333,6 +334,7 @@ The web-based interface provides the same functionality through a browser:
 - **Connection Reuse**: Persistent database connections
 - **Query Optimization**: Prepared statements for common operations
 - **Performance Tuning**: Optimized SQLite pragmas for chat workloads
+- **Backup Considerations**: WAL mode creates additional files; backups may miss recent uncommitted data if taken while server is running
 
 ## Development Patterns
 

@@ -45,6 +45,7 @@ Full changelog on [GitHub releases](https://github.com/Cod-e-Codes/marchat/relea
 
 - **Terminal UI** - Beautiful TUI built with Bubble Tea
 - **Real-time Chat** - Fast WebSocket messaging with SQLite backend (PostgreSQL/MySQL planned)
+- **Database Performance** - SQLite WAL mode for improved concurrency and performance (creates additional `.db-wal` and `.db-shm` files)
 - **Plugin System** - Remote registry with text commands and Alt+key hotkeys
 - **E2E Encryption** - X25519/ChaCha20-Poly1305 with global encryption
 - **File Sharing** - Send files up to 1MB (configurable) with interactive picker

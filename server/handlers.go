@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -459,7 +458,6 @@ func ClearMessages(db *sql.DB) error {
 
 // BackupDatabase creates a backup of the current database
 func BackupDatabase(dbPath string) (string, error) {
-
 	// Generate backup filename with timestamp
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	backupFilename := fmt.Sprintf("marchat_backup_%s.db", timestamp)
@@ -468,24 +466,34 @@ func BackupDatabase(dbPath string) (string, error) {
 	dbDir := filepath.Dir(dbPath)
 	backupPath := filepath.Join(dbDir, backupFilename)
 
-	// Open source file
-	sourceFile, err := os.Open(dbPath)
+	// Open the database connection for backup
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open source database: %v", err)
+		return "", fmt.Errorf("failed to open database for backup: %v", err)
 	}
-	defer sourceFile.Close()
+	defer db.Close()
 
-	// Create destination file
-	destFile, err := os.Create(backupPath)
+	// For WAL mode, we need to checkpoint the WAL file to ensure all data is in the main file
+	// This is safe to do while the database is in use
+	_, err = db.Exec("PRAGMA wal_checkpoint(FULL);")
 	if err != nil {
-		return "", fmt.Errorf("failed to create backup file: %v", err)
+		log.Printf("Warning: WAL checkpoint failed during backup: %v", err)
+		// Continue with backup even if checkpoint fails
 	}
-	defer destFile.Close()
 
-	// Copy file contents
-	_, err = io.Copy(destFile, sourceFile)
+	// Use SQLite's built-in backup functionality
+	// This ensures we get a consistent snapshot even with WAL mode
+	backupDB, err := sql.Open("sqlite", backupPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to copy database: %v", err)
+		return "", fmt.Errorf("failed to create backup database: %v", err)
+	}
+	defer backupDB.Close()
+
+	// Execute VACUUM INTO to create a clean backup
+	// This creates a complete, consistent copy of the database
+	_, err = db.Exec(fmt.Sprintf("VACUUM INTO '%s';", backupPath))
+	if err != nil {
+		return "", fmt.Errorf("failed to create database backup: %v", err)
 	}
 
 	return backupFilename, nil
