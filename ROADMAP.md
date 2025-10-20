@@ -19,7 +19,7 @@
 - Test queries for compatibility and performance.
 
 ### Phase 4 — Performance Enhancements
-- Enable SQLite Write-Ahead Logging (WAL) mode for performance gains.
+- ✅ Enable SQLite Write-Ahead Logging (WAL) mode for performance gains.
 - Implement batch TTL-based message deletion.
 - Add indexing for frequently queried columns.
 - Cache displayed messages in the terminal to reduce DB queries.

@@ -13,14 +13,16 @@ A lightweight terminal chat with real-time messaging over WebSockets, optional E
 
 ## Latest Updates
 
-### v0.9.0-beta.1 (Current)
-- **Enhanced notifications**: Desktop notification support with quiet hours and focus mode ([guide](NOTIFICATIONS.md))
-- **Custom themes**: Load custom themes from JSON configuration files ([guide](THEMES.md))
-- **Plugin ecosystem**: Added weather and githooks plugins to registry
-- **Test coverage**: Improved overall coverage to 35.3% across all packages
-- **Bug fixes**: Fixed :cleardb command detection, ineffectual assignments, test isolation
+### v0.9.0-beta.2 (Current)
+- **Database Performance**: Enabled SQLite WAL mode for improved concurrency and performance
+- **Documentation**: Enhanced architecture docs, improved data flow diagrams, added Alternative Frontends section
+- **Dependencies**: Updated golang.org/x/crypto to v0.43.0 and modernc.org/sqlite to v1.39.1
+- **Plugin System**: Fixed non-admin users running plugin commands with AdminOnly=false
+- **Configuration**: Corrected ban history gaps environment variable name in env.example
+- **Code Quality**: Applied go fmt formatting across codebase
 
 ### Recent Releases
+- **v0.9.0-beta.1**: Enhanced notifications, custom themes, plugin ecosystem, test coverage improvements
 - **v0.8.0-beta.11**: Encryption UI, hotkey alternatives, command encryption fix, username validation
 - **v0.8.0-beta.10**: Plugin persistence, state management, auto-discovery, deadlock fixes
 - **v0.8.0-beta.9**: Critical security fixes for path traversal and command injection

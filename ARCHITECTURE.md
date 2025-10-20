@@ -256,11 +256,13 @@ CREATE TABLE ban_history (
 
 ### Key Features
 
+- **WAL Mode**: Write-Ahead Logging for better concurrency and crash recovery
 - **Message ID Tracking**: Sequential message IDs for user state management
 - **Encryption Support**: Binary storage for encrypted message data
 - **Performance Indexes**: Optimized queries for message retrieval and user state
 - **Message Cap**: Automatic cleanup maintaining 1000 most recent messages
 - **Ban History**: Comprehensive tracking of user moderation actions
+- **Performance Tuning**: Optimized SQLite settings for chat workloads
 
 ## Administrative Interfaces
 
@@ -325,10 +327,12 @@ The web-based interface provides the same functionality through a browser:
 
 ### Database Optimization
 
+- **WAL Mode**: Write-Ahead Logging enabled for improved concurrency and performance
 - **Indexed Queries**: Performance indexes on frequently queried columns
 - **Batch Operations**: Efficient bulk message operations
 - **Connection Reuse**: Persistent database connections
 - **Query Optimization**: Prepared statements for common operations
+- **Performance Tuning**: Optimized SQLite pragmas for chat workloads
 
 ## Development Patterns
 
