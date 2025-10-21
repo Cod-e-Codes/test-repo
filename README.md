@@ -111,6 +111,22 @@ export MARCHAT_USERS="admin1,admin2"
 ./marchat-client
 ```
 
+## Try the Demo
+
+Want to test marchat without setting up your own server? Try our public demo:
+
+```bash
+# Connect to the demo server (unencrypted, not for production)
+./marchat-client --username your-username --server wss://marchat.Cod-e-Codes.com/ws
+```
+
+**Demo Server Details:**
+- **URL**: `wss://marchat.Cod-e-Codes.com/ws`
+- **Status**: Public demo (not for production use)
+- **Encryption**: Disabled (unencrypted)
+- **Data**: Will be wiped periodically
+- **Purpose**: Testing and demonstration only
+
 ## Database Schema
 
 Key tables for message tracking and moderation:
