@@ -297,7 +297,7 @@ func main() {
 		})
 	}
 
-	hub := server.NewHub(pluginDir, dataDir, registryURL, dbWrapper.GetDB())
+	hub := server.NewHub(pluginDir, dataDir, registryURL, database)
 	go hub.Run()
 
 	// Log server startup
@@ -327,7 +327,7 @@ func main() {
 	}
 
 	// Initialize health checker
-	healthChecker := server.NewHealthChecker(hub, dbWrapper.GetDB(), shared.GetServerVersionInfo())
+	healthChecker := server.NewHealthChecker(hub, database, shared.GetServerVersionInfo())
 	http.HandleFunc("/health", healthChecker.HealthCheckHandler)
 	http.HandleFunc("/health/simple", healthChecker.SimpleHealthHandler)
 

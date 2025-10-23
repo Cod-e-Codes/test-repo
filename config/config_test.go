@@ -207,6 +207,7 @@ func TestValidation(t *testing.T) {
 				Port:     8080,
 				AdminKey: "test-key",
 				Admins:   []string{"user1", "user2"},
+				DBType:   "sqlite",
 			},
 			wantErr: false,
 		},

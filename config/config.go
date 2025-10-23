@@ -285,6 +285,25 @@ func (c *Config) Validate() error {
 	}
 	c.Admins = normalizedAdmins
 
+	// Validate database configuration
+	validTypes := map[string]bool{"sqlite": true, "postgres": true, "postgresql": true, "mysql": true}
+	if !validTypes[c.DBType] {
+		return fmt.Errorf("invalid database type: %s (must be sqlite, postgres, or mysql)", c.DBType)
+	}
+
+	// Require credentials for PostgreSQL/MySQL
+	if c.DBType == "postgres" || c.DBType == "postgresql" || c.DBType == "mysql" {
+		if c.DBUser == "" {
+			return fmt.Errorf("database username required for %s (set MARCHAT_DB_USER)", c.DBType)
+		}
+		if c.DBPassword == "" {
+			return fmt.Errorf("database password required for %s (set MARCHAT_DB_PASSWORD)", c.DBType)
+		}
+		if c.DBName == "" {
+			return fmt.Errorf("database name required for %s (set MARCHAT_DB_NAME)", c.DBType)
+		}
+	}
+
 	return nil
 }
 
