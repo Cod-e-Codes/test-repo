@@ -44,8 +44,9 @@ Full changelog on [GitHub releases](https://github.com/Cod-e-Codes/marchat/relea
 ## Features
 
 - **Terminal UI** - Beautiful TUI built with Bubble Tea
-- **Real-time Chat** - Fast WebSocket messaging with SQLite backend (PostgreSQL/MySQL planned)
-- **Database Performance** - SQLite WAL mode for improved concurrency and performance (creates additional `.db-wal` and `.db-shm` files)
+- **Real-time Chat** - Fast WebSocket messaging with SQLite, PostgreSQL, or MySQL backend
+- **Multi-Database Support** - Choose your database: SQLite (default), PostgreSQL, or MySQL
+- **Database Performance** - SQLite WAL mode for improved concurrency and performance
 - **Plugin System** - Remote registry with text commands and Alt+key hotkeys
 - **E2E Encryption** - X25519/ChaCha20-Poly1305 with global encryption
 - **File Sharing** - Send files up to 1MB (configurable) with interactive picker
@@ -59,7 +60,7 @@ Full changelog on [GitHub releases](https://github.com/Cod-e-Codes/marchat/relea
 
 ## Overview
 
-marchat started as a fun weekend project for father-son coding sessions and has evolved into a lightweight, self-hosted terminal chat application designed specifically for developers who love the command line. Currently runs with SQLite, with PostgreSQL and MySQL support planned for greater scalability.
+marchat started as a fun weekend project for father-son coding sessions and has evolved into a lightweight, self-hosted terminal chat application designed specifically for developers who love the command line. Supports SQLite (default), PostgreSQL, and MySQL for maximum flexibility and scalability.
 
 **Key Benefits:**
 - **Self-hosted**: No external services required
@@ -180,17 +181,64 @@ go build -o marchat-client ./client
 | `MARCHAT_ADMIN_KEY` | Yes | - | Admin authentication key |
 | `MARCHAT_USERS` | Yes | - | Comma-separated admin usernames |
 | `MARCHAT_PORT` | No | `8080` | Server port |
-| `MARCHAT_DB_PATH` | No | `./config/marchat.db` | Database file path |
+| `MARCHAT_DB_PATH` | No | `./config/marchat.db` | Database file path (SQLite only) |
 | `MARCHAT_TLS_CERT_FILE` | No | - | TLS certificate (enables wss://) |
 | `MARCHAT_TLS_KEY_FILE` | No | - | TLS private key |
 | `MARCHAT_GLOBAL_E2E_KEY` | No | - | Base64 32-byte global encryption key |
 | `MARCHAT_MAX_FILE_BYTES` | No | `1048576` | Max file size in bytes (1MB default) |
 | `MARCHAT_MAX_FILE_MB` | No | `1` | Max file size in MB (alternative to bytes) |
+
+### Database Configuration
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `MARCHAT_DB_TYPE` | No | `sqlite` | Database type: `sqlite`, `postgres`, `mysql` |
+| `MARCHAT_DB_HOST` | No | `localhost` | Database host (PostgreSQL/MySQL) |
+| `MARCHAT_DB_PORT` | No | `5432` (PostgreSQL)<br>`3306` (MySQL) | Database port |
+| `MARCHAT_DB_NAME` | No | `marchat` | Database name (PostgreSQL/MySQL) |
+| `MARCHAT_DB_USER` | No | - | Database username (PostgreSQL/MySQL) |
+| `MARCHAT_DB_PASSWORD` | No | - | Database password (PostgreSQL/MySQL) |
+| `MARCHAT_DB_SSL_MODE` | No | `disable` | SSL mode (PostgreSQL only) |
 | `MARCHAT_ALLOWED_USERS` | No | - | Username allowlist (comma-separated) |
 
 **Additional variables:** `MARCHAT_LOG_LEVEL`, `MARCHAT_CONFIG_DIR`, `MARCHAT_BAN_HISTORY_GAPS`, `MARCHAT_PLUGIN_REGISTRY_URL`
 
 **File Size Configuration:** Use either `MARCHAT_MAX_FILE_BYTES` (exact bytes) or `MARCHAT_MAX_FILE_MB` (megabytes). If both are set, `MARCHAT_MAX_FILE_BYTES` takes priority.
+
+#### Database Examples
+
+**SQLite (Default - No additional config needed):**
+```bash
+export MARCHAT_ADMIN_KEY="your-key"
+export MARCHAT_USERS="admin1,admin2"
+./marchat-server
+```
+
+**PostgreSQL:**
+```bash
+export MARCHAT_ADMIN_KEY="your-key"
+export MARCHAT_USERS="admin1,admin2"
+export MARCHAT_DB_TYPE="postgres"
+export MARCHAT_DB_HOST="localhost"
+export MARCHAT_DB_PORT="5432"
+export MARCHAT_DB_NAME="marchat"
+export MARCHAT_DB_USER="postgres"
+export MARCHAT_DB_PASSWORD="your-password"
+./marchat-server
+```
+
+**MySQL:**
+```bash
+export MARCHAT_ADMIN_KEY="your-key"
+export MARCHAT_USERS="admin1,admin2"
+export MARCHAT_DB_TYPE="mysql"
+export MARCHAT_DB_HOST="localhost"
+export MARCHAT_DB_PORT="3306"
+export MARCHAT_DB_NAME="marchat"
+export MARCHAT_DB_USER="root"
+export MARCHAT_DB_PASSWORD="your-password"
+./marchat-server
+```
 
 **Interactive Setup:** Use `--interactive` flag for guided server configuration when environment variables are missing.
 
@@ -578,6 +626,7 @@ Profiles stored in platform-appropriate locations:
 | Clipboard issues (Linux) | Install xclip: `sudo apt install xclip` |
 | Port in use | Change port: `export MARCHAT_PORT=8081` |
 | Database migration fails | Check file permissions, backup before source build |
+| Database connection fails | Verify credentials and network connectivity for PostgreSQL/MySQL |
 | Message history missing | Expected after updates - user states reset for ban/unban improvements |
 | Ban history gaps not working | Ensure `MARCHAT_BAN_HISTORY_GAPS=true` (default) and `ban_history` table exists |
 | TLS certificate errors | Use `--skip-tls-verify` for dev with self-signed certs |

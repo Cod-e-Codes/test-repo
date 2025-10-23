@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"strings"
@@ -21,7 +20,7 @@ type Client struct {
 	hub                  *Hub
 	conn                 *websocket.Conn
 	send                 chan interface{}
-	db                   *sql.DB
+	db                   *DatabaseWrapper
 	username             string
 	isAdmin              bool
 	ipAddr               string // Store IP address for logging and ban enforcement
@@ -91,7 +90,7 @@ func (c *Client) readPump() {
 		}
 		msg.CreatedAt = time.Now()
 		if msg.Type == "" || msg.Type == shared.TextMessage {
-			InsertMessage(c.db, msg)
+			c.db.InsertMessage(msg)
 		}
 		c.hub.broadcast <- msg
 	}
@@ -237,7 +236,7 @@ func (c *Client) handleCommand(command string) {
 	switch parts[0] {
 	case ":cleardb":
 		log.Printf("[ADMIN] Clearing message database via WebSocket by %s...", c.username)
-		err := ClearMessages(c.db)
+		err := c.db.ClearMessages()
 		if err != nil {
 			log.Printf("Failed to clear DB: %v", err)
 		} else {
@@ -430,7 +429,7 @@ func (c *Client) handleCommand(command string) {
 	case ":backup":
 		log.Printf("[ADMIN] Database backup requested by %s", c.username)
 		// Use the configured database path
-		backupFilename, err := BackupDatabase(c.dbPath)
+		backupFilename, err := c.db.BackupDatabase(c.dbPath)
 		if err != nil {
 			log.Printf("Failed to backup database: %v", err)
 			c.send <- shared.Message{
@@ -451,7 +450,7 @@ func (c *Client) handleCommand(command string) {
 
 	case ":stats":
 		log.Printf("[ADMIN] Database stats requested by %s", c.username)
-		stats, err := GetDatabaseStats(c.db)
+		stats, err := c.db.GetDatabaseStats()
 		if err != nil {
 			log.Printf("Failed to get database stats: %v", err)
 			c.send <- shared.Message{

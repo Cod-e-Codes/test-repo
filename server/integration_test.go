@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -277,7 +278,22 @@ func TestIntegrationWebSocketHandshake(t *testing.T) {
 
 	// Create handler
 	dbPath := "test_marchat.db"
-	handler := ServeWs(hub, db, adminList, adminKey, banGapsHistory, maxFileBytes, dbPath)
+	// Create a database wrapper for the test
+	dbWrapper := NewDatabaseWrapper(NewSQLiteDB())
+	if err := dbWrapper.db.Open(DatabaseConfig{Type: "sqlite", FilePath: dbPath}); err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	if err := dbWrapper.db.CreateSchema(); err != nil {
+		t.Fatalf("Failed to create test database schema: %v", err)
+	}
+
+	handler := ServeWs(hub, dbWrapper.db, adminList, adminKey, banGapsHistory, maxFileBytes, dbPath)
+
+	// Cleanup function to close database connections
+	defer func() {
+		_ = dbWrapper.db.Close()
+		os.Remove(dbPath)
+	}()
 
 	// Test regular user handshake
 	handshake := shared.Handshake{

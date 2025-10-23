@@ -381,20 +381,14 @@ func recordUnbanEvent(db *sql.DB, username string) error {
 }
 
 // getUserBanPeriods retrieves all ban periods for a user
-func getUserBanPeriods(db *sql.DB, username string) ([]struct {
-	BannedAt   time.Time
-	UnbannedAt *time.Time
-}, error) {
+func getUserBanPeriods(db *sql.DB, username string) ([]BanPeriod, error) {
 	rows, err := db.Query(`SELECT banned_at, unbanned_at FROM ban_history WHERE username = ? ORDER BY banned_at ASC`, username)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var periods []struct {
-		BannedAt   time.Time
-		UnbannedAt *time.Time
-	}
+	var periods []BanPeriod
 
 	for rows.Next() {
 		var bannedAt time.Time
@@ -404,20 +398,17 @@ func getUserBanPeriods(db *sql.DB, username string) ([]struct {
 			log.Printf("Warning: failed to scan ban period for user %s: %v", username, err)
 			continue
 		}
-		periods = append(periods, struct {
-			BannedAt   time.Time
-			UnbannedAt *time.Time
-		}{bannedAt, unbannedAt})
+		periods = append(periods, BanPeriod{
+			BannedAt:   bannedAt,
+			UnbannedAt: unbannedAt,
+		})
 	}
 
 	return periods, nil
 }
 
 // isMessageInBanPeriod checks if a message was sent during a user's ban period
-func isMessageInBanPeriod(messageTime time.Time, banPeriods []struct {
-	BannedAt   time.Time
-	UnbannedAt *time.Time
-}) bool {
+func isMessageInBanPeriod(messageTime time.Time, banPeriods []BanPeriod) bool {
 	for _, period := range banPeriods {
 		// If unbanned_at is nil, the user is still banned
 		if period.UnbannedAt == nil {
@@ -583,7 +574,7 @@ func validateUsernameHandler(username string) error {
 	return nil
 }
 
-func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string, banGapsHistory bool, maxFileBytes int64, dbPath string) http.HandlerFunc {
+func ServeWs(hub *Hub, database Database, adminList []string, adminKey string, banGapsHistory bool, maxFileBytes int64, dbPath string) http.HandlerFunc {
 	auth := adminAuth{admins: make(map[string]struct{}), adminKey: adminKey}
 	for _, u := range adminList {
 		auth.admins[strings.ToLower(u)] = struct{}{}
@@ -704,11 +695,14 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string, banGapsH
 			return
 		}
 
+		// Create database wrapper for the client
+		dbWrapper := NewDatabaseWrapper(database)
+
 		client := &Client{
 			hub:                  hub,
 			conn:                 conn,
 			send:                 make(chan interface{}, 256),
-			db:                   db,
+			db:                   dbWrapper,
 			username:             username,
 			isAdmin:              isAdmin,
 			ipAddr:               ipAddr,
@@ -720,7 +714,7 @@ func ServeWs(hub *Hub, db *sql.DB, adminList []string, adminKey string, banGapsH
 		hub.register <- client
 
 		// Send personalized recent messages to new client
-		msgs, _ := GetRecentMessagesForUser(db, username, 50, banGapsHistory)
+		msgs, _ := database.GetRecentMessagesForUser(username, 50, banGapsHistory)
 		for _, msg := range msgs {
 			client.send <- msg
 		}

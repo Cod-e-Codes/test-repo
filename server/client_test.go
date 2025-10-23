@@ -47,11 +47,20 @@ func setupTestClient(t *testing.T) (*Client, *Hub, *sql.DB, func()) {
 	}
 
 	// Create client
+	// Create a database wrapper for the test
+	dbWrapper := NewDatabaseWrapper(NewSQLiteDB())
+	if err := dbWrapper.db.Open(DatabaseConfig{Type: "sqlite", FilePath: dbPath}); err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	if err := dbWrapper.db.CreateSchema(); err != nil {
+		t.Fatalf("Failed to create test database schema: %v", err)
+	}
+
 	client := &Client{
 		hub:          hub,
 		conn:         conn,
 		send:         make(chan interface{}, 256),
-		db:           db,
+		db:           dbWrapper,
 		username:     "testuser",
 		isAdmin:      false,
 		ipAddr:       "127.0.0.1",
@@ -62,6 +71,7 @@ func setupTestClient(t *testing.T) (*Client, *Hub, *sql.DB, func()) {
 	cleanup := func() {
 		conn.Close()
 		db.Close()
+		_ = dbWrapper.db.Close()
 	}
 
 	return client, hub, db, cleanup
@@ -169,7 +179,7 @@ func TestClient_SendChannel(t *testing.T) {
 }
 
 func TestClient_AdminStatus(t *testing.T) {
-	client, _, db, cleanup := setupTestClient(t)
+	client, _, _, cleanup := setupTestClient(t)
 	defer cleanup()
 
 	// Test non-admin client
@@ -182,7 +192,7 @@ func TestClient_AdminStatus(t *testing.T) {
 		hub:          client.hub,
 		conn:         client.conn,
 		send:         make(chan interface{}, 256),
-		db:           db,
+		db:           client.db, // Use the same database wrapper
 		username:     "admin",
 		isAdmin:      true,
 		ipAddr:       "127.0.0.1",

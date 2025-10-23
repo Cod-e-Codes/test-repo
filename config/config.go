@@ -24,6 +24,15 @@ type Config struct {
 	// Database settings
 	DBPath string `json:"db_path"`
 
+	// Multi-database support
+	DBType     string `json:"db_type"` // "sqlite", "postgres", "mysql"
+	DBHost     string `json:"db_host"`
+	DBPort     int    `json:"db_port"`
+	DBName     string `json:"db_name"`
+	DBUser     string `json:"db_user"`
+	DBPassword string `json:"db_password"`
+	DBSSLMode  string `json:"db_ssl_mode"`
+
 	// Logging
 	LogLevel string `json:"log_level"`
 
@@ -185,6 +194,58 @@ func (c *Config) loadFromEnv() error {
 	// Global E2E key configuration
 	if globalE2EKey := os.Getenv("MARCHAT_GLOBAL_E2E_KEY"); globalE2EKey != "" {
 		c.GlobalE2EKey = globalE2EKey
+	}
+
+	// Database type configuration
+	if dbType := os.Getenv("MARCHAT_DB_TYPE"); dbType != "" {
+		c.DBType = dbType
+	} else {
+		c.DBType = "sqlite" // Default to SQLite for backward compatibility
+	}
+
+	// Database connection configuration (for PostgreSQL/MySQL)
+	if dbHost := os.Getenv("MARCHAT_DB_HOST"); dbHost != "" {
+		c.DBHost = dbHost
+	} else {
+		c.DBHost = "localhost"
+	}
+
+	if dbPortStr := os.Getenv("MARCHAT_DB_PORT"); dbPortStr != "" {
+		port, err := strconv.Atoi(dbPortStr)
+		if err != nil {
+			return fmt.Errorf("invalid MARCHAT_DB_PORT: %s", dbPortStr)
+		}
+		c.DBPort = port
+	} else {
+		// Set default port based on database type
+		switch c.DBType {
+		case "postgres", "postgresql":
+			c.DBPort = 5432
+		case "mysql":
+			c.DBPort = 3306
+		default:
+			c.DBPort = 0 // SQLite doesn't use port
+		}
+	}
+
+	if dbName := os.Getenv("MARCHAT_DB_NAME"); dbName != "" {
+		c.DBName = dbName
+	} else {
+		c.DBName = "marchat"
+	}
+
+	if dbUser := os.Getenv("MARCHAT_DB_USER"); dbUser != "" {
+		c.DBUser = dbUser
+	}
+
+	if dbPassword := os.Getenv("MARCHAT_DB_PASSWORD"); dbPassword != "" {
+		c.DBPassword = dbPassword
+	}
+
+	if dbSSLMode := os.Getenv("MARCHAT_DB_SSL_MODE"); dbSSLMode != "" {
+		c.DBSSLMode = dbSSLMode
+	} else {
+		c.DBSSLMode = "disable"
 	}
 
 	return nil

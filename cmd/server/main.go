@@ -120,6 +120,13 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    MARCHAT_ADMIN_KEY=your-secret-key (required)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_USERS=user1,user2,user3 (comma-separated, required)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_DB_PATH=/path/to/db (default: $CONFIG_DIR/marchat.db)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_DB_TYPE=sqlite|postgres|mysql (default: sqlite)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_DB_HOST=localhost (default: localhost)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_DB_PORT=5432 (default: 5432 for postgres, 3306 for mysql)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_DB_NAME=marchat (default: marchat)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_DB_USER=username (required for postgres/mysql)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_DB_PASSWORD=password (required for postgres/mysql)\n")
+		fmt.Fprintf(os.Stderr, "    MARCHAT_DB_SSL_MODE=disable|require (default: disable)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_LOG_LEVEL=info (default: info)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_JWT_SECRET=your-jwt-secret (default: auto-generated)\n")
 		fmt.Fprintf(os.Stderr, "    MARCHAT_TLS_CERT_FILE=/path/to/cert.pem (optional)\n")
@@ -247,9 +254,27 @@ func main() {
 		admins = append(admins, u)
 	}
 
-	// Initialize database with the configured path
-	db := server.InitDB(cfg.DBPath)
-	server.CreateSchema(db)
+	// Create database configuration
+	dbConfig := server.DatabaseConfig{
+		Type:     cfg.DBType,
+		Host:     cfg.DBHost,
+		Port:     cfg.DBPort,
+		Database: cfg.DBName,
+		Username: cfg.DBUser,
+		Password: cfg.DBPassword,
+		SSLMode:  cfg.DBSSLMode,
+		FilePath: cfg.DBPath, // For SQLite
+	}
+
+	// Initialize database using factory
+	database, err := server.NewDatabase(dbConfig)
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer database.Close()
+
+	// Create database wrapper for backward compatibility
+	dbWrapper := server.NewDatabaseWrapper(database)
 
 	// Set up plugin directories
 	pluginDir := cfg.ConfigDir + "/plugins"
@@ -272,7 +297,7 @@ func main() {
 		})
 	}
 
-	hub := server.NewHub(pluginDir, dataDir, registryURL, db)
+	hub := server.NewHub(pluginDir, dataDir, registryURL, dbWrapper.GetDB())
 	go hub.Run()
 
 	// Log server startup
@@ -289,11 +314,11 @@ func main() {
 		adminPanelReady = true
 	}
 
-	http.HandleFunc("/ws", server.ServeWs(hub, db, admins, key, cfg.BanGapsHistory, cfg.MaxFileBytes, cfg.DBPath))
+	http.HandleFunc("/ws", server.ServeWs(hub, database, admins, key, cfg.BanGapsHistory, cfg.MaxFileBytes, cfg.DBPath))
 
 	// Web admin panel routes (optional)
 	if *enableWebPanel {
-		web := server.NewWebAdminServer(hub, db, cfg)
+		web := server.NewWebAdminServer(hub, dbWrapper, cfg)
 		mux := http.DefaultServeMux
 		web.RegisterRoutes(mux)
 		server.ServerLogger.Info("Web admin panel enabled", map[string]interface{}{
@@ -302,7 +327,7 @@ func main() {
 	}
 
 	// Initialize health checker
-	healthChecker := server.NewHealthChecker(hub, db, shared.GetServerVersionInfo())
+	healthChecker := server.NewHealthChecker(hub, dbWrapper.GetDB(), shared.GetServerVersionInfo())
 	http.HandleFunc("/health", healthChecker.HealthCheckHandler)
 	http.HandleFunc("/health/simple", healthChecker.SimpleHealthHandler)
 
@@ -398,7 +423,7 @@ func main() {
 
 					// Launch admin panel
 					pluginManager := hub.GetPluginManager()
-					panel := server.NewAdminPanel(hub, db, pluginManager, cfg)
+					panel := server.NewAdminPanel(hub, dbWrapper, pluginManager, cfg)
 					p := tea.NewProgram(panel, tea.WithAltScreen())
 					if _, err := p.Run(); err != nil {
 						server.ServerLogger.Error("Admin panel error", err)

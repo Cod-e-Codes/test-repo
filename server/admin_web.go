@@ -4,7 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	"database/sql"
 	_ "embed"
 	"encoding/base64"
 	"encoding/hex"
@@ -35,7 +34,7 @@ type loginAttempt struct {
 
 type WebAdminServer struct {
 	hub           *Hub
-	db            *sql.DB
+	db            *DatabaseWrapper
 	cfg           *config.Config
 	pluginManager *manager.PluginManager
 	startTime     time.Time
@@ -360,7 +359,7 @@ type webDatabaseInfo struct {
 }
 
 // NewWebAdminServer creates a new web admin server with full functionality
-func NewWebAdminServer(hub *Hub, db *sql.DB, cfg *config.Config) *WebAdminServer {
+func NewWebAdminServer(hub *Hub, db *DatabaseWrapper, cfg *config.Config) *WebAdminServer {
 	server := &WebAdminServer{
 		hub:           hub,
 		db:            db,
@@ -675,7 +674,7 @@ func (w *WebAdminServer) handleSystemAction(rw http.ResponseWriter, r *http.Requ
 
 	switch req.Action {
 	case "clear_db":
-		err := ClearMessages(w.db)
+		err := w.db.ClearMessages()
 		if err != nil {
 			message = "Failed to clear database: " + err.Error()
 			success = false
@@ -684,7 +683,7 @@ func (w *WebAdminServer) handleSystemAction(rw http.ResponseWriter, r *http.Requ
 			success = true
 		}
 	case "backup_db":
-		filename, err := BackupDatabase(w.cfg.DBPath)
+		filename, err := w.db.BackupDatabase(w.cfg.DBPath)
 		if err != nil {
 			message = "Failed to backup database: " + err.Error()
 			success = false
@@ -693,7 +692,7 @@ func (w *WebAdminServer) handleSystemAction(rw http.ResponseWriter, r *http.Requ
 			success = true
 		}
 	case "show_stats":
-		stats, err := GetDatabaseStats(w.db)
+		stats, err := w.db.GetDatabaseStats()
 		if err != nil {
 			message = "Failed to get stats: " + err.Error()
 			success = false
@@ -911,13 +910,13 @@ func (w *WebAdminServer) getSystemStats() webSystemStats {
 	runtime.ReadMemStats(&m)
 
 	var messageCount int
-	err := w.db.QueryRow("SELECT COUNT(*) FROM messages").Scan(&messageCount)
+	err := w.db.GetDB().QueryRow("SELECT COUNT(*) FROM messages").Scan(&messageCount)
 	if err != nil {
 		log.Printf("Error getting message count: %v", err)
 	}
 
 	var userCount int
-	err = w.db.QueryRow("SELECT COUNT(DISTINCT sender) FROM messages WHERE sender != 'System'").Scan(&userCount)
+	err = w.db.GetDB().QueryRow("SELECT COUNT(DISTINCT sender) FROM messages WHERE sender != 'System'").Scan(&userCount)
 	if err != nil {
 		log.Printf("Error getting user count: %v", err)
 	}
@@ -949,7 +948,7 @@ func (w *WebAdminServer) getSystemStats() webSystemStats {
 
 func (w *WebAdminServer) getUsersData() []webUserInfo {
 	// Get message counts per user
-	rows, err := w.db.Query(`
+	rows, err := w.db.GetDB().Query(`
 		SELECT sender, COUNT(*) as message_count 
 		FROM messages 
 		WHERE sender != 'System' 

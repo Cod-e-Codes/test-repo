@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"os"
@@ -134,7 +133,7 @@ type AdminPanel struct {
 	// Server integration
 	hub           *Hub
 	ServerLogger  *Logger
-	db            *sql.DB
+	db            *DatabaseWrapper
 	pluginManager *manager.PluginManager
 	startTime     time.Time
 
@@ -264,7 +263,7 @@ var (
 )
 
 // NewAdminPanel creates a new admin panel instance
-func NewAdminPanel(hub *Hub, db *sql.DB, pluginManager *manager.PluginManager, liveConfig *config.Config) *AdminPanel {
+func NewAdminPanel(hub *Hub, db *DatabaseWrapper, pluginManager *manager.PluginManager, liveConfig *config.Config) *AdminPanel {
 	// Initialize keybindings
 	keys := keyMap{
 		TabNext: key.NewBinding(
@@ -759,7 +758,7 @@ func (ap *AdminPanel) updateUserTable() {
 }
 
 // RunAdminPanel starts the admin panel TUI
-func RunAdminPanel(hub *Hub, db *sql.DB, pluginManager *manager.PluginManager, liveConfig *config.Config) error {
+func RunAdminPanel(hub *Hub, db *DatabaseWrapper, pluginManager *manager.PluginManager, liveConfig *config.Config) error {
 	panel := NewAdminPanel(hub, db, pluginManager, liveConfig)
 
 	p := tea.NewProgram(panel, tea.WithAltScreen())
@@ -1494,7 +1493,7 @@ type actionMsg struct {
 
 func (ap *AdminPanel) clearDatabase() tea.Cmd {
 	return func() tea.Msg {
-		err := ClearMessages(ap.db)
+		err := ap.db.ClearMessages()
 		if err != nil {
 			return clearDBMsg{success: false, error: err.Error()}
 		}
@@ -1504,7 +1503,7 @@ func (ap *AdminPanel) clearDatabase() tea.Cmd {
 
 func (ap *AdminPanel) backupDatabase() tea.Cmd {
 	return func() tea.Msg {
-		filename, err := BackupDatabase(ap.config.DBPath)
+		filename, err := ap.db.BackupDatabase(ap.config.DBPath)
 		if err != nil {
 			return backupDBMsg{success: false, error: err.Error()}
 		}
@@ -1514,7 +1513,7 @@ func (ap *AdminPanel) backupDatabase() tea.Cmd {
 
 func (ap *AdminPanel) showDatabaseStats() tea.Cmd {
 	return func() tea.Msg {
-		stats, err := GetDatabaseStats(ap.db)
+		stats, err := ap.db.GetDatabaseStats()
 		if err != nil {
 			return statsMsg{success: false, error: err.Error()}
 		}

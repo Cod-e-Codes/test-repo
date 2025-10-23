@@ -51,15 +51,28 @@ func setupTestServerEnv(t *testing.T) (*sql.DB, *Hub, *appcfg.Config, func()) {
 }
 
 func TestAdminWeb_LoginSessionAndProtectedRoutes(t *testing.T) {
-	db, hub, cfg, cleanup := setupTestServerEnv(t)
+	_, hub, cfg, cleanup := setupTestServerEnv(t)
 	defer cleanup()
 
-	was := NewWebAdminServer(hub, db, cfg)
+	// Create a database wrapper for the test
+	dbPath := "test_admin_web.db"
+	dbWrapper := NewDatabaseWrapper(NewSQLiteDB())
+	if err := dbWrapper.db.Open(DatabaseConfig{Type: "sqlite", FilePath: dbPath}); err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	if err := dbWrapper.db.CreateSchema(); err != nil {
+		t.Fatalf("Failed to create test database schema: %v", err)
+	}
+
+	was := NewWebAdminServer(hub, dbWrapper, cfg)
 	mux := http.NewServeMux()
 	was.RegisterRoutes(mux)
 
 	ts := httptest.NewServer(mux)
-	defer ts.Close()
+	defer func() {
+		ts.Close()
+		_ = dbWrapper.db.Close()
+	}()
 
 	// 1) Protected route without session should be 401
 	resp, err := ts.Client().Get(ts.URL + "/admin/api/overview")

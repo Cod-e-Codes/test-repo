@@ -20,7 +20,7 @@ Marchat is a self-hosted, terminal-based chat application built in Go with a cli
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │ Configuration   │    │ Shared Types    │    │ Database Layer  │
-│ • Profiles      │    │ • Message Types │    │ • SQLite        │
+│ • Profiles      │    │ • Message Types │    │ • Multi-DB      │
 │ • Encryption    │    │ • Crypto Utils  │    │ • Persistence   │
 │ • Themes        │    │ • Protocols     │    │ • State Mgmt    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
@@ -83,7 +83,7 @@ The server package contains the core server logic and components that are used b
 #### Core Components
 
 - **WebSocket Handlers**: Connection management and message routing
-- **Database Layer**: SQLite integration with message persistence
+- **Database Layer**: Multi-database support (SQLite, PostgreSQL, MySQL) with message persistence
 - **Admin Interfaces**: Both TUI and web-based administrative panels
 - **Plugin Integration**: Plugin command handling and execution
 - **Health Monitoring**: System metrics and health check endpoints
@@ -165,7 +165,7 @@ Flexible configuration management supporting multiple sources and interactive se
 #### Key Settings
 
 - **Server Configuration**: Port, TLS certificates, admin authentication
-- **Database Settings**: SQLite file path and connection parameters
+- **Database Settings**: Database type selection and connection parameters (SQLite, PostgreSQL, MySQL)
 - **Plugin Configuration**: Registry URL and installation directories
 - **Security Settings**: Admin keys, encryption keys, and authentication
 - **File Transfer**: Size limits and allowed file types
@@ -215,9 +215,25 @@ The WebSocket communication uses JSON messages with the following structure:
 4. **Transport**: Encrypted data base64-encoded for JSON transport
 5. **Storage**: Server stores encrypted messages in database
 
-## Database Schema
+## Database Layer
 
-### Tables
+Marchat supports multiple database backends through a unified interface:
+
+### Supported Databases
+
+- **SQLite** (default): File-based database, perfect for single-server deployments
+- **PostgreSQL**: Robust relational database for high-availability setups
+- **MySQL**: Popular relational database with wide hosting support
+
+### Database Abstraction
+
+The system uses a `Database` interface that provides:
+- Automatic driver selection based on configuration
+- Unified API across all database types
+- Backward compatibility with existing SQLite installations
+- Database-specific optimizations and features
+
+### Database Schema
 
 #### `messages`
 ```sql
@@ -328,13 +344,22 @@ The web-based interface provides the same functionality through a browser:
 
 ### Database Optimization
 
+#### SQLite
 - **WAL Mode**: Write-Ahead Logging enabled for improved concurrency and performance
+- **Performance Tuning**: Optimized SQLite pragmas for chat workloads
+- **Backup Considerations**: WAL mode creates additional files; backups may miss recent uncommitted data if taken while server is running
+
+#### PostgreSQL/MySQL
+- **Connection Pooling**: Optimized connection management
+- **Prepared Statements**: Database-specific prepared statement optimization
+- **Index Optimization**: Performance indexes on frequently queried columns
+- **Transaction Management**: Efficient transaction handling for message operations
+
+#### Common Optimizations
 - **Indexed Queries**: Performance indexes on frequently queried columns
 - **Batch Operations**: Efficient bulk message operations
 - **Connection Reuse**: Persistent database connections
 - **Query Optimization**: Prepared statements for common operations
-- **Performance Tuning**: Optimized SQLite pragmas for chat workloads
-- **Backup Considerations**: WAL mode creates additional files; backups may miss recent uncommitted data if taken while server is running
 
 ## Development Patterns
 
