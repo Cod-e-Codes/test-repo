@@ -2,7 +2,6 @@ package server
 
 import (
 	"database/sql"
-	"log"
 
 	"github.com/Cod-e-Codes/marchat/shared"
 )
@@ -18,23 +17,44 @@ func NewDatabaseWrapper(db Database) *DatabaseWrapper {
 	return &DatabaseWrapper{db: db}
 }
 
+// Close closes the database connection
+func (w *DatabaseWrapper) Close() error {
+	return w.db.Close()
+}
+
+// Open opens the database connection
+func (w *DatabaseWrapper) Open(config DatabaseConfig) error {
+	return w.db.Open(config)
+}
+
+// Ping checks the database connection
+func (w *DatabaseWrapper) Ping() error {
+	return w.db.Ping()
+}
+
+// CreateSchema creates the database schema
+func (w *DatabaseWrapper) CreateSchema() error {
+	return w.db.CreateSchema()
+}
+
+// Migrate runs database migrations
+func (w *DatabaseWrapper) Migrate() error {
+	return w.db.Migrate()
+}
+
 // GetDB returns the raw database connection for compatibility
 func (w *DatabaseWrapper) GetDB() *sql.DB {
 	return w.db.GetDB()
 }
 
 // InsertMessage provides backward compatibility for InsertMessage function
-func (w *DatabaseWrapper) InsertMessage(msg shared.Message) {
-	if err := w.db.InsertMessage(msg); err != nil {
-		log.Println("Insert error:", err)
-	}
+func (w *DatabaseWrapper) InsertMessage(msg shared.Message) error {
+	return w.db.InsertMessage(msg)
 }
 
 // InsertEncryptedMessage provides backward compatibility for InsertEncryptedMessage function
-func (w *DatabaseWrapper) InsertEncryptedMessage(msg *shared.EncryptedMessage) {
-	if err := w.db.InsertEncryptedMessage(msg); err != nil {
-		log.Println("Insert encrypted message error:", err)
-	}
+func (w *DatabaseWrapper) InsertEncryptedMessage(msg *shared.EncryptedMessage) error {
+	return w.db.InsertEncryptedMessage(msg)
 }
 
 // GetRecentMessages provides backward compatibility for GetRecentMessages function

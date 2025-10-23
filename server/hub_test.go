@@ -1,20 +1,14 @@
 package server
 
 import (
-	"database/sql"
 	"strings"
 	"testing"
 	"time"
-
-	_ "modernc.org/sqlite"
 )
 
 func TestNewHub(t *testing.T) {
 	// Create a test database
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
 
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
@@ -55,20 +49,14 @@ func TestNewHub(t *testing.T) {
 		t.Error("pluginCommandHandler should not be nil")
 	}
 
-	if hub.db != db {
+	if hub.db == nil {
 		t.Error("database reference should be set correctly")
 	}
 }
 
 func TestHubBanUser(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema for database operations
-	CreateSchema(db)
 
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
 
@@ -96,14 +84,8 @@ func TestHubBanUser(t *testing.T) {
 }
 
 func TestHubUnbanUser(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema for database operations
-	CreateSchema(db)
 
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
 
@@ -135,14 +117,8 @@ func TestHubUnbanUser(t *testing.T) {
 }
 
 func TestHubKickUser(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema for database operations
-	CreateSchema(db)
 
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
 
@@ -164,14 +140,8 @@ func TestHubKickUser(t *testing.T) {
 }
 
 func TestHubAllowUser(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema for database operations
-	CreateSchema(db)
 
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
 
@@ -203,14 +173,8 @@ func TestHubAllowUser(t *testing.T) {
 }
 
 func TestHubBanOverridesKick(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema for database operations
-	CreateSchema(db)
 
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
 
@@ -237,14 +201,8 @@ func TestHubBanOverridesKick(t *testing.T) {
 }
 
 func TestHubCleanupExpiredBans(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema for database operations
-	CreateSchema(db)
 
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
 
@@ -272,10 +230,7 @@ func TestHubCleanupExpiredBans(t *testing.T) {
 }
 
 func TestHubForceDisconnectUser(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
 
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
@@ -294,10 +249,7 @@ func TestHubForceDisconnectUser(t *testing.T) {
 }
 
 func TestHubGetPluginManager(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
 
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
@@ -313,14 +265,8 @@ func TestHubGetPluginManager(t *testing.T) {
 }
 
 func TestHubBanCaseInsensitive(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema for database operations
-	CreateSchema(db)
 
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
 
@@ -346,14 +292,8 @@ func TestHubBanCaseInsensitive(t *testing.T) {
 }
 
 func TestHubMultipleBansAndKicks(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema for database operations
-	CreateSchema(db)
 
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
 
@@ -392,14 +332,8 @@ func TestHubMultipleBansAndKicks(t *testing.T) {
 }
 
 func TestHubConcurrentBanOperations(t *testing.T) {
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema for database operations
-	CreateSchema(db)
 
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
 

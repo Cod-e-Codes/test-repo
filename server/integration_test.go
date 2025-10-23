@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
@@ -12,19 +11,14 @@ import (
 	"time"
 
 	"github.com/Cod-e-Codes/marchat/shared"
-	_ "modernc.org/sqlite"
 )
 
 func TestIntegrationMessageFlow(t *testing.T) {
 	// Create a test database
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
 
 	// Create schema
-	CreateSchema(db)
 
 	// Create hub (for future use in tests)
 	_ = NewHub("./plugins", "./data", "http://registry.example.com", db)
@@ -75,14 +69,10 @@ func TestIntegrationMessageFlow(t *testing.T) {
 
 func TestIntegrationUserBanFlow(t *testing.T) {
 	// Create a test database
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
 
 	// Create schema
-	CreateSchema(db)
 
 	// Create hub
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
@@ -135,14 +125,10 @@ func TestIntegrationUserBanFlow(t *testing.T) {
 
 func TestIntegrationDatabaseStats(t *testing.T) {
 	// Create a test database
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
 
 	// Create schema
-	CreateSchema(db)
 
 	// Insert various types of messages
 	now := time.Now()
@@ -179,14 +165,10 @@ func TestIntegrationDatabaseStats(t *testing.T) {
 
 func TestIntegrationEncryptedMessageFlow(t *testing.T) {
 	// Create a test database
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
 
 	// Create schema
-	CreateSchema(db)
 
 	// Create an encrypted message
 	encryptedMsg := &shared.EncryptedMessage{
@@ -219,14 +201,10 @@ func TestIntegrationEncryptedMessageFlow(t *testing.T) {
 
 func TestIntegrationMessageCap(t *testing.T) {
 	// Create a test database
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
 
 	// Create schema
-	CreateSchema(db)
 
 	// Insert more than 1000 messages (the cap limit)
 	for i := 0; i < 1100; i++ {
@@ -258,14 +236,10 @@ func TestIntegrationMessageCap(t *testing.T) {
 
 func TestIntegrationWebSocketHandshake(t *testing.T) {
 	// Create a test database
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
 
 	// Create schema
-	CreateSchema(db)
 
 	// Create hub
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)
@@ -327,14 +301,10 @@ func TestIntegrationWebSocketHandshake(t *testing.T) {
 
 func TestIntegrationConcurrentOperations(t *testing.T) {
 	// Create a test database
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
 
 	// Create schema
-	CreateSchema(db)
 
 	// Create hub
 	hub := NewHub("./plugins", "./data", "http://registry.example.com", db)

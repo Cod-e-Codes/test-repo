@@ -406,7 +406,7 @@ func (s *SQLiteDB) GetDatabaseStats() (string, error) {
 		return "", err
 	}
 
-	err = s.db.QueryRow(`SELECT COUNT(*) FROM user_message_state`).Scan(&userCount)
+	err = s.db.QueryRow(`SELECT COUNT(DISTINCT sender) FROM messages WHERE sender != 'System'`).Scan(&userCount)
 	if err != nil {
 		return "", err
 	}
@@ -416,7 +416,7 @@ func (s *SQLiteDB) GetDatabaseStats() (string, error) {
 		return "", err
 	}
 
-	stats := fmt.Sprintf("Messages: %d, Users: %d, Ban Events: %d", messageCount, userCount, banCount)
+	stats := fmt.Sprintf("Database Statistics:\nTotal Messages: %d\nUnique Users: %d\nBan Events: %d", messageCount, userCount, banCount)
 	return stats, nil
 }
 

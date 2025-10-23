@@ -147,96 +147,33 @@ func CreateSchema(db *sql.DB) {
 	}
 }
 
-func InsertMessage(db *sql.DB, msg shared.Message) {
-	result, err := db.Exec(`INSERT INTO messages (sender, content, created_at, is_encrypted) VALUES (?, ?, ?, ?)`,
-		msg.Sender, msg.Content, msg.CreatedAt, msg.Encrypted)
-	if err != nil {
+func InsertMessage(db Database, msg shared.Message) {
+	if err := db.InsertMessage(msg); err != nil {
 		log.Println("Insert error:", err)
-		return
-	}
-
-	// Get the inserted ID and update message_id
-	id, err := result.LastInsertId()
-	if err != nil {
-		log.Println("Error getting last insert ID:", err)
-	} else {
-		_, err = db.Exec(`UPDATE messages SET message_id = ? WHERE id = ?`, id, id)
-		if err != nil {
-			log.Println("Error updating message_id:", err)
-		}
-	}
-
-	// Enforce message cap: keep only the most recent 1000 messages
-	_, err = db.Exec(`DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT 1000)`)
-	if err != nil {
-		log.Println("Error enforcing message cap:", err)
 	}
 }
 
 // InsertEncryptedMessage stores an encrypted message in the database
-func InsertEncryptedMessage(db *sql.DB, encryptedMsg *shared.EncryptedMessage) {
-	result, err := db.Exec(`INSERT INTO messages (sender, content, created_at, is_encrypted, encrypted_data, nonce, recipient) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		encryptedMsg.Sender, encryptedMsg.Content, encryptedMsg.CreatedAt,
-		encryptedMsg.IsEncrypted, encryptedMsg.Encrypted, encryptedMsg.Nonce, encryptedMsg.Recipient)
-	if err != nil {
+func InsertEncryptedMessage(db Database, encryptedMsg *shared.EncryptedMessage) {
+	if err := db.InsertEncryptedMessage(encryptedMsg); err != nil {
 		log.Println("Insert encrypted message error:", err)
-		return
-	}
-
-	// Get the inserted ID and update message_id
-	id, err := result.LastInsertId()
-	if err != nil {
-		log.Println("Error getting last insert ID for encrypted message:", err)
-	} else {
-		_, err = db.Exec(`UPDATE messages SET message_id = ? WHERE id = ?`, id, id)
-		if err != nil {
-			log.Println("Error updating message_id for encrypted message:", err)
-		}
-	}
-
-	// Enforce message cap: keep only the most recent 1000 messages
-	_, err = db.Exec(`DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT 1000)`)
-	if err != nil {
-		log.Println("Error enforcing message cap:", err)
 	}
 }
 
-func GetRecentMessages(db *sql.DB) []shared.Message {
-	// FIXED: Changed ORDER BY created_at ASC to DESC to fetch newest messages first
-	rows, err := db.Query(`SELECT sender, content, created_at, is_encrypted FROM messages ORDER BY created_at DESC LIMIT 50`)
-	if err != nil {
-		log.Println("Query error:", err)
-		return nil
-	}
-	defer rows.Close()
-
-	var messages []shared.Message
-	for rows.Next() {
-		var msg shared.Message
-		var isEncrypted bool
-		err := rows.Scan(&msg.Sender, &msg.Content, &msg.CreatedAt, &isEncrypted)
-		if err == nil {
-			msg.Encrypted = isEncrypted
-			messages = append(messages, msg)
-		}
-	}
-
-	// CRITICAL FIX: Always sort messages by timestamp for consistent chronological display
-	// Note: SQL query fetches newest messages first (DESC), but we sort chronologically (ASC) for display
-	sortMessagesByTimestamp(messages)
-	return messages
+func GetRecentMessages(db Database) []shared.Message {
+	return db.GetRecentMessages()
 }
 
 // GetRecentMessagesForUser returns personalized message history for a specific user
-func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int, banGapsHistory bool) ([]shared.Message, int64) {
+func GetRecentMessagesForUser(db Database, username string, defaultLimit int, banGapsHistory bool) ([]shared.Message, int64) {
 	lowerUsername := strings.ToLower(username)
 
 	// Get user's last seen message ID
-	lastMessageID, err := getUserLastMessageID(db, lowerUsername)
+	lastMessageID, err := db.GetUserLastMessageID(lowerUsername)
 	if err != nil && err != sql.ErrNoRows {
 		log.Printf("Error getting last message ID for user %s: %v", username, err)
 		// Fall back to recent messages for new users or on error
-		messages := GetRecentMessages(db)
+		messages := db.GetRecentMessages()
 		sortMessagesByTimestamp(messages) // Ensure consistent ordering
 		return messages, 0
 	}
@@ -245,14 +182,14 @@ func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int, ban
 
 	if lastMessageID == 0 {
 		// New user or no history - get recent messages
-		messages = GetRecentMessages(db)
+		messages = db.GetRecentMessages()
 	} else {
 		// Returning user - get messages after their last seen ID
-		messages = GetMessagesAfter(db, lastMessageID, defaultLimit)
+		messages = db.GetMessagesAfter(lastMessageID, defaultLimit)
 
 		// If they have few new messages, combine with recent history
 		if len(messages) < defaultLimit/2 {
-			recentMessages := GetRecentMessages(db)
+			recentMessages := db.GetRecentMessages()
 			// Combine recent messages with new messages, avoiding duplicates
 			existingIDs := make(map[string]bool)
 			for _, msg := range messages {
@@ -275,7 +212,7 @@ func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int, ban
 
 	// Filter messages during ban periods if feature is enabled
 	if banGapsHistory {
-		banPeriods, err := getUserBanPeriods(db, lowerUsername)
+		banPeriods, err := db.GetUserBanPeriods(lowerUsername)
 		if err != nil {
 			log.Printf("Warning: failed to get ban periods for user %s: %v", username, err)
 		} else if len(banPeriods) > 0 {
@@ -293,9 +230,9 @@ func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int, ban
 
 	// Update user's last seen message ID
 	if len(messages) > 0 {
-		latestID := getLatestMessageID(db)
+		latestID := db.GetLatestMessageID()
 		if latestID > 0 {
-			err = setUserLastMessageID(db, lowerUsername, latestID)
+			err = db.SetUserLastMessageID(lowerUsername, latestID)
 			if err != nil {
 				log.Printf("Warning: failed to update last message ID for user %s: %v", username, err)
 			}
@@ -306,105 +243,8 @@ func GetRecentMessagesForUser(db *sql.DB, username string, defaultLimit int, ban
 }
 
 // GetMessagesAfter retrieves messages with ID > lastMessageID
-func GetMessagesAfter(db *sql.DB, lastMessageID int64, limit int) []shared.Message {
-	// FIXED: Changed ORDER BY created_at ASC to DESC to fetch newest messages first
-	rows, err := db.Query(`SELECT sender, content, created_at, is_encrypted FROM messages WHERE message_id > ? ORDER BY created_at DESC LIMIT ?`, lastMessageID, limit)
-	if err != nil {
-		log.Println("Query error in GetMessagesAfter:", err)
-		return nil
-	}
-	defer rows.Close()
-
-	var messages []shared.Message
-	for rows.Next() {
-		var msg shared.Message
-		var isEncrypted bool
-		err := rows.Scan(&msg.Sender, &msg.Content, &msg.CreatedAt, &isEncrypted)
-		if err == nil {
-			msg.Encrypted = isEncrypted
-			messages = append(messages, msg)
-		}
-	}
-
-	// CRITICAL FIX: Always sort messages by timestamp for consistent chronological display
-	// Note: SQL query fetches newest messages first (DESC), but we sort chronologically (ASC) for display
-	sortMessagesByTimestamp(messages)
-	return messages
-}
-
-// getUserLastMessageID queries user_message_state table
-func getUserLastMessageID(db *sql.DB, username string) (int64, error) {
-	var lastMessageID int64
-	err := db.QueryRow(`SELECT last_message_id FROM user_message_state WHERE username = ?`, username).Scan(&lastMessageID)
-	return lastMessageID, err
-}
-
-// setUserLastMessageID INSERT OR REPLACE into user_message_state
-func setUserLastMessageID(db *sql.DB, username string, messageID int64) error {
-	_, err := db.Exec(`INSERT OR REPLACE INTO user_message_state (username, last_message_id, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP)`, username, messageID)
-	return err
-}
-
-// getLatestMessageID returns MAX(id) from messages table
-func getLatestMessageID(db *sql.DB) int64 {
-	var latestID int64
-	err := db.QueryRow(`SELECT MAX(id) FROM messages`).Scan(&latestID)
-	if err != nil {
-		// Handle empty table case
-		return 0
-	}
-	return latestID
-}
-
-// clearUserMessageState deletes user's record from user_message_state
-func clearUserMessageState(db *sql.DB, username string) error {
-	_, err := db.Exec(`DELETE FROM user_message_state WHERE username = ?`, username)
-	return err
-}
-
-// recordBanEvent records a ban event in the ban_history table
-func recordBanEvent(db *sql.DB, username, bannedBy string) error {
-	_, err := db.Exec(`INSERT INTO ban_history (username, banned_by) VALUES (?, ?)`, username, bannedBy)
-	if err != nil {
-		log.Printf("Warning: failed to record ban event for user %s: %v", username, err)
-	}
-	return err
-}
-
-// recordUnbanEvent records an unban event in the ban_history table
-func recordUnbanEvent(db *sql.DB, username string) error {
-	_, err := db.Exec(`UPDATE ban_history SET unbanned_at = CURRENT_TIMESTAMP WHERE username = ? AND unbanned_at IS NULL`, username)
-	if err != nil {
-		log.Printf("Warning: failed to record unban event for user %s: %v", username, err)
-	}
-	return err
-}
-
-// getUserBanPeriods retrieves all ban periods for a user
-func getUserBanPeriods(db *sql.DB, username string) ([]BanPeriod, error) {
-	rows, err := db.Query(`SELECT banned_at, unbanned_at FROM ban_history WHERE username = ? ORDER BY banned_at ASC`, username)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var periods []BanPeriod
-
-	for rows.Next() {
-		var bannedAt time.Time
-		var unbannedAt *time.Time
-		err := rows.Scan(&bannedAt, &unbannedAt)
-		if err != nil {
-			log.Printf("Warning: failed to scan ban period for user %s: %v", username, err)
-			continue
-		}
-		periods = append(periods, BanPeriod{
-			BannedAt:   bannedAt,
-			UnbannedAt: unbannedAt,
-		})
-	}
-
-	return periods, nil
+func GetMessagesAfter(db Database, lastMessageID int64, limit int) []shared.Message {
+	return db.GetMessagesAfter(lastMessageID, limit)
 }
 
 // isMessageInBanPeriod checks if a message was sent during a user's ban period
@@ -442,9 +282,8 @@ func sortMessagesByTimestamp(messages []shared.Message) {
 	})
 }
 
-func ClearMessages(db *sql.DB) error {
-	_, err := db.Exec(`DELETE FROM messages`)
-	return err
+func ClearMessages(db Database) error {
+	return db.ClearMessages()
 }
 
 // BackupDatabase creates a backup of the current database
@@ -491,38 +330,8 @@ func BackupDatabase(dbPath string) (string, error) {
 }
 
 // GetDatabaseStats returns statistics about the database
-func GetDatabaseStats(db *sql.DB) (string, error) {
-	var stats strings.Builder
-
-	// Count messages
-	var messageCount int
-	err := db.QueryRow("SELECT COUNT(*) FROM messages").Scan(&messageCount)
-	if err != nil {
-		return "", fmt.Errorf("failed to count messages: %v", err)
-	}
-
-	// Count unique users
-	var userCount int
-	err = db.QueryRow("SELECT COUNT(DISTINCT sender) FROM messages WHERE sender != 'System'").Scan(&userCount)
-	if err != nil {
-		return "", fmt.Errorf("failed to count users: %v", err)
-	}
-
-	// Get oldest and newest message dates
-	var oldestDate, newestDate sql.NullString
-	err = db.QueryRow("SELECT MIN(created_at), MAX(created_at) FROM messages").Scan(&oldestDate, &newestDate)
-	if err != nil {
-		return "", fmt.Errorf("failed to get date range: %v", err)
-	}
-
-	stats.WriteString("Database Statistics:\n")
-	stats.WriteString(fmt.Sprintf("  Total Messages: %d\n", messageCount))
-	stats.WriteString(fmt.Sprintf("  Unique Users: %d\n", userCount))
-	if oldestDate.Valid && newestDate.Valid {
-		stats.WriteString(fmt.Sprintf("  Date Range: %s to %s\n", oldestDate.String, newestDate.String))
-	}
-
-	return stats.String(), nil
+func GetDatabaseStats(db Database) (string, error) {
+	return db.GetDatabaseStats()
 }
 
 func (h *Hub) broadcastUserList() {

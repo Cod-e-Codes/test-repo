@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -15,20 +14,26 @@ import (
 )
 
 // helper to create a temporary DB and hub for tests
-func setupTestServerEnv(t *testing.T) (*sql.DB, *Hub, *appcfg.Config, func()) {
+func setupTestServerEnv(t *testing.T) (Database, *Hub, *appcfg.Config, func()) {
 	t.Helper()
 	tdir := t.TempDir()
 	dbPath := filepath.Join(tdir, "test.db")
-	db := InitDB(dbPath)
-	db.SetMaxOpenConns(1)
-	CreateSchema(db)
 
 	pluginDir := filepath.Join(tdir, "plugins")
 	dataDir := filepath.Join(tdir, "data")
 	_ = os.MkdirAll(pluginDir, 0o755)
 	_ = os.MkdirAll(dataDir, 0o755)
 
-	hub := NewHub(pluginDir, dataDir, "", db)
+	// Create a database wrapper for the test
+	dbWrapper := NewDatabaseWrapper(NewSQLiteDB())
+	if err := dbWrapper.db.Open(DatabaseConfig{Type: "sqlite", FilePath: dbPath}); err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	if err := dbWrapper.db.CreateSchema(); err != nil {
+		t.Fatalf("Failed to create test database schema: %v", err)
+	}
+
+	hub := NewHub(pluginDir, dataDir, "", dbWrapper)
 	go func() { // run hub in background
 		hub.Run()
 	}()
@@ -45,9 +50,9 @@ func setupTestServerEnv(t *testing.T) (*sql.DB, *Hub, *appcfg.Config, func()) {
 	}
 
 	cleanup := func() {
-		_ = db.Close()
+		_ = dbWrapper.db.Close()
 	}
-	return db, hub, cfg, cleanup
+	return dbWrapper, hub, cfg, cleanup
 }
 
 func TestAdminWeb_LoginSessionAndProtectedRoutes(t *testing.T) {

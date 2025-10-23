@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -16,17 +15,24 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func setupTestClient(t *testing.T) (*Client, *Hub, *sql.DB, func()) {
+func setupTestClient(t *testing.T) (*Client, *Hub, Database, func()) {
 	t.Helper()
 
 	// Create temporary database
 	tdir := t.TempDir()
 	dbPath := filepath.Join(tdir, "test.db")
-	db := InitDB(dbPath)
-	CreateSchema(db)
+
+	// Create a database wrapper for the test
+	dbWrapper := NewDatabaseWrapper(NewSQLiteDB())
+	if err := dbWrapper.db.Open(DatabaseConfig{Type: "sqlite", FilePath: dbPath}); err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	if err := dbWrapper.db.CreateSchema(); err != nil {
+		t.Fatalf("Failed to create test database schema: %v", err)
+	}
 
 	// Create hub with correct parameters
-	hub := NewHub(tdir, tdir, "http://localhost:8080", db)
+	hub := NewHub(tdir, tdir, "http://localhost:8080", dbWrapper)
 	go hub.Run()
 
 	// Create mock websocket connection
@@ -47,14 +53,6 @@ func setupTestClient(t *testing.T) (*Client, *Hub, *sql.DB, func()) {
 	}
 
 	// Create client
-	// Create a database wrapper for the test
-	dbWrapper := NewDatabaseWrapper(NewSQLiteDB())
-	if err := dbWrapper.db.Open(DatabaseConfig{Type: "sqlite", FilePath: dbPath}); err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
-	if err := dbWrapper.db.CreateSchema(); err != nil {
-		t.Fatalf("Failed to create test database schema: %v", err)
-	}
 
 	client := &Client{
 		hub:          hub,
@@ -70,11 +68,10 @@ func setupTestClient(t *testing.T) (*Client, *Hub, *sql.DB, func()) {
 
 	cleanup := func() {
 		conn.Close()
-		db.Close()
 		_ = dbWrapper.db.Close()
 	}
 
-	return client, hub, db, cleanup
+	return client, hub, dbWrapper, cleanup
 }
 
 func TestClient_Initialization(t *testing.T) {

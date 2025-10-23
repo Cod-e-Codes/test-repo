@@ -11,12 +11,10 @@ func setupPanelEnv(t *testing.T) (*AdminPanel, func()) {
 	t.Helper()
 	tdir := t.TempDir()
 	dbPath := filepath.Join(tdir, "test.db")
-	db := InitDB(dbPath)
-	CreateSchema(db)
 	pluginDir := filepath.Join(tdir, "plugins")
 	dataDir := filepath.Join(tdir, "data")
-	hub := NewHub(pluginDir, dataDir, "", db)
 	cfg := &appcfg.Config{Port: 8080, AdminKey: "k", Admins: []string{"a"}, DBPath: dbPath, ConfigDir: tdir}
+
 	// Create a database wrapper for the test
 	dbWrapper := NewDatabaseWrapper(NewSQLiteDB())
 	if err := dbWrapper.db.Open(DatabaseConfig{Type: "sqlite", FilePath: dbPath}); err != nil {
@@ -26,9 +24,9 @@ func setupPanelEnv(t *testing.T) (*AdminPanel, func()) {
 		t.Fatalf("Failed to create test database schema: %v", err)
 	}
 
+	hub := NewHub(pluginDir, dataDir, "", dbWrapper)
 	panel := NewAdminPanel(hub, dbWrapper, hub.GetPluginManager(), cfg)
 	return panel, func() {
-		_ = db.Close()
 		_ = dbWrapper.db.Close()
 	}
 }

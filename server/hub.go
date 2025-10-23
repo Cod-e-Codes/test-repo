@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"log"
 	"strings"
 	"sync"
@@ -33,10 +32,10 @@ type Hub struct {
 	pluginCommandHandler *PluginCommandHandler
 
 	// Database reference for message state management
-	db *sql.DB
+	db Database
 }
 
-func NewHub(pluginDir, dataDir, registryURL string, db *sql.DB) *Hub {
+func NewHub(pluginDir, dataDir, registryURL string, db Database) *Hub {
 	pluginManager := manager.NewPluginManager(pluginDir, dataDir, registryURL)
 	pluginCommandHandler := NewPluginCommandHandler(pluginManager)
 
@@ -72,16 +71,16 @@ func (h *Hub) BanUser(username string, adminUsername string) {
 	})
 
 	// Record ban event in database
-	if h.getDB() != nil {
-		err := recordBanEvent(h.getDB(), lowerUsername, adminUsername)
+	if h.db != nil {
+		err := h.db.RecordBanEvent(lowerUsername, adminUsername)
 		if err != nil {
 			log.Printf("Warning: failed to record ban event for user %s: %v", username, err)
 		}
 	}
 
 	// Clear user's message state to ensure fresh history on unban
-	if h.getDB() != nil {
-		err := clearUserMessageState(h.getDB(), lowerUsername)
+	if h.db != nil {
+		err := h.db.ClearUserMessageState(lowerUsername)
 		if err != nil {
 			log.Printf("Warning: failed to clear message state for banned user %s: %v", username, err)
 		}
@@ -105,16 +104,16 @@ func (h *Hub) UnbanUser(username string, adminUsername string) bool {
 		})
 
 		// Record unban event in database
-		if h.getDB() != nil {
-			err := recordUnbanEvent(h.getDB(), lowerUsername)
+		if h.db != nil {
+			err := h.db.RecordUnbanEvent(lowerUsername)
 			if err != nil {
 				log.Printf("Warning: failed to record unban event for user %s: %v", username, err)
 			}
 		}
 
 		// Clear user's message state to ensure clean slate on reconnection
-		if h.getDB() != nil {
-			err := clearUserMessageState(h.getDB(), lowerUsername)
+		if h.db != nil {
+			err := h.db.ClearUserMessageState(lowerUsername)
 			if err != nil {
 				log.Printf("Warning: failed to clear message state for unbanned user %s: %v", username, err)
 			}
@@ -196,16 +195,16 @@ func (h *Hub) KickUser(username string, adminUsername string) {
 	})
 
 	// Record kick event in database (reuse ban event structure)
-	if h.getDB() != nil {
-		err := recordBanEvent(h.getDB(), lowerUsername, adminUsername)
+	if h.db != nil {
+		err := h.db.RecordBanEvent(lowerUsername, adminUsername)
 		if err != nil {
 			log.Printf("Warning: failed to record kick event for user %s: %v", username, err)
 		}
 	}
 
 	// Clear user's message state
-	if h.getDB() != nil {
-		err := clearUserMessageState(h.getDB(), lowerUsername)
+	if h.db != nil {
+		err := h.db.ClearUserMessageState(lowerUsername)
 		if err != nil {
 			log.Printf("Warning: failed to clear message state for kicked user %s: %v", username, err)
 		}
@@ -228,8 +227,8 @@ func (h *Hub) AllowUser(username string, adminUsername string) bool {
 		log.Printf("[ADMIN] User '%s' allowed back by '%s' (kick override)", username, adminUsername)
 
 		// Record unban event in database
-		if h.getDB() != nil {
-			err := recordUnbanEvent(h.getDB(), lowerUsername)
+		if h.db != nil {
+			err := h.db.RecordUnbanEvent(lowerUsername)
 			if err != nil {
 				log.Printf("Warning: failed to record allow event for user %s: %v", username, err)
 			}
@@ -403,11 +402,6 @@ func (h *Hub) Run() {
 			}
 		}
 	}
-}
-
-// getDB returns the database reference
-func (h *Hub) getDB() *sql.DB {
-	return h.db
 }
 
 // GetPluginManager returns the plugin manager reference

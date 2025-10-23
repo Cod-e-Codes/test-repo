@@ -31,7 +31,19 @@ func (p *PostgresDB) Open(config DatabaseConfig) error {
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return err
+		return fmt.Errorf("postgres: failed to open database: %w", err)
+	}
+
+	// Configure connection pool for PostgreSQL
+	db.SetMaxOpenConns(25)                 // Maximum number of open connections
+	db.SetMaxIdleConns(5)                  // Maximum number of idle connections
+	db.SetConnMaxLifetime(5 * time.Minute) // Maximum lifetime of a connection
+	db.SetConnMaxIdleTime(1 * time.Minute) // Maximum idle time of a connection
+
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return fmt.Errorf("postgres: failed to ping database: %w", err)
 	}
 
 	p.db = db
@@ -134,19 +146,19 @@ func (p *PostgresDB) InsertMessage(msg shared.Message) error {
 	err := p.db.QueryRow(`INSERT INTO messages (sender, content, created_at, is_encrypted) VALUES ($1, $2, $3, $4) RETURNING id`,
 		msg.Sender, msg.Content, msg.CreatedAt, msg.Encrypted).Scan(&id)
 	if err != nil {
-		return err
+		return fmt.Errorf("postgres: failed to insert message: %w", err)
 	}
 
 	// Update message_id to match id
 	_, err = p.db.Exec(`UPDATE messages SET message_id = $1 WHERE id = $1`, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("postgres: failed to update message_id: %w", err)
 	}
 
 	// Enforce message cap: keep only the most recent 1000 messages
 	_, err = p.db.Exec(`DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT 1000)`)
 	if err != nil {
-		log.Printf("Error enforcing message cap: %v", err)
+		log.Printf("postgres: error enforcing message cap: %v", err)
 	}
 
 	return nil
@@ -158,19 +170,19 @@ func (p *PostgresDB) InsertEncryptedMessage(msg *shared.EncryptedMessage) error 
 	err := p.db.QueryRow(`INSERT INTO messages (sender, content, created_at, is_encrypted, encrypted_data, nonce, recipient) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
 		msg.Sender, msg.Content, msg.CreatedAt, true, msg.Encrypted, msg.Nonce, msg.Recipient).Scan(&id)
 	if err != nil {
-		return err
+		return fmt.Errorf("postgres: failed to insert encrypted message: %w", err)
 	}
 
 	// Update message_id to match id
 	_, err = p.db.Exec(`UPDATE messages SET message_id = $1 WHERE id = $1`, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("postgres: failed to update message_id for encrypted message: %w", err)
 	}
 
 	// Enforce message cap: keep only the most recent 1000 messages
 	_, err = p.db.Exec(`DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT 1000)`)
 	if err != nil {
-		log.Printf("Error enforcing message cap: %v", err)
+		log.Printf("postgres: error enforcing message cap: %v", err)
 	}
 
 	return nil
@@ -180,7 +192,7 @@ func (p *PostgresDB) InsertEncryptedMessage(msg *shared.EncryptedMessage) error 
 func (p *PostgresDB) GetRecentMessages() []shared.Message {
 	rows, err := p.db.Query(`SELECT sender, content, created_at, is_encrypted FROM messages ORDER BY created_at DESC LIMIT 50`)
 	if err != nil {
-		log.Println("Query error:", err)
+		log.Printf("postgres: query error in GetRecentMessages: %v", err)
 		return nil
 	}
 	defer rows.Close()
@@ -343,9 +355,10 @@ func (p *PostgresDB) GetLatestMessageID() int64 {
 func (p *PostgresDB) RecordBanEvent(username, bannedBy string) error {
 	_, err := p.db.Exec(`INSERT INTO ban_history (username, banned_by) VALUES ($1, $2)`, username, bannedBy)
 	if err != nil {
-		log.Printf("Warning: failed to record ban event for user %s: %v", username, err)
+		log.Printf("postgres: failed to record ban event for user %s: %v", username, err)
+		return fmt.Errorf("postgres: failed to record ban event for user %s: %w", username, err)
 	}
-	return err
+	return nil
 }
 
 // RecordUnbanEvent records an unban event in the ban_history table
@@ -393,7 +406,7 @@ func (p *PostgresDB) GetDatabaseStats() (string, error) {
 		return "", err
 	}
 
-	err = p.db.QueryRow(`SELECT COUNT(*) FROM user_message_state`).Scan(&userCount)
+	err = p.db.QueryRow(`SELECT COUNT(DISTINCT sender) FROM messages WHERE sender != 'System'`).Scan(&userCount)
 	if err != nil {
 		return "", err
 	}
@@ -403,16 +416,19 @@ func (p *PostgresDB) GetDatabaseStats() (string, error) {
 		return "", err
 	}
 
-	stats := fmt.Sprintf("Messages: %d, Users: %d, Ban Events: %d", messageCount, userCount, banCount)
+	stats := fmt.Sprintf("Database Statistics:\nTotal Messages: %d\nUnique Users: %d\nBan Events: %d", messageCount, userCount, banCount)
 	return stats, nil
 }
 
 // BackupDatabase creates a backup of the current database
 func (p *PostgresDB) BackupDatabase(dbPath string) (string, error) {
-	// PostgreSQL backup would typically use pg_dump
-	// For now, return a placeholder message
+	// PostgreSQL backup requires pg_dump utility
+	// This is a placeholder implementation - in production, you would:
+	// 1. Execute pg_dump command with proper credentials
+	// 2. Handle the output file creation
+	// 3. Return the backup file path
 	backupFilename := fmt.Sprintf("postgres_backup_%s.sql", time.Now().Format("2006-01-02_15-04-05"))
-	return backupFilename, fmt.Errorf("PostgreSQL backup not implemented - use pg_dump manually")
+	return backupFilename, fmt.Errorf("PostgreSQL backup requires pg_dump utility - use external backup tools or implement pg_dump integration")
 }
 
 // GetDB returns the raw database connection for compatibility

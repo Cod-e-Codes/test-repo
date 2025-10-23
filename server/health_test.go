@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -12,27 +11,34 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func setupTestHealthChecker(t *testing.T) (*HealthChecker, *sql.DB, func()) {
+func setupTestHealthChecker(t *testing.T) (*HealthChecker, Database, func()) {
 	t.Helper()
 
 	// Create temporary database
 	tdir := t.TempDir()
 	dbPath := filepath.Join(tdir, "test.db")
-	db := InitDB(dbPath)
-	CreateSchema(db)
+
+	// Create a database wrapper for the test
+	dbWrapper := NewDatabaseWrapper(NewSQLiteDB())
+	if err := dbWrapper.db.Open(DatabaseConfig{Type: "sqlite", FilePath: dbPath}); err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	if err := dbWrapper.db.CreateSchema(); err != nil {
+		t.Fatalf("Failed to create test database schema: %v", err)
+	}
 
 	// Create hub with correct parameters
-	hub := NewHub(tdir, tdir, "http://localhost:8080", db)
+	hub := NewHub(tdir, tdir, "http://localhost:8080", dbWrapper)
 	go hub.Run()
 
 	// Create health checker
-	hc := NewHealthChecker(hub, db, "test-version")
+	hc := NewHealthChecker(hub, dbWrapper, "test-version")
 
 	cleanup := func() {
-		db.Close()
+		_ = dbWrapper.db.Close()
 	}
 
-	return hc, db, cleanup
+	return hc, dbWrapper, cleanup
 }
 
 func TestNewHealthChecker(t *testing.T) {

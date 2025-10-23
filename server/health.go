@@ -56,11 +56,11 @@ type HealthChecker struct {
 }
 
 // NewHealthChecker creates a new health checker
-func NewHealthChecker(hub *Hub, db *sql.DB, version string) *HealthChecker {
+func NewHealthChecker(hub *Hub, db Database, version string) *HealthChecker {
 	hc := &HealthChecker{
 		startTime:  time.Now(),
 		hub:        hub,
-		db:         db,
+		db:         db.GetDB(),
 		version:    version,
 		components: make(map[string]*ComponentHealth),
 	}

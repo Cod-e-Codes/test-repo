@@ -31,7 +31,19 @@ func (m *MySQLDB) Open(config DatabaseConfig) error {
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		return err
+		return fmt.Errorf("mysql: failed to open database: %w", err)
+	}
+
+	// Configure connection pool for MySQL
+	db.SetMaxOpenConns(25)                 // Maximum number of open connections
+	db.SetMaxIdleConns(5)                  // Maximum number of idle connections
+	db.SetConnMaxLifetime(5 * time.Minute) // Maximum lifetime of a connection
+	db.SetConnMaxIdleTime(1 * time.Minute) // Maximum idle time of a connection
+
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return fmt.Errorf("mysql: failed to ping database: %w", err)
 	}
 
 	m.db = db
@@ -134,24 +146,24 @@ func (m *MySQLDB) InsertMessage(msg shared.Message) error {
 	result, err := m.db.Exec(`INSERT INTO messages (sender, content, created_at, is_encrypted) VALUES (?, ?, ?, ?)`,
 		msg.Sender, msg.Content, msg.CreatedAt, msg.Encrypted)
 	if err != nil {
-		return err
+		return fmt.Errorf("mysql: failed to insert message: %w", err)
 	}
 
 	// Get the inserted ID and update message_id
 	id, err := result.LastInsertId()
 	if err != nil {
-		return err
+		return fmt.Errorf("mysql: failed to get last insert ID: %w", err)
 	}
 
 	_, err = m.db.Exec(`UPDATE messages SET message_id = ? WHERE id = ?`, id, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("mysql: failed to update message_id: %w", err)
 	}
 
 	// Enforce message cap: keep only the most recent 1000 messages
 	_, err = m.db.Exec(`DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT 1000)`)
 	if err != nil {
-		log.Printf("Error enforcing message cap: %v", err)
+		log.Printf("mysql: error enforcing message cap: %v", err)
 	}
 
 	return nil
@@ -352,9 +364,10 @@ func (m *MySQLDB) GetLatestMessageID() int64 {
 func (m *MySQLDB) RecordBanEvent(username, bannedBy string) error {
 	_, err := m.db.Exec(`INSERT INTO ban_history (username, banned_by) VALUES (?, ?)`, username, bannedBy)
 	if err != nil {
-		log.Printf("Warning: failed to record ban event for user %s: %v", username, err)
+		log.Printf("mysql: failed to record ban event for user %s: %v", username, err)
+		return fmt.Errorf("mysql: failed to record ban event for user %s: %w", username, err)
 	}
-	return err
+	return nil
 }
 
 // RecordUnbanEvent records an unban event in the ban_history table
@@ -402,7 +415,7 @@ func (m *MySQLDB) GetDatabaseStats() (string, error) {
 		return "", err
 	}
 
-	err = m.db.QueryRow(`SELECT COUNT(*) FROM user_message_state`).Scan(&userCount)
+	err = m.db.QueryRow(`SELECT COUNT(DISTINCT sender) FROM messages WHERE sender != 'System'`).Scan(&userCount)
 	if err != nil {
 		return "", err
 	}
@@ -412,16 +425,19 @@ func (m *MySQLDB) GetDatabaseStats() (string, error) {
 		return "", err
 	}
 
-	stats := fmt.Sprintf("Messages: %d, Users: %d, Ban Events: %d", messageCount, userCount, banCount)
+	stats := fmt.Sprintf("Database Statistics:\nTotal Messages: %d\nUnique Users: %d\nBan Events: %d", messageCount, userCount, banCount)
 	return stats, nil
 }
 
 // BackupDatabase creates a backup of the current database
 func (m *MySQLDB) BackupDatabase(dbPath string) (string, error) {
-	// MySQL backup would typically use mysqldump
-	// For now, return a placeholder message
+	// MySQL backup requires mysqldump utility
+	// This is a placeholder implementation - in production, you would:
+	// 1. Execute mysqldump command with proper credentials
+	// 2. Handle the output file creation
+	// 3. Return the backup file path
 	backupFilename := fmt.Sprintf("mysql_backup_%s.sql", time.Now().Format("2006-01-02_15-04-05"))
-	return backupFilename, fmt.Errorf("MySQL backup not implemented - use mysqldump manually")
+	return backupFilename, fmt.Errorf("MySQL backup requires mysqldump utility - use external backup tools or implement mysqldump integration")
 }
 
 // GetDB returns the raw database connection for compatibility

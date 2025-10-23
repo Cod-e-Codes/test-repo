@@ -90,7 +90,9 @@ func (c *Client) readPump() {
 		}
 		msg.CreatedAt = time.Now()
 		if msg.Type == "" || msg.Type == shared.TextMessage {
-			c.db.InsertMessage(msg)
+			if err := c.db.InsertMessage(msg); err != nil {
+				log.Printf("Failed to insert message: %v", err)
+			}
 		}
 		c.hub.broadcast <- msg
 	}

@@ -78,14 +78,8 @@ func TestGetClientIP(t *testing.T) {
 
 func TestInsertMessage(t *testing.T) {
 	// Create a real in-memory database for testing
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema
-	CreateSchema(db)
 
 	msg := shared.Message{
 		Sender:    "testuser",
@@ -118,14 +112,8 @@ func TestInsertMessage(t *testing.T) {
 
 func TestInsertEncryptedMessage(t *testing.T) {
 	// Create a real in-memory database for testing
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema
-	CreateSchema(db)
 
 	encryptedMsg := &shared.EncryptedMessage{
 		Sender:      "testuser",
@@ -157,14 +145,8 @@ func TestInsertEncryptedMessage(t *testing.T) {
 
 func TestGetRecentMessages(t *testing.T) {
 	// Create a real database for this test
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema
-	CreateSchema(db)
 
 	// Insert test messages
 	now := time.Now()
@@ -201,14 +183,8 @@ func TestGetRecentMessages(t *testing.T) {
 
 func TestGetMessagesAfter(t *testing.T) {
 	// Create a real database for this test
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema
-	CreateSchema(db)
 
 	// Insert test messages
 	now := time.Now()
@@ -291,14 +267,8 @@ func TestSortMessagesByTimestampWithSameTime(t *testing.T) {
 
 func TestClearMessages(t *testing.T) {
 	// Create a real database for this test
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema
-	CreateSchema(db)
 
 	// Insert test message
 	msg := shared.Message{
@@ -316,8 +286,7 @@ func TestClearMessages(t *testing.T) {
 	}
 
 	// Clear messages
-	err = ClearMessages(db)
-	if err != nil {
+	if err := ClearMessages(db); err != nil {
 		t.Fatalf("ClearMessages failed: %v", err)
 	}
 
@@ -341,6 +310,13 @@ func TestBackupDatabase(t *testing.T) {
 
 	CreateSchema(db)
 
+	// Create SQLiteDB instance and set the db
+	sqliteDB := NewSQLiteDB()
+	sqliteDB.db = db
+
+	// Wrap in DatabaseWrapper
+	dbWrapper := NewDatabaseWrapper(sqliteDB)
+
 	// Insert test data
 	msg := shared.Message{
 		Sender:    "testuser",
@@ -348,13 +324,10 @@ func TestBackupDatabase(t *testing.T) {
 		CreatedAt: time.Now(),
 		Encrypted: false,
 	}
-	InsertMessage(db, msg)
-
-	// Close the database before backup
-	db.Close()
+	InsertMessage(dbWrapper, msg)
 
 	// Test backup
-	backupFilename, err := BackupDatabase(tempDB)
+	backupFilename, err := dbWrapper.BackupDatabase(tempDB)
 	if err != nil {
 		t.Fatalf("BackupDatabase failed: %v", err)
 	}
@@ -375,14 +348,8 @@ func TestBackupDatabase(t *testing.T) {
 
 func TestGetDatabaseStats(t *testing.T) {
 	// Create a real database for this test
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to open test database: %v", err)
-	}
+	db := CreateTestDatabase(t)
 	defer db.Close()
-
-	// Create schema
-	CreateSchema(db)
 
 	// Insert test messages
 	now := time.Now()
